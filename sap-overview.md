@@ -1,6 +1,5 @@
 # TỔNG QUAN HỆ THỐNG SAP
 
-
 ## 1. Giới thiệu về ERP & SAP
 
 ### 1.1. ERP là gì?
