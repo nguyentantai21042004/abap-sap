@@ -72,15 +72,47 @@ Xây trực tiếp trong SAP bằng ABAP. SAP GUI + ALV Grid + SmartForms.
 ## Offer A – Ví dụ code ABAP
 
 ```abap
+" Khai báo biến
+DATA: lv_title   TYPE string,
+      ls_bug     TYPE zbug_tracker,
+      lo_send_request TYPE REF TO cl_bcs,
+      lo_document     TYPE REF TO cl_document_bcs,
+      lo_recipient    TYPE REF TO if_recipient_bcs,
+      lv_subject      TYPE so_obj_des.
+
 " Validate và lưu bug
 IF lv_title IS INITIAL.
   MESSAGE 'Title is required' TYPE 'E'.
 ENDIF.
 
+" Điền dữ liệu
+ls_bug-bug_id    = sy-datum && sy-uzeit.
+ls_bug-title     = lv_title.
+ls_bug-status    = 'OPEN'.
+ls_bug-created_by = sy-uname.
+ls_bug-created_on = sy-datum.
+
 INSERT zbug_tracker FROM ls_bug.
 COMMIT WORK.
 
-" Gửi email thông báo (CL_BCS)
+" Gửi email thông báo qua CL_BCS
+TRY.
+    lv_subject = 'New Bug Created: ' && ls_bug-bug_id.
+    lo_send_request = cl_bcs=>create_persistent( ).
+    lo_document = cl_document_bcs=>create_document(
+      i_type    = 'RAW'
+      i_text    = VALUE #( ( 'Bug created successfully' ) )
+      i_subject = lv_subject ).
+    lo_send_request->set_document( lo_document ).
+    
+    lo_recipient = cl_cam_address_bcs=>create_internet_address( 'dev@example.com' ).
+    lo_send_request->add_recipient( lo_recipient ).
+    
+    lo_send_request->send( ).
+    COMMIT WORK.
+  CATCH cx_bcs INTO DATA(lx_bcs).
+    MESSAGE lx_bcs->get_text( ) TYPE 'E'.
+ENDTRY.
 ```
 
 ---
@@ -176,12 +208,15 @@ app.post("/bugs", async (req, res) => {
 
 ## So sánh nhanh (Trade-off)
 
-| Tiêu chí               | On-Stack (SAP GUI)  | Side-by-Side (Web App) |
-| ---------------------- | ------------------- | ---------------------- |
-| Trải nghiệm người dùng | Truyền thống        | Hiện đại, đa thiết bị  |
-| Tích hợp SAP           | Native, sâu         | Qua RFC/OData          |
-| Hạ tầng                | Không cần ngoài SAP | Cần Docker/VM          |
-| Mở rộng tương lai      | Hạn chế             | Linh hoạt              |
+| Tiêu chí               | On-Stack (SAP GUI)          | Side-by-Side (Web App)    |
+| ---------------------- | --------------------------- | ------------------------- |
+| Trải nghiệm người dùng | Truyền thống                | Hiện đại, đa thiết bị     |
+| Tích hợp SAP           | Native, sâu                 | Qua RFC/OData             |
+| Hạ tầng                | Không cần ngoài SAP         | Cần Docker/VM             |
+| Tốc độ triển khai      | Nhanh nếu team ABAP mạnh    | Cần full-stack + DevOps   |
+| Mở rộng tương lai      | Hạn chế                     | Linh hoạt                 |
+| Nâng cấp SAP           | Phụ thuộc nâng cấp SAP      | Tách rời SAP core         |
+| Chi phí license        | Không phát sinh             | Không phát sinh           |
 | Quyền dev              | Cao                 | Trung bình             |
 
 ---
