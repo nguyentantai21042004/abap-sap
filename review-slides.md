@@ -3,7 +3,6 @@ marp: true
 theme: default
 paginate: true
 header: "SAP Bug Tracking Management System"
-footer: "Báo Cáo Đồ Án | 31/01/2026"
 ---
 
 <!-- _class: lead -->
@@ -63,6 +62,8 @@ Báo Cáo Đồ Án
 - **Number Range**: `ZNRO_BUG`
 - **Validation**: Title ≥ 10 chars, mandatory fields
 
+---
+
 **Skeleton structure:**
 
 ```abap
@@ -88,6 +89,8 @@ ENDFORM.
 - Bug ID, Title, Priority
 - Người báo lỗi, Link transaction
 
+---
+
 **Skeleton structure:**
 
 ```abap
@@ -108,6 +111,8 @@ ENDFORM.
 - Hiển thị danh sách bugs với ALV Grid
 - Filter: Status, Type, Priority, Developer
 - Sort, Export Excel
+
+---
 
 **Các cột:**
 Bug ID | Title | Status | Priority | Developer | Created Date
@@ -138,6 +143,8 @@ ENDFORM.
 - **Body**: Bảng bugs (ID, Title, Status, Priority...)
 - **Footer**: Tổng số bug, page number
 
+---
+
 **Kỹ thuật:**
 
 - SmartForm Designer: `ZBUG_FORM`
@@ -155,6 +162,8 @@ ENDFORM.
 - Bug đang xử lý (In Progress)
 - Bug mới (New)
 - Phân bổ theo Priority, Module
+
+---
 
 **Skeleton structure:**
 
@@ -265,23 +274,13 @@ ZBUG_TRACKING_MGMT
 
 **Hệ thống bao gồm:**
 
-- ✅ 5 chức năng chính (Create, Email, ALV, SmartForm, Stats, Attach)
-- ✅ Cấu trúc chương trình rõ ràng (include-based)
-- ✅ Database thiết kế đầy đủ (11 fields)
-- ✅ Sử dụng công nghệ SAP chuẩn (ABAP, ALV, SmartForms, GOS)
+- 5 chức năng chính (Create, Email, ALV, SmartForm, Stats, Attach)
+- Cấu trúc chương trình rõ ràng (include-based)
+- Database thiết kế đầy đủ (11 fields)
+- Sử dụng công nghệ SAP chuẩn (ABAP, ALV, SmartForms, GOS)
 
 **Deliverables:**
 
 - Source code ABAP
 - Database objects (Table, Domains, Data Elements)
 - Documentation
-
----
-
-<!-- _class: lead -->
-
-# Q&A
-
-**Cảm ơn thầy đã lắng nghe!**
-
----
