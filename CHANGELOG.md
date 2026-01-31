@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-01
+
+### Added
+
+- [00:00] Created simplified technical report `review-report.md` focusing on functionality and database design
+- [00:00] Created Marp presentation slides `review-slides.md` for instructor review
+
+### Changed
+
+- [00:05] Refactored `review-report.md` to remove timeline/resources sections and reduce technical complexity (skeleton code only)
+- [00:05] Refactored `review-slides.md` to align with the simplified report and remove code-heavy slides
+
 ## [0.1.0] - 2026-01-31
 
 ### Added
