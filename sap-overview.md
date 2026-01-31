@@ -40,7 +40,7 @@
 
 ### 2.1. Kiến trúc 3-tier (Three-tier Architecture)
 
-```
+```mermaid
 ┌─────────────────────────────────────────────────────────┐
 │  Presentation Layer (Client Tier)                       │
 │  - SAP GUI (SAP Logon)                                  │
