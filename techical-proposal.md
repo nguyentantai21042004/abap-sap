@@ -137,8 +137,6 @@ Hệ thống bao gồm các module chức năng chính:
 | P4. Đóng gói            | 06      | Rà soát mã nguồn (Code Inspector).<br>Tối ưu hiệu năng.<br>Đóng gói Transport Request.                           | Source code đã tối ưu.<br>Gói cài đặt hoàn chỉnh.                |
 | P5. Kiểm thử & Bàn giao | 07 - 08 | Hỗ trợ UAT.<br>Khắc phục lỗi (Bug Fixing).<br>Bàn giao tài liệu & source code.                                   | Biên bản nghiệm thu UAT.<br>Tài liệu HDSD (User Manual).         |
 
-![Implementation Plan](./images/plan-onstack.png)
-
 ## 5. TÀI NGUYÊN ĐÃ CÓ & YÊU CẦU BỔ SUNG
 
 ### 5.1. Tài nguyên đã được cung cấp ✅
@@ -230,4 +228,3 @@ Hệ thống bao gồm các module chức năng chính:
 - Tài liệu thiết kế kỹ thuật (Tech Specs)
 - Source code & hướng dẫn triển khai
 - Hướng dẫn sử dụng (User Manual)
-- Biên bản UAT và bàn giao
