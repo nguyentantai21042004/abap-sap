@@ -1,8 +1,5 @@
 # TỔNG QUAN HỆ THỐNG SAP
 
-> Tài liệu giới thiệu tổng quan về hệ thống SAP, từ khái niệm ERP đến kiến trúc hệ thống và phương pháp phát triển
-
----
 
 ## 1. Giới thiệu về ERP & SAP
 
@@ -324,35 +321,50 @@ Tạo mã giao dịch để người dùng truy cập nhanh:
 | **Extension**       | In-stack (trên cùng server)         | **Side-by-side** (SAP BTP)            |
 | **Database access** | Open SQL, Native SQL                | Chỉ CDS Views, không dùng Native SQL  |
 
-### 7.3. Cách tiếp cận mở rộng (Extension Strategy)
+### 7.3. Chiến lược mở rộng & Phân tích đánh đổi (Extension Strategy & Trade-off)
+
+Trong hệ sinh thái SAP S/4HANA hiện đại, việc lựa chọn phương pháp mở rộng phụ thuộc vào sự cân nhắc giữa **Chi phí**, **Độ phức tạp** và **Tính bền vững** (Clean Core).
 
 #### Option 1: In-app Extension (Key User Extensibility)
 
-- **Đối tượng**: Business User, không cần developer
-- **Công cụ**: SAP Fiori Key User Tools
-- **Khả năng**:
-  - Thêm custom field vào standard screen
-  - Tạo simple logic (no code)
-- **Giới hạn**: Chỉ cho use case đơn giản
+_Đây là phương pháp "Low-code/No-code" dành cho những thay đổi nhỏ ngay trên giao diện chuẩn._
 
-#### Option 2: Developer Extensibility (BAdI)
+- **Đối tượng:** Business User, Key User (không yêu cầu kỹ năng lập trình chuyên sâu).
+- **Công cụ:** SAP Fiori Key User Tools (ngay trên trình duyệt).
+- **Khả năng:**
+  - Thêm trường tùy chỉnh (Custom Fields) vào màn hình chuẩn.
+  - Thay đổi vị trí, ẩn/hiện các trường dữ liệu.
+  - Tạo logic đơn giản (Validation) bằng ngôn ngữ giả lập.
+- **Giới hạn:** Chỉ áp dụng cho các Use-case đơn giản, không thể can thiệp vào quy trình xử lý phức tạp.
+- **PHÂN TÍCH TRADE-OFF (SỰ ĐÁNH ĐỔI):**
+  - **Tốc độ vs. Linh hoạt:** Triển khai cực nhanh (vài phút), chi phí bằng 0, nhưng **hy sinh hoàn toàn sự linh hoạt**. Bạn không thể viết một logic phức tạp như "Gửi email cho sếp nếu giá trị > 1 tỷ".
 
-- **Đối tượng**: ABAP Developer
-- **Công cụ**: ADT (ABAP Development Tools)
-- **Cách thức**: Implement BAdI (hook point) do SAP cung cấp
-- **Ví dụ**: Validate data trước khi save, enrich data sau khi read
+#### Option 2: Developer Extensibility (On-stack / Classic Extension)
+
+_Đây là phương pháp truyền thống (như dự án Bug Tracking này đang làm), code chạy trực tiếp trên server SAP._
+
+- **Đối tượng:** ABAP Developer.
+- **Công cụ:** ADT (ABAP Development Tools) hoặc SE80 (Classic).
+- **Cách thức:** Implement BAdI (Business Add-Ins) hoặc phát triển Z-Objects.
+- **Ví dụ:** Tạo bảng Z, viết báo cáo ALV, SmartForms, Validate dữ liệu phức tạp.
+- **PHÂN TÍCH TRADE-OFF (SỰ ĐÁNH ĐỔI):**
+  - **Hiệu năng vs. Sự phụ thuộc (Coupling):**
+    - **Được:** Hiệu năng cao nhất vì code và dữ liệu nằm cùng một chỗ (Memory), không có độ trễ mạng. Tận dụng tối đa tài nguyên phần cứng có sẵn.
+    - **Mất:** Hệ thống bị "dính chặt" (Tightly Coupled). Nếu code Z viết kém chất lượng, nó có thể làm chậm cả hệ thống chính. Việc nâng cấp version SAP có thể yêu cầu kiểm tra lại code cũ.
 
 #### Option 3: Side-by-side Extension (SAP BTP)
 
-- **Đối tượng**: Full-stack Developer
-- **Nền tảng**: SAP Business Technology Platform (Cloud Foundry / Kyma)
-- **Ngôn ngữ**: Node.js, Java, Python, Golang, CAP (Cloud Application Programming)
-- **Kết nối**: Qua API (OData, REST, RFC)
-- **Use case**:
-  - Custom app hoàn toàn mới
-  - Tích hợp với hệ thống bên ngoài
-  - AI/ML models
-  - IoT applications
+_Đây là phương pháp hiện đại, tách hoàn toàn code ra khỏi lõi SAP, chạy trên Cloud._
+
+- **Đối tượng:** Full-stack Developer (Cloud Native).
+- **Nền tảng:** SAP Business Technology Platform (BTP).
+- **Ngôn ngữ:** Đa dạng (Node.js, Java, Python, Golang...).
+- **Kết nối:** Giao tiếp lỏng lẻo (Decoupled) qua API (OData, REST, Events).
+- **Use case:** Xây dựng Mobile App, Tích hợp AI/IoT, hoặc các Portal mở rộng cho đối tác bên ngoài.
+- **PHÂN TÍCH TRADE-OFF (SỰ ĐÁNH ĐỔI):**
+  - **Clean Core vs. Chi phí & Phức tạp (Complexity):**
+    - **Được:** Giữ cho lõi SAP sạch sẽ tuyệt đối (Clean Core), nâng cấp SAP dễ dàng mà không sợ vỡ code. Tự do lựa chọn công nghệ (như Golang, ReactJS).
+    - **Mất:** **Chi phí cao** (phải mua license BTP, Cloud Connector). **Độ phức tạp cao** (phải xử lý bảo mật, kết nối mạng, độ trễ API). Không phù hợp cho các tính năng nhỏ cần truy xuất dữ liệu liên tục (High volume transaction).
 
 ### 7.4. Best Practices
 
@@ -371,4 +383,3 @@ Tạo mã giao dịch để người dùng truy cập nhanh:
 - Hard-code values, nên dùng Customizing Table
 - Copy-paste code SAP standard vào Z-program
 - Bỏ qua Code Review và Performance Test
-
