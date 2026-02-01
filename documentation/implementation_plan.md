@@ -209,10 +209,10 @@ Hệ thống Bug Tracking hiện tại (theo [requirements.md](file:///Users/tai
 
 **Câu hỏi:** "Hệ thống có tạo bảng riêng để quản lý Tester/Developer/Manager hay sử dụng luôn thông tin User có sẵn trong SAP?"
 
-| Option | Mô tả | Ưu điểm | Nhược điểm |
-|--------|-------|---------|------------|
-| **A. Tạo bảng riêng `ZBUG_USERS`** | Tạo Z-table mới chứa User ID, Role, Module, Available Status | Linh hoạt, dễ mở rộng, có thể thêm trường `Available Status` | Phải tự maintain, có thể duplicate với SAP User |
-| **B. Dùng SAP User Master (`USR02`)** | Link trực tiếp với SAP standard user | Không duplicate, tự động sync | Khó thêm custom fields như `Available Status`, phụ thuộc SAP Admin |
+| Option                                | Mô tả                                                        | Ưu điểm                                                      | Nhược điểm                                                         |
+| ------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| **A. Tạo bảng riêng `ZBUG_USERS`**    | Tạo Z-table mới chứa User ID, Role, Module, Available Status | Linh hoạt, dễ mở rộng, có thể thêm trường `Available Status` | Phải tự maintain, có thể duplicate với SAP User                    |
+| **B. Dùng SAP User Master (`USR02`)** | Link trực tiếp với SAP standard user                         | Không duplicate, tự động sync                                | Khó thêm custom fields như `Available Status`, phụ thuộc SAP Admin |
 
 **➡️ Khuyến nghị:** Option A - Tạo bảng riêng vì cần trường `Available Status` đặc thù.
 
@@ -222,12 +222,12 @@ Hệ thống Bug Tracking hiện tại (theo [requirements.md](file:///Users/tai
 
 **Câu hỏi:** "Khi auto-assign bug cho Developer, logic ưu tiên như thế nào?"
 
-| Option | Mô tả | Khi nào dùng |
-|--------|-------|--------------|
-| **A. Chỉ theo Module** | Dev nào phụ trách module đó thì assign | Đơn giản, team nhỏ |
-| **B. Module + Workload** | Dev cùng module, chọn người ít bug đang xử lý nhất | Team vừa, cân bằng công việc |
-| **C. Module + Workload + Seniority** | Như B, nhưng ưu tiên senior cho bug Critical/High | Team lớn, cần phân loại theo kinh nghiệm |
-| **D. Round-robin** | Luân phiên đều giữa các dev | Công bằng tuyệt đối |
+| Option                               | Mô tả                                              | Khi nào dùng                             |
+| ------------------------------------ | -------------------------------------------------- | ---------------------------------------- |
+| **A. Chỉ theo Module**               | Dev nào phụ trách module đó thì assign             | Đơn giản, team nhỏ                       |
+| **B. Module + Workload**             | Dev cùng module, chọn người ít bug đang xử lý nhất | Team vừa, cân bằng công việc             |
+| **C. Module + Workload + Seniority** | Như B, nhưng ưu tiên senior cho bug Critical/High  | Team lớn, cần phân loại theo kinh nghiệm |
+| **D. Round-robin**                   | Luân phiên đều giữa các dev                        | Công bằng tuyệt đối                      |
 
 **➡️ Khuyến nghị:** Option B - Đủ thông minh mà không quá phức tạp.
 
@@ -237,11 +237,11 @@ Hệ thống Bug Tracking hiện tại (theo [requirements.md](file:///Users/tai
 
 **Câu hỏi:** "File đính kèm (screenshot, log) lưu ở đâu?"
 
-| Option | Mô tả | Ưu điểm | Nhược điểm |
-|--------|-------|---------|------------|
-| **A. GOS (Generic Object Services)** | SAP standard, link file với object | Tích hợp sẵn, không cần code nhiều | Giới hạn control, khó giới hạn số file |
-| **B. DMS (Document Management)** | SAP Document Management System | Quản lý version, metadata | Cần license DMS, phức tạp hơn |
-| **C. Lưu path trong Z-table + File Server** | Chỉ lưu đường dẫn, file trên shared folder | Linh hoạt, dễ backup | Cần quản lý thủ công, phụ thuộc file server |
+| Option                                      | Mô tả                                      | Ưu điểm                            | Nhược điểm                                  |
+| ------------------------------------------- | ------------------------------------------ | ---------------------------------- | ------------------------------------------- |
+| **A. GOS (Generic Object Services)**        | SAP standard, link file với object         | Tích hợp sẵn, không cần code nhiều | Giới hạn control, khó giới hạn số file      |
+| **B. DMS (Document Management)**            | SAP Document Management System             | Quản lý version, metadata          | Cần license DMS, phức tạp hơn               |
+| **C. Lưu path trong Z-table + File Server** | Chỉ lưu đường dẫn, file trên shared folder | Linh hoạt, dễ backup               | Cần quản lý thủ công, phụ thuộc file server |
 
 **➡️ Khuyến nghị:** Option A (GOS) - Đủ dùng cho project này, ít effort.
 
@@ -251,11 +251,11 @@ Hệ thống Bug Tracking hiện tại (theo [requirements.md](file:///Users/tai
 
 **Câu hỏi:** "Tester chuyển bug cho Developer có cần Manager approve không?"
 
-| Option | Mô tả |
-|--------|-------|
-| **A. Cần approve** | Tester submit → Manager review → Approve → Assign cho Dev |
-| **B. Không cần** | Tester có thể tự assign cho Dev |
-| **C. Tùy Priority** | Critical/High cần approve, Medium/Low không cần |
+| Option              | Mô tả                                                     |
+| ------------------- | --------------------------------------------------------- |
+| **A. Cần approve**  | Tester submit → Manager review → Approve → Assign cho Dev |
+| **B. Không cần**    | Tester có thể tự assign cho Dev                           |
+| **C. Tùy Priority** | Critical/High cần approve, Medium/Low không cần           |
 
 **➡️ Khuyến nghị:** Hỏi rõ để align với quy trình thực tế.
 
@@ -265,11 +265,11 @@ Hệ thống Bug Tracking hiện tại (theo [requirements.md](file:///Users/tai
 
 **Câu hỏi:** "File đính kèm có giới hạn như thế nào?"
 
-| Cần xác nhận | Gợi ý |
-|--------------|-------|
-| Số lượng file tối đa? | Extra-req nói 3 files (Report/Fix/Verify) |
-| Định dạng cho phép? | Excel only? Hay cả PNG/PDF? |
-| Dung lượng tối đa? | 5MB? 10MB? |
+| Cần xác nhận             | Gợi ý                                     |
+| ------------------------ | ----------------------------------------- |
+| Số lượng file tối đa?    | Extra-req nói 3 files (Report/Fix/Verify) |
+| Định dạng cho phép?      | Excel only? Hay cả PNG/PDF?               |
+| Dung lượng tối đa?       | 5MB? 10MB?                                |
 | Ai được upload file nào? | Tester: Report, Dev: Fix, Tester: Verify? |
 
 ---
@@ -278,11 +278,11 @@ Hệ thống Bug Tracking hiện tại (theo [requirements.md](file:///Users/tai
 
 **Câu hỏi:** "Dashboard cần hiển thị Chart/Graph hay chỉ cần bảng số liệu?"
 
-| Option | Mô tả | Effort |
-|--------|-------|--------|
-| **A. Chỉ ALV Table** | Bảng số liệu đơn giản | Thấp |
-| **B. Có Chart cơ bản** | Pie chart, Bar chart | Trung bình (dùng Graphics Control) |
-| **C. Dashboard nâng cao** | Interactive charts | Cao (cần SAP Fiori hoặc external lib) |
+| Option                    | Mô tả                 | Effort                                |
+| ------------------------- | --------------------- | ------------------------------------- |
+| **A. Chỉ ALV Table**      | Bảng số liệu đơn giản | Thấp                                  |
+| **B. Có Chart cơ bản**    | Pie chart, Bar chart  | Trung bình (dùng Graphics Control)    |
+| **C. Dashboard nâng cao** | Interactive charts    | Cao (cần SAP Fiori hoặc external lib) |
 
 **➡️ Khuyến nghị:** Option A hoặc B tùy timeline.
 
@@ -305,5 +305,6 @@ Câu 6: [ ] A - Table only  |  [ ] B - Chart cơ bản  |  [ ] C - Nâng cao
 
 > [!WARNING]
 > **Breaking Changes:**
+>
 > - Bảng `ZBUG_TRACKER` cần thêm nhiều fields → Cần backup dữ liệu test hiện có trước khi modify
 > - Workflow thay đổi → Cần training lại user về phân quyền mới
