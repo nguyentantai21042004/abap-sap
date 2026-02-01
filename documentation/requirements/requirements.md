@@ -71,7 +71,7 @@ Giải pháp phải tuân thủ kiến trúc 3-tier của SAP và sử dụng c�
 - **Network:** EBS_SAP
 - **SAProuter String:** /H/sapper
 
-![SAP Connection Config](./images/sap-connection-config.png)
+![SAP Connection Config](../../images/sap-connection-config.png)
 
 ### 3.2. Development Account & Permissions
 
@@ -86,7 +86,7 @@ Giải pháp phải tuân thủ kiến trúc 3-tier của SAP và sử dụng c�
 | **12345678**  | ALV Grid APIs, SMARTFORMS          | Báo cáo & In ấn                      | Chức năng 3: ALV Grid & SmartForms                     |
 | **DEV-237**   | GOS (Generic Object Services)      | Đính kèm file                        | Chức năng 5: Attach evidence                           |
 
-![SAP Accounts](./images/sap-accounts-permissions.png)
+![SAP Accounts](../../images/sap-accounts-permissions.png)
 
 **Chi tiết quyền theo Function:**
 

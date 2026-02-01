@@ -151,7 +151,7 @@ Hệ thống bao gồm các module chức năng chính:
 - **Connection String:** /H/sapper
 - **Network:** EBS_SAP
 
-![SAP Logon](./images/sap-logon-connections.png)
+![SAP Logon](../../images/sap-logon-connections.png)
 
 **Development Account:**
 
@@ -173,7 +173,7 @@ Hệ thống bao gồm các module chức năng chính:
     - GOS (Generic Object Services)
     - Attachment management & storage
 
-![SAP Accounts](./images/sap-accounts-permissions.png)
+![SAP Accounts](../../images/sap-accounts-permissions.png)
 
 ### 5.2. Yêu cầu bổ sung cần xác nhận
 
