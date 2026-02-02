@@ -924,4 +924,337 @@ Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 ---
 
 **Prepared by:** [Your Name]  
-**Last Updated:** 31/01/2026
+**Last Updated:** 02/02/2026
+
+---
+
+## PHASE 1.5: BỔ SUNG DATABASE (YÊU CẦU MỚI)
+
+> **Cập nhật:** 02/02/2026  
+> **Mục tiêu:** Thêm bảng `ZBUG_USERS`, `ZBUG_HISTORY` và fields mới cho `ZBUG_TRACKER`
+
+### Bước 1.5.1: Tạo Thêm Domains
+
+| Domain              | Data Type | Length | Fixed Values                                 |
+| ------------------- | --------- | ------ | -------------------------------------------- |
+| `ZDOM_ROLE`         | CHAR      | 1      | T=Tester, D=Developer, M=Manager             |
+| `ZDOM_AVAIL_STATUS` | CHAR      | 1      | A=Available, B=Busy, L=Leave, W=Working      |
+| `ZDOM_BUG_TYPE`     | CHAR      | 1      | C=Code, F=Configuration                      |
+| `ZDOM_ACTION_TYPE`  | CHAR      | 2      | CR=Create, AS=Assign, RS=Reassign, ST=Status |
+
+**Cập nhật `ZDOM_STATUS`:**
+
+```text
+1 - New
+W - Waiting (Manager assign)
+2 - Assigned
+3 - In Progress
+4 - Fixed
+5 - Closed
+```
+
+---
+
+### Bước 1.5.2: Tạo Thêm Data Elements
+
+| Data Element       | Domain            | Short Label | Long Label       |
+| ------------------ | ----------------- | ----------- | ---------------- |
+| `ZDE_ROLE`         | ZDOM_ROLE         | Role        | User Role        |
+| `ZDE_AVAIL_STATUS` | ZDOM_AVAIL_STATUS | Avail       | Available Status |
+| `ZDE_BUG_TYPE`     | ZDOM_BUG_TYPE     | Type        | Bug Type         |
+| `ZDE_ACTION_TYPE`  | ZDOM_ACTION_TYPE  | Action      | Action Type      |
+| `ZDE_FULL_NAME`    | CHAR50            | Name        | Full Name        |
+| `ZDE_EMAIL`        | CHAR100           | Email       | Email Address    |
+| `ZDE_ATT_PATH`     | CHAR100           | File        | Attachment Path  |
+| `ZDE_REASONS`      | STRG              | Reason      | Bug Reason       |
+
+---
+
+### Bước 1.5.3: Tạo Bảng ZBUG_USERS
+
+1. Vào T-code `SE11` → Database table → `ZBUG_USERS`
+2. Tab Fields:
+
+| Field            | Key | Data Element     | Description      |
+| ---------------- | --- | ---------------- | ---------------- |
+| MANDT            | ✓   | MANDT            | Client           |
+| USER_ID          | ✓   | ZDE_USERNAME     | SAP Username     |
+| ROLE             |     | ZDE_ROLE         | T/D/M            |
+| FULL_NAME        |     | ZDE_FULL_NAME    | Họ tên           |
+| MODULE           |     | ZDE_SAP_MODULE   | Module phụ trách |
+| AVAILABLE_STATUS |     | ZDE_AVAIL_STATUS | Trạng thái       |
+| IS_ACTIVE        |     | CHAR1            | X=Active         |
+| EMAIL            |     | ZDE_EMAIL        | Email            |
+
+3. Technical Settings: APPL0, Size 0
+
+---
+
+### Bước 1.5.4: Tạo Bảng ZBUG_HISTORY
+
+1. Vào T-code `SE11` → Database table → `ZBUG_HISTORY`
+2. Tab Fields:
+
+| Field        | Key | Data Element     | Description    |
+| ------------ | --- | ---------------- | -------------- |
+| MANDT        | ✓   | MANDT            | Client         |
+| LOG_ID       | ✓   | NUMC10           | Log ID         |
+| BUG_ID       |     | ZDE_BUG_ID       | Bug reference  |
+| CHANGED_BY   |     | ZDE_USERNAME     | Người thay đổi |
+| CHANGED_AT   |     | ZDE_CREATED_DATE | Ngày           |
+| CHANGED_TIME |     | ZDE_CREATED_TIME | Giờ            |
+| ACTION_TYPE  |     | ZDE_ACTION_TYPE  | Loại action    |
+| OLD_VALUE    |     | CHAR50           | Giá trị cũ     |
+| NEW_VALUE    |     | CHAR50           | Giá trị mới    |
+| REASON       |     | ZDE_REASONS      | Lý do          |
+
+---
+
+### Bước 1.5.5: Bổ Sung Fields cho ZBUG_TRACKER
+
+Thêm các fields sau vào bảng `ZBUG_TRACKER`:
+
+| Field            | Data Element     | Description      |
+| ---------------- | ---------------- | ---------------- |
+| BUG_TYPE         | ZDE_BUG_TYPE     | C=Code, F=Config |
+| REASONS          | ZDE_REASONS      | Nguyên nhân      |
+| TESTER_ID        | ZDE_USERNAME     | Tester báo lỗi   |
+| VERIFY_TESTER_ID | ZDE_USERNAME     | Tester verify    |
+| APPROVED_BY      | ZDE_USERNAME     | Manager duyệt    |
+| APPROVED_AT      | ZDE_CREATED_DATE | Ngày duyệt       |
+| ATT_REPORT       | ZDE_ATT_PATH     | File report      |
+| ATT_FIX          | ZDE_ATT_PATH     | File fix         |
+| ATT_VERIFY       | ZDE_ATT_PATH     | File verify      |
+
+---
+
+## PHASE 2.5: BỔ SUNG FUNCTION MODULES (YÊU CẦU MỚI)
+
+### Bước 2.5.1: Function Z_BUG_AUTO_ASSIGN
+
+```abap
+FUNCTION z_bug_auto_assign.
+*"----------------------------------------------------------------------
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE ZDE_BUG_ID
+*"     VALUE(IV_MODULE) TYPE ZDE_SAP_MODULE
+*"  EXPORTING
+*"     VALUE(EV_DEV_ID) TYPE ZDE_USERNAME
+*"     VALUE(EV_STATUS) TYPE ZDE_BUG_STATUS
+*"     VALUE(EV_MESSAGE) TYPE STRING
+*"----------------------------------------------------------------------
+
+  TYPES: BEGIN OF ty_dev_workload,
+           user_id  TYPE zde_username,
+           workload TYPE i,
+         END OF ty_dev_workload.
+
+  DATA: lt_devs     TYPE TABLE OF ty_dev_workload,
+        ls_dev      TYPE ty_dev_workload,
+        lv_min_load TYPE i VALUE 999.
+
+  " Get available developers for this module
+  SELECT user_id FROM zbug_users INTO TABLE @DATA(lt_available)
+    WHERE module = @iv_module
+      AND role = 'D'
+      AND available_status = 'A'
+      AND is_active = 'X'.
+
+  IF sy-subrc <> 0.
+    " No dev available → set Waiting
+    ev_status = 'W'.
+    ev_message = 'No developer available. Bug set to Waiting.'.
+
+    UPDATE zbug_tracker SET status = 'W' WHERE bug_id = iv_bug_id.
+    COMMIT WORK.
+    RETURN.
+  ENDIF.
+
+  " Count workload for each dev
+  LOOP AT lt_available INTO DATA(ls_avail).
+    CLEAR ls_dev.
+    ls_dev-user_id = ls_avail-user_id.
+
+    SELECT COUNT(*) FROM zbug_tracker INTO @ls_dev-workload
+      WHERE dev_id = @ls_avail-user_id
+        AND status IN ('2', '3').
+
+    APPEND ls_dev TO lt_devs.
+  ENDLOOP.
+
+  " Find dev with lowest workload
+  LOOP AT lt_devs INTO ls_dev.
+    IF ls_dev-workload < lv_min_load.
+      lv_min_load = ls_dev-workload.
+      ev_dev_id = ls_dev-user_id.
+    ENDIF.
+  ENDLOOP.
+
+  " Assign bug
+  UPDATE zbug_tracker SET dev_id = ev_dev_id, status = '2'
+    WHERE bug_id = iv_bug_id.
+
+  " Update dev status to Working
+  UPDATE zbug_users SET available_status = 'W'
+    WHERE user_id = ev_dev_id.
+
+  COMMIT WORK.
+  ev_status = '2'.
+  ev_message = |Bug assigned to { ev_dev_id }|.
+
+ENDFUNCTION.
+```
+
+---
+
+### Bước 2.5.2: Function Z_BUG_CHECK_PERMISSION
+
+```abap
+FUNCTION z_bug_check_permission.
+*"----------------------------------------------------------------------
+*"  IMPORTING
+*"     VALUE(IV_USER) TYPE ZDE_USERNAME
+*"     VALUE(IV_BUG_ID) TYPE ZDE_BUG_ID
+*"     VALUE(IV_ACTION) TYPE CHAR20  " CREATE, UPDATE_STATUS, UPLOAD_REPORT, etc.
+*"  EXPORTING
+*"     VALUE(EV_ALLOWED) TYPE CHAR1
+*"     VALUE(EV_MESSAGE) TYPE STRING
+*"----------------------------------------------------------------------
+
+  DATA: ls_user TYPE zbug_users,
+        ls_bug  TYPE zbug_tracker.
+
+  " Get user role
+  SELECT SINGLE * FROM zbug_users INTO ls_user
+    WHERE user_id = iv_user.
+
+  IF sy-subrc <> 0.
+    ev_allowed = 'N'.
+    ev_message = 'User not found in system'.
+    RETURN.
+  ENDIF.
+
+  " Manager has full access
+  IF ls_user-role = 'M'.
+    ev_allowed = 'Y'.
+    RETURN.
+  ENDIF.
+
+  " Get bug info
+  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
+    WHERE bug_id = iv_bug_id.
+
+  CASE iv_action.
+    WHEN 'CREATE'.
+      " Only Tester can create
+      ev_allowed = COND #( WHEN ls_user-role = 'T' THEN 'Y' ELSE 'N' ).
+
+    WHEN 'UPDATE_STATUS'.
+      " Dev can only update if assigned to them
+      IF ls_user-role = 'D' AND ls_bug-dev_id = iv_user.
+        ev_allowed = 'Y'.
+      ELSEIF ls_user-role = 'T' AND ls_bug-status = '1'.
+        ev_allowed = 'Y'.
+      ELSE.
+        ev_allowed = 'N'.
+        ev_message = 'Not authorized to update this bug'.
+      ENDIF.
+
+    WHEN 'UPLOAD_REPORT'.
+      ev_allowed = COND #( WHEN ls_user-role = 'T' AND ls_bug-tester_id = iv_user THEN 'Y' ELSE 'N' ).
+
+    WHEN 'UPLOAD_FIX'.
+      ev_allowed = COND #( WHEN ls_user-role = 'D' AND ls_bug-dev_id = iv_user THEN 'Y' ELSE 'N' ).
+
+    WHEN 'UPLOAD_VERIFY'.
+      ev_allowed = COND #( WHEN ls_user-role = 'T' THEN 'Y' ELSE 'N' ).
+
+    WHEN OTHERS.
+      ev_allowed = 'N'.
+  ENDCASE.
+
+ENDFUNCTION.
+```
+
+---
+
+### Bước 2.5.3: Function Z_BUG_LOG_HISTORY
+
+```abap
+FUNCTION z_bug_log_history.
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE ZDE_BUG_ID
+*"     VALUE(IV_ACTION_TYPE) TYPE ZDE_ACTION_TYPE
+*"     VALUE(IV_OLD_VALUE) TYPE CHAR50 OPTIONAL
+*"     VALUE(IV_NEW_VALUE) TYPE CHAR50
+*"     VALUE(IV_REASON) TYPE STRING OPTIONAL
+*"----------------------------------------------------------------------
+
+  DATA: ls_log   TYPE zbug_history,
+        lv_logid TYPE numc10.
+
+  " Get next log ID
+  SELECT MAX( log_id ) FROM zbug_history INTO @lv_logid.
+  lv_logid = lv_logid + 1.
+
+  ls_log-mandt        = sy-mandt.
+  ls_log-log_id       = lv_logid.
+  ls_log-bug_id       = iv_bug_id.
+  ls_log-changed_by   = sy-uname.
+  ls_log-changed_at   = sy-datum.
+  ls_log-changed_time = sy-uzeit.
+  ls_log-action_type  = iv_action_type.
+  ls_log-old_value    = iv_old_value.
+  ls_log-new_value    = iv_new_value.
+  ls_log-reason       = iv_reason.
+
+  INSERT zbug_history FROM ls_log.
+  COMMIT WORK.
+
+ENDFUNCTION.
+```
+
+---
+
+## PHASE 3.5: ALV COLOR-CODED STATUS
+
+### Cách thêm màu cho Status trong ALV
+
+```abap
+" Thêm field màu vào internal table
+TYPES: BEGIN OF ty_bug_display,
+         bug_id      TYPE zde_bug_id,
+         status      TYPE zde_bug_status,
+         " ... other fields
+         row_color   TYPE char4,  " Color field
+       END OF ty_bug_display.
+
+" Set color based on status
+LOOP AT lt_bugs ASSIGNING FIELD-SYMBOL(<fs_bug>).
+  CASE <fs_bug>-status.
+    WHEN '1'. <fs_bug>-row_color = 'C100'. " Blue - New
+    WHEN 'W'. <fs_bug>-row_color = 'C310'. " Yellow - Waiting
+    WHEN '2'. <fs_bug>-row_color = 'C300'. " Orange - Assigned
+    WHEN '3'. <fs_bug>-row_color = 'C500'. " Purple - In Progress
+    WHEN '4'. <fs_bug>-row_color = 'C510'. " Green - Fixed
+    WHEN '5'. <fs_bug>-row_color = 'C200'. " Grey - Closed
+  ENDCASE.
+ENDLOOP.
+
+" Set layout for coloring
+ls_layout-info_fieldname = 'ROW_COLOR'.
+```
+
+---
+
+## 🎯 HOÀN THÀNH!
+
+Hệ thống SAP Bug Tracking Management đã được bổ sung đầy đủ các chức năng mới.
+
+**Các thay đổi chính:**
+
+- ✅ 2 bảng mới: `ZBUG_USERS`, `ZBUG_HISTORY`
+- ✅ 9 fields mới trong `ZBUG_TRACKER`
+- ✅ Auto-assign logic với Waiting status
+- ✅ Role-based permissions
+- ✅ ALV color-coded status
