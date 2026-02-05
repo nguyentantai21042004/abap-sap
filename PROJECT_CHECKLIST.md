@@ -41,17 +41,17 @@
 
 - [ ] **0.2 Cấu hình kết nối SAP**
   - [ ] Tạo connection S40 trong SAP Logon
-  - [ ] Điền thông tin: S40Z, Instance 00, SAProuter /H/sapper
+  - [ ] Điền thông tin: S40Z00, Instance 00, SAProuter /H/saprouter.hcc.in.tum.de/S/3298
   - [ ] Test connection với account Qwer123@
   - [ ] Verify: Login thành công vào SAP Easy Access
 
 - [ ] **0.3 Verify permissions**
-  - [ ] Check T-code SE11 (ABAP Dictionary) - Permission DEV-083
-  - [ ] Check T-code SE38 (ABAP Editor) - Permission DEV-083
-  - [ ] Check T-code SE80 (Object Navigator) - Permission DEV-083
-  - [ ] Check T-code SE93 (Transaction Maintenance) - Permission DEV-083
-  - [ ] Check T-code SCOT (Email config) - Permission DEV-224
-  - [ ] Check SMARTFORMS access - Permission 12345678
+  - [ ] Check T-code SE11 (ABAP Dictionary) - Permission DEV-089 (Account: @Anhtuoi123)
+  - [ ] Check T-code SE38 (ABAP Editor) - Permission DEV-089 (Account: @Anhtuoi123)
+  - [ ] Check T-code SE80 (Object Navigator) - Permission DEV-089 (Account: @Anhtuoi123)
+  - [ ] Check T-code SE93 (Transaction Maintenance) - Permission DEV-089 (Account: @Anhtuoi123)
+  - [ ] Check T-code SCOT (Email config) - Permission DEV-242 (Account: 12345678)
+  - [ ] Check SMARTFORMS access - Permission DEV-061 (Account: @57Dt766)
 
 - [ ] **0.4 Request Developer Key**
   - [ ] Test tạo program ZTEST_DEVKEY trong SE38
@@ -524,19 +524,19 @@
 
 **Tuần 1:**
 
-- [ ] Ngày 1: **********\_**********
-- [ ] Ngày 2: **********\_**********
-- [ ] Ngày 3: **********\_**********
-- [ ] Ngày 4: **********\_**********
-- [ ] Ngày 5: **********\_**********
+- [ ] Ngày 1: ****\*\*****\_****\*\*****
+- [ ] Ngày 2: ****\*\*****\_****\*\*****
+- [ ] Ngày 3: ****\*\*****\_****\*\*****
+- [ ] Ngày 4: ****\*\*****\_****\*\*****
+- [ ] Ngày 5: ****\*\*****\_****\*\*****
 
 **Tuần 2:**
 
-- [ ] Ngày 1: **********\_**********
-- [ ] Ngày 2: **********\_**********
-- [ ] Ngày 3: **********\_**********
-- [ ] Ngày 4: **********\_**********
-- [ ] Ngày 5: **********\_**********
+- [ ] Ngày 1: ****\*\*****\_****\*\*****
+- [ ] Ngày 2: ****\*\*****\_****\*\*****
+- [ ] Ngày 3: ****\*\*****\_****\*\*****
+- [ ] Ngày 4: ****\*\*****\_****\*\*****
+- [ ] Ngày 5: ****\*\*****\_****\*\*****
 
 _(Continue for all 8 weeks...)_
 

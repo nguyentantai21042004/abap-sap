@@ -137,26 +137,35 @@ Giải pháp phải tuân thủ kiến trúc 3-tier của SAP và sử dụng c�
 **Hệ thống Production/Development:**
 
 - **System ID:** S40 (FU - Functional Unit)
-- **Application Server:** S40Z
+- **Application Server:** S40Z00
 - **Instance Number:** 00
 - **SAP Logon Version:** 770
 - **Connection Type:** Custom Application Server
 - **Network:** EBS_SAP
-- **SAProuter String:** /H/sapper
+- **SAProuter String:** /H/saprouter.hcc.in.tum.de/S/3298
 
 ![SAP Connection Config](../../images/sap-connection-config.png)
 
 ### 3.2. Development Account & Permissions
 
-**Main Account:** Qwer123@
+**Accounts theo chức năng:**
+
+| Function | Chức năng | Permission | Account |
+|----------|-----------|------------|---------|
+| 1 | Ghi nhận lỗi | DEV-089 | @Anhtuoi123 |
+| 2 | Email | DEV-242 | 12345678 |
+| 3 | ALV, SmartForm | DEV-061 | @57Dt766 |
+| 4 | Quản lý lỗi | DEV-118 | Qwer123@ |
+| 5 | Đính kèm bằng chứng vào bug system | DEV-237 | toiyeufpt |
 
 **Permission Mapping theo Chức Năng:**
 
 | Permission ID | T-code / Module Access             | Chức năng trong dự án                | Ánh xạ vào Requirements                                |
 | ------------- | ---------------------------------- | ------------------------------------ | ------------------------------------------------------ |
-| **DEV-083**   | SE11, SE38, SE80, SE93, SE24, SE37 | Ghi nhận lỗi (Z-objects development) | Chức năng 1: T-code `ZBUG_CREATE`, bảng `ZBUG_TRACKER` |
-| **DEV-224**   | SCOT, SOST                         | Email configuration                  | Chức năng 2: Send Email via SAPconnect                 |
-| **12345678**  | ALV Grid APIs, SMARTFORMS          | Báo cáo & In ấn                      | Chức năng 3: ALV Grid & SmartForms                     |
+| **DEV-089**   | SE11, SE38, SE80, SE93, SE24, SE37 | Ghi nhận lỗi (Z-objects development) | Chức năng 1: T-code `ZBUG_CREATE`, bảng `ZBUG_TRACKER` |
+| **DEV-242**   | SCOT, SOST                         | Email configuration                  | Chức năng 2: Send Email via SAPconnect                 |
+| **DEV-061**   | ALV Grid APIs, SMARTFORMS          | Báo cáo & In ấn                      | Chức năng 3: ALV Grid & SmartForms                     |
+| **DEV-118**   | Full system access                 | Quản lý lỗi                          | Chức năng 4: Bug Management                            |
 | **DEV-237**   | GOS (Generic Object Services)      | Đính kèm file                        | Chức năng 5: Attach evidence                           |
 
 ![SAP Accounts](../../images/sap-accounts-permissions.png)
