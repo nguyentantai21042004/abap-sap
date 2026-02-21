@@ -32,7 +32,7 @@ Một hệ thống quản lý lỗi tập trung (Centralized Bug Tracking System
 - **Loại dự án:** Custom SAP Development (Z-Solution)
 - **Công nghệ:** ABAP, SAP GUI, ALV Grid, SmartForms, SAPconnect
 - **Kiến trúc:** 3-Tier Architecture (Presentation/Application/Database)
-- **Hệ thống:** SAP S40 (FU - Functional Unit), Instance 00
+- **Hệ thống:** SAP S40 (FU - Functional Unit), Instance 00, Client 324
 - **Thời gian:** 8 tuần (01/02/2026 - 29/03/2026)
 - **Go-live:** 29/03/2026 (Demo Day & Final Presentation)
 
@@ -213,17 +213,18 @@ graph TD
 **SAP System Information:**
 
 - **System ID:** S40 (FU - Functional Unit)
+- **Client:** 324
 - **Application Server:** S40Z, Instance 00
 - **SAP Logon:** 770, Network: EBS_SAP
-- **Development Account:** Qwer123@ (với Developer Key)
 - **Package:** ZBUGTRACK, Transport Layer: ZBT1
 
-**Permissions đã cấp:**
+**Development Accounts đã cấp:**
 
-- DEV-083: Z-objects development (SE11, SE38, SE80, SE93)
-- DEV-224: Email configuration (SCOT, SOST)
-- 12345678: ALV Grid & SmartForms
-- DEV-237: GOS attachments
+- **DEV-118** (Pass: Qwer123@): Quản lý lỗi
+- **DEV-089** (Pass: @Anhtuoi123): Ghi nhận lỗi (SE11, SE38, SE80, SE93)
+- **DEV-242** (Pass: 12345678): Email configuration (SCOT, SOST)
+- **DEV-061** (Pass: @57Dt766): ALV Grid & SmartForms
+- **DEV-237** (Pass: toiyeufpt): GOS attachments
 
 ---
 
@@ -233,7 +234,7 @@ graph TD
 
 1. ✅ SAP GUI 770 đã cài đặt
 2. ✅ Kết nối SAP S40 đã cấu hình
-3. ✅ Account Qwer123@ có Developer Key
+3. ✅ Các account Development đã được cấp đủ quyền và Developer Key
 4. ✅ Permissions đã được cấp đầy đủ
 
 ### Bước tiếp theo

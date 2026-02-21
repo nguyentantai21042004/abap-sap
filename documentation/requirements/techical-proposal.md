@@ -373,25 +373,26 @@ graph TD
 
 ![SAP Logon](../../images/sap-logon-connections.png)
 
-**Development Account:**
+**Client Code:** 324
 
-- **Main Account:** Qwer123@
-- **Quyền đã cấp:**
-  - ✅ **DEV-083** - Ghi nhận lỗi (Z-objects Development)
-    - SE11 (ABAP Dictionary - tạo Z-table)
-    - SE38/SE80 (ABAP Development Workbench)
-    - SE93 (Transaction Code creation)
-    - SE24 (Class Builder)
-    - SE37 (Function Builder)
-  - ✅ **DEV-224** - Email Configuration
-    - SCOT (SAPconnect Configuration)
-    - SOST (SAPconnect Administration)
-  - ✅ **12345678** - Báo cáo & In ấn
-    - ALV Grid development (REUSE*ALV*\* function modules)
-    - SMARTFORMS Designer & Runtime
-  - ✅ **DEV-237** - Đính kèm file
-    - GOS (Generic Object Services)
-    - Attachment management & storage
+**Development Accounts đã cấp:**
+
+- **DEV-118** (Pass: Qwer123@): Quản lý lỗi (Full system access)
+- **DEV-089** (Pass: @Anhtuoi123): Ghi nhận lỗi (Z-objects Development)
+  - SE11 (ABAP Dictionary - tạo Z-table)
+  - SE38/SE80 (ABAP Development Workbench)
+  - SE93 (Transaction Code creation)
+  - SE24 (Class Builder)
+  - SE37 (Function Builder)
+- **DEV-242** (Pass: 12345678): Email Configuration
+  - SCOT (SAPconnect Configuration)
+  - SOST (SAPconnect Administration)
+- **DEV-061** (Pass: @57Dt766): Báo cáo & In ấn
+  - ALV Grid development (REUSE*ALV*\* function modules)
+  - SMARTFORMS Designer & Runtime
+- **DEV-237** (Pass: toiyeufpt): Đính kèm file
+  - GOS (Generic Object Services)
+  - Attachment management & storage
 
 ![SAP Accounts](../../images/sap-accounts-permissions.png)
 
@@ -399,7 +400,7 @@ graph TD
 
 **1. Developer Key:**
 
-- Xác nhận account Qwer123@ đã được cấp Developer Key
+- Xác nhận các account DEV-* đã được cấp Developer Key
 - Cần để unlock ABAP Editor (SE38/SE80)
 - Nếu chưa có: Request từ SAP System Administrator
 

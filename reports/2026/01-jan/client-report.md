@@ -38,18 +38,19 @@ Xây dựng một hệ thống quản lý lỗi tập trung (Bug Tracking System
 - **SAP Logon:** 770
 - **Network:** EBS_SAP
 
-**Development Account:**
+**Client:** 324
 
-- **Main Account:** Qwer123@
-- **Quyền đã cấp:**
-  - DEV-083: Z-objects development (SE11, SE38, SE80, SE93)
-  - DEV-224: Email configuration (SCOT, SOST)
-  - 12345678: ALV Grid & SmartForms
-  - DEV-237: GOS attachments
+**Development Accounts đã cấp:**
+
+- **DEV-118** (Pass: Qwer123@): Quản lý lỗi
+- **DEV-089** (Pass: @Anhtuoi123): Ghi nhận lỗi (SE11, SE38, SE80, SE93)
+- **DEV-242** (Pass: 12345678): Email configuration (SCOT, SOST)
+- **DEV-061** (Pass: @57Dt766): ALV Grid & SmartForms
+- **DEV-237** (Pass: toiyeufpt): GOS attachments
 
 **Yêu cầu cần xác nhận:**
 
-- Developer Key cho account Qwer123@
+- Developer Key cho các account DEV-*
 - Package name (đề xuất: ZBUGTRACK)
 - Transport layer (đề xuất: ZBT1)
 - SMTP server configuration status
@@ -737,7 +738,7 @@ graph TB
 
 ### 4.4. Security & Authorization
 
-> **Lưu ý:** Đồ án sử dụng quyền mặc định của SAP user (Qwer123@), không implement custom authorization objects hoặc roles (đây là tính năng enterprise, nằm ngoài phạm vi đồ án).
+> **Lưu ý:** Đồ án sử dụng quyền mặc định của các SAP user (DEV-*), không implement custom authorization objects hoặc roles (đây là tính năng enterprise, nằm ngoài phạm vi đồ án).
 
 **Phân quyền đơn giản:**
 
@@ -756,7 +757,7 @@ graph TB
 
 | #   | Câu hỏi                                                             | Nếu chưa có / Cách kiểm tra                                                                                                      | Người cung cấp thông tin    |
 | --- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| 1   | **Developer Key:** Account Qwer123@ đã được cấp Developer Key chưa? | **Pre-check:** Vào SE38, tạo program `ZTEST`. Nếu tạo được = có key rồi.<br>**Nếu chưa có:** Request từ SAP Admin (cần 1-3 ngày) | SAP Basis Team / Giảng viên |
+| 1   | **Developer Key:** Các account DEV-* đã được cấp Developer Key chưa? | **Pre-check:** Vào SE38, tạo program `ZTEST`. Nếu tạo được = có key rồi.<br>**Nếu chưa có:** Request từ SAP Admin (cần 1-3 ngày) | SAP Basis Team / Giảng viên |
 | 2   | **Transport Layer:** Transport layer nào?                           | Config transport route (10 phút)                                                                                                 | SAP Basis Team              |
 | 3   | **SMTP Configuration:** SCOT đã config SMTP server chưa?            | Setup SMTP trong Week 1 (1-2 ngày)                                                                                               | SAP Basis Team              |
 
@@ -880,7 +881,7 @@ Hệ thống SAP Bug Tracking Management được thiết kế với kiến trú
 | **Z-objects**         | Custom objects trong SAP (start with Z or Y) | SAP reserve A-X namespace, customers use Z/Y   | ZBUG_TRACKER, ZBUG_CREATE            |
 | **Package**           | Container nhóm related development objects   | Organize code, transport management            | ZBUGTRACK package                    |
 | **Transport Request** | Change management mechanism trong SAP        | Move code giữa DEV → QA → PROD                 | TR số DEVK9xxxxx                     |
-| **Developer Key**     | License key cần có để tạo/modify objects     | SAP Basis cấp, unique per developer per system | Request cho account Qwer123@         |
+| **Developer Key**     | License key cần có để tạo/modify objects     | SAP Basis cấp, unique per developer per system | Request cho các account DEV-*        |
 | **Activation**        | Compile và deploy code trong SAP             | 2-step: Save (inactive) → Activate (runtime)   | Activate ZBUG_TRACKER sau khi create |
 
 ### A.5. Authorization & Security

@@ -12,7 +12,7 @@
 
 | Phase | Tên Phase                 | Thời gian    | Status | Hoàn thành |
 | ----- | ------------------------- | ------------ | ------ | ---------- |
-| P0    | Chuẩn bị môi trường       | Trước tuần 1 | ⏳     | 0/6        |
+| P0    | Chuẩn bị môi trường       | Trước tuần 1 | ✅     | 6/6        |
 | P1    | Database Layer            | Tuần 1       | ⏳     | 0/12       |
 | P2    | Business Logic            | Tuần 2-3     | ⏳     | 0/8        |
 | P3    | Presentation Layer        | Tuần 2-3     | ⏳     | 0/6        |
@@ -22,7 +22,7 @@
 | P7    | Deployment & Training     | Tuần 7-8     | ⏳     | 0/5        |
 | P8    | Final Presentation        | 29/03/2026   | ⏳     | 0/10       |
 
-**🎯 Tổng tiến độ: 0/62 items (0%)**
+**🎯 Tổng tiến độ: 6/62 items (9.6%)**
 
 ---
 
@@ -34,42 +34,39 @@
 
 ### ✅ Checklist Phase 0
 
-- [ ] **0.1 Cài đặt SAP GUI**
-  - [ ] Download SAP GUI 770 từ SAP Software Download Center
-  - [ ] Cài đặt với components: SAP GUI, Scripting, Business Explorer
-  - [ ] Verify: Mở được SAP Logon từ Start Menu
+- [x] **0.1 Cài đặt SAP GUI 7.70+**
+  - [x] Cài đặt và verify mở được **SAP Logon** từ Start Menu.
 
-- [ ] **0.2 Cấu hình kết nối SAP**
-  - [ ] Tạo connection S40 trong SAP Logon
-  - [ ] Điền thông tin: S40Z00, Instance 00, SAProuter /H/saprouter.hcc.in.tum.de/S/3298
-  - [ ] Test connection với account Qwer123@
-  - [ ] Verify: Login thành công vào SAP Easy Access
+- [x] **0.2 Cấu hình kết nối SAP**
+  - [x] Tạo connection S40 trong SAP Logon
+  - [x] Điền thông tin: S40Z00, Instance 00, Client 324, SAProuter /H/saprouter.hcc.in.tum.de/S/3298
+  - [x] Test connection với account DEV-118 (Password: Qwer123@)
+  - [x] Verify: Login thành công vào SAP Easy Access
 
-- [ ] **0.3 Verify permissions**
-  - [ ] Check T-code SE11 (ABAP Dictionary) - Permission DEV-089 (Account: @Anhtuoi123)
-  - [ ] Check T-code SE38 (ABAP Editor) - Permission DEV-089 (Account: @Anhtuoi123)
-  - [ ] Check T-code SE80 (Object Navigator) - Permission DEV-089 (Account: @Anhtuoi123)
-  - [ ] Check T-code SE93 (Transaction Maintenance) - Permission DEV-089 (Account: @Anhtuoi123)
-  - [ ] Check T-code SCOT (Email config) - Permission DEV-242 (Account: 12345678)
-  - [ ] Check SMARTFORMS access - Permission DEV-061 (Account: @57Dt766)
+- [x] **0.3 Verify permissions**
+  - [x] Check T-code SE11 (ABAP Dictionary) - Dùng account: DEV-089 (Password: @Anhtuoi123)
+  - [x] Check T-code SE38 (ABAP Editor) - Dùng account: DEV-089 (Password: @Anhtuoi123)
+  - [x] Check T-code SE80 (Object Navigator) - Dùng account: DEV-089 (Password: @Anhtuoi123)
+  - [x] Check T-code SE93 (Transaction Maintenance) - Dùng account: DEV-089 (Password: @Anhtuoi123)
+  - [x] Check T-code SCOT (Email config) - Dùng account: DEV-242 (Password: 12345678)
+  - [x] Check SMARTFORMS access - Dùng account: DEV-061 (Password: @57Dt766)
+  - [x] Check GOS attachments - Dùng account: DEV-237 (Password: toiyeufpt)
 
-- [ ] **0.4 Request Developer Key**
-  - [ ] Test tạo program ZTEST_DEVKEY trong SE38
-  - [ ] Nếu cần: Copy Installation Number và request key
-  - [ ] Paste Developer Key vào SAP
-  - [ ] Verify: Có thể tạo Z-objects
+- [x] **0.4 Developer Key (Verified)**
+  - Các tài khoản `DEV-*` đã được tích hợp sẵn Developer Key.
+  - [x] Verify: Có thể tạo Z-objects
 
-- [ ] **0.5 Tạo Package**
-  - [ ] Vào SE80, tạo Package ZBUGTRACK
-  - [ ] Description: "Bug Tracking Management System"
-  - [ ] Software Component: HOME
-  - [ ] Verify: Package xuất hiện trong SE80
+- [x] **0.5 Tạo Package**
+  - [x] Vào SE80, tạo Package ZBUGTRACK
+  - [x] Description: "Bug Tracking Management System"
+  - [x] Software Component: HOME
+  - [x] Verify: Package xuất hiện trong SE80
 
-- [ ] **0.6 Final Environment Check**
-  - [ ] Có thể tạo domains trong SE11
-  - [ ] Có thể tạo programs trong SE38
-  - [ ] Network connection ổn định
-  - [ ] VPN setup (nếu work from home)
+- [x] **0.6 Final Environment Check**
+  - [x] Có thể tạo domains trong SE11
+  - [x] Có thể tạo programs trong SE38
+  - [x] Network connection ổn định
+  - [x] VPN setup (nếu work from home)
 
 **✅ Phase 0 Checkpoint:** SAP GUI installed, connection working, permissions verified, package created
 

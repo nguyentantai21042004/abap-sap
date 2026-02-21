@@ -25,30 +25,7 @@
 
 ### Bước 0.1: Cài Đặt SAP GUI
 
-#### **Download SAP GUI**
-
-1. Truy cập SAP Software Download Center (cần SAP S-User)
-2. Download **SAP GUI for Windows 7.70** (hoặc version mới nhất)
-3. File cài đặt: `SAPGUI_7.70_*.exe`
-
-#### **Cài Đặt**
-
-```bash
-# Chạy file installer
-SAPGUI_7.70_*.exe
-
-# Chọn options:
-- Installation Type: Custom
-- Components:
-  ✓ SAP GUI for Windows
-  ✓ SAP GUI Scripting
-  ✓ SAP Business Explorer
-```
-
-#### **Verify Installation**
-
-- Mở **SAP Logon** từ Start Menu
-- Nếu thấy giao diện SAP Logon → Cài đặt thành công
+Tải và cài đặt **SAP GUI for Windows/macOS 7.70+** tùy thuộc hệ điều hành. Đảm bảo bạn đã cài đặt để có thể mở **SAP Logon**.
 
 ---
 
@@ -69,31 +46,33 @@ Network: EBS_SAP
 #### **Tạo Connection trong SAP Logon**
 
 1. Mở **SAP Logon**
-2. Click **New** → **Next**
-3. Chọn **Custom Application Server**
-4. Điền thông tin:
+2. Cấu hình Connection mới sử dụng **Expert Mode** (nếu cần) hoặc **Custom Application Server**.
+3. Điền thông tin kết nối:
 
 ```
 Description: S40 - Bug Tracking Development
 Application Server: S40Z
 Instance Number: 00
 System ID: S40
-SAProuter String: /H/sapper
+SAProuter String: /H/saprouter.hcc.in.tum.de/S/3298
+Chuỗi Expert Mode Route (nếu dùng): conn=/H/saprouter.hcc.in.tum.de/S/3298/H/S40Z/S/3200
 ```
 
-5. Click **Next** → **Finish**
+1. Click **Next** → **Finish**
 
 #### **Test Connection**
 
 1. Double-click vào connection `S40`
 2. Nhập credentials:
-   - **Client:** 100 (hoặc theo hướng dẫn)
-   - **User:** Qwer123@
-   - **Password:** [Nhập password]
+   - **Client:** 324
+   - **User:** DEV-118 (hoặc các user DEV-* khác tương ứng)
+   - **Password:** Qwer123@
    - **Language:** EN
 3. Click **Log On**
 
-**✅ Success:** Nếu vào được SAP Easy Access screen → Connection OK
+**✅ Success:** Nếu vào được SAP Easy Access screen → Connection OK.
+
+![SAP Easy Access](/Users/tailung/Workspaces/others/abap-sap/images/verify/phase0/verification_success_sap_easy_access.png)
 
 **❌ Error:** Nếu lỗi kết nối:
 
@@ -125,39 +104,7 @@ Sau khi login SAP, verify các T-code sau:
 
 ---
 
-### Bước 0.4: Request Developer Key
-
-#### **Check Developer Key**
-
-1. Vào T-code `SE38`
-2. Nhập program name: `ZTEST_DEVKEY`
-3. Click **Create**
-4. Chọn **Executable Program** → Enter
-
-**Nếu xuất hiện popup "Developer Key Required":**
-
-- Bạn chưa có Developer Key → Cần request
-
-**Nếu vào được ABAP Editor:**
-
-- Bạn đã có Developer Key → Skip bước này
-
-#### **Request Developer Key**
-
-1. Copy **Installation Number** từ popup (hoặc T-code `SLICENSE`)
-2. Truy cập: https://go.support.sap.com/minisap/#/minisap
-3. Login bằng SAP S-User
-4. Request Developer Key với:
-   - Installation Number
-   - Username: Qwer123@
-5. Nhận key qua email (thường trong vài phút)
-6. Paste key vào popup trong SAP
-
----
-
-### Bước 0.5: Create Package
-
-#### **Tạo Package ZBUGTRACK**
+### Bước 0.4: Create Package
 
 1. Vào T-code `SE80`
 2. Dropdown chọn **Package**
@@ -172,8 +119,8 @@ Application Component: (để trống hoặc chọn Z-component)
 Software Component: HOME (local objects)
 ```
 
-6. Click **Save**
-7. Chọn **Local Object** (hoặc assign Transport Request nếu có)
+1. Click **Save**
+2. Chọn **Local Object** (hoặc assign Transport Request nếu có)
 
 **✅ Checkpoint:** Package `ZBUGTRACK` xuất hiện trong SE80
 
@@ -199,9 +146,9 @@ No. Characters: 10
 Output Length: 10
 ```
 
-6. Tab **Value Range**: (để trống)
-7. Click **Save** → Assign to package `ZBUGTRACK`
-8. Click **Activate** (icon đèn giao thông)
+1. Tab **Value Range**: (để trống)
+2. Click **Save** → Assign to package `ZBUGTRACK`
+3. Click **Activate** (icon đèn giao thông)
 
 **✅ Checkpoint:** Domain status = Active (màu xanh)
 
@@ -219,8 +166,13 @@ Lặp lại quy trình trên cho các domains sau:
 | `ZDOM_USER`     | CHAR      | 12     | Username    |
 | `ZDOM_DATE`     | DATS      | 8      | Date        |
 | `ZDOM_TIME`     | TIMS      | 6      | Time        |
+| `ZDOM_ROLE`       | CHAR      | 1      | Role              |
+| `ZDOM_AVAIL_STATUS`| CHAR   | 1      | Available status  |
+| `ZDOM_BUG_TYPE`   | CHAR      | 1      | Bug Type          |
+| `ZDOM_ACTION_TYPE`| CHAR      | 2      | Action Type       |
+| `ZDOM_ATT_PATH`   | CHAR      | 100    | Attachment Path   |
 
-**💡 Tip:** Với `ZDOM_PRIORITY` và `ZDOM_STATUS`, thêm **Fixed Values** trong tab Value Range:
+**💡 Tip:** Với một số domain, thêm **Fixed Values** trong tab Value Range:
 
 **ZDOM_PRIORITY:**
 
@@ -234,10 +186,44 @@ L - Low
 
 ```
 1 - New
+W - Waiting
 2 - Assigned
 3 - In Progress
 4 - Fixed
 5 - Closed
+```
+
+**ZDOM_ROLE:**
+
+```
+T - Tester
+D - Developer
+M - Manager
+```
+
+**ZDOM_AVAIL_STATUS:**
+
+```
+A - Available
+B - Busy
+L - Leave
+W - Working
+```
+
+**ZDOM_BUG_TYPE:**
+
+```
+C - Code
+F - Configuration
+```
+
+**ZDOM_ACTION_TYPE:**
+
+```
+CR - Create
+AS - Assign
+RS - Reassign
+ST - Status
 ```
 
 ---
@@ -257,7 +243,7 @@ L - Low
 Domain: ZDOM_BUG_ID
 ```
 
-7. Tab **Field Label**:
+1. Tab **Field Label**:
 
 ```
 Short: Bug ID
@@ -266,8 +252,8 @@ Long: Bug Tracking ID
 Heading: Bug ID
 ```
 
-8. Click **Save** → Package `ZBUGTRACK`
-9. Click **Activate**
+1. Click **Save** → Package `ZBUGTRACK`
+2. Click **Activate**
 
 #### **Tạo Các Data Elements Còn Lại**
 
@@ -275,10 +261,19 @@ Heading: Bug ID
 | ------------------ | ------------- | ----------- | ------------ | -------------------- |
 | `ZDE_BUG_TITLE`    | ZDOM_TITLE    | Title       | Bug Title    | Bug Title            |
 | `ZDE_BUG_DESC`     | ZDOM_LONGTEXT | Desc        | Description  | Detailed Description |
+| `ZDE_REASONS`      | ZDOM_LONGTEXT | Reasons     | Root Causes  | Root Causes          |
 | `ZDE_SAP_MODULE`   | ZDOM_MODULE   | Module      | SAP Module   | SAP Module           |
 | `ZDE_PRIORITY`     | ZDOM_PRIORITY | Priority    | Priority     | Priority Level       |
 | `ZDE_BUG_STATUS`   | ZDOM_STATUS   | Status      | Bug Status   | Bug Status           |
 | `ZDE_USERNAME`     | ZDOM_USER     | User        | Username     | SAP Username         |
+| `ZDE_ROLE`         | ZDOM_ROLE     | Role        | Role         | SAP Role             |
+| `ZDE_AVAIL_STATUS` | ZDOM_AVAIL_STATUS| AvailStatus | Avail Status | Available Status     |
+| `ZDE_BUG_TYPE`     | ZDOM_BUG_TYPE | BugType     | Bug Type     | Bug Type             |
+| `ZDE_ACTION_TYPE`  | ZDOM_ACTION_TYPE | Action   | Action Type  | Action Type          |
+| `ZDE_ATT_PATH`     | ZDOM_ATT_PATH | Att Path    | Attachment   | Attachment Path      |
+| `ZDE_FULL_NAME`    | (CHAR 50)     | Name        | Full Name    | Full Name            |
+| `ZDE_EMAIL`        | (CHAR 100)    | Email       | Email Adr    | Email Address        |
+| `ZDE_APPROVED_DATE`| ZDOM_DATE     | Approved    | Approve Date | Approved Date        |
 | `ZDE_CREATED_DATE` | ZDOM_DATE     | Created     | Created Date | Created Date         |
 | `ZDE_CREATED_TIME` | ZDOM_TIME     | Time        | Created Time | Created Time         |
 | `ZDE_CLOSED_DATE`  | ZDOM_DATE     | Closed      | Closed Date  | Closed Date          |
@@ -300,38 +295,92 @@ Delivery Class: A (Application table)
 Data Browser/Table View Maint.: Display/Maintenance Allowed
 ```
 
-6. Tab **Fields**:
+1. Tab **Fields**:
 
-| Field Name   | Key | Data Element     | Short Description |
-| ------------ | --- | ---------------- | ----------------- |
-| MANDT        | ✓   | MANDT            | Client            |
-| BUG_ID       | ✓   | ZDE_BUG_ID       | Bug ID            |
-| TITLE        |     | ZDE_BUG_TITLE    | Bug Title         |
-| DESC_TEXT    |     | ZDE_BUG_DESC     | Description       |
-| MODULE       |     | ZDE_SAP_MODULE   | SAP Module        |
-| PRIORITY     |     | ZDE_PRIORITY     | Priority          |
-| STATUS       |     | ZDE_BUG_STATUS   | Status            |
-| REPORTER     |     | ZDE_USERNAME     | Reporter          |
-| DEV_ID       |     | ZDE_USERNAME     | Developer         |
-| CREATED_AT   |     | ZDE_CREATED_DATE | Created Date      |
-| CREATED_TIME |     | ZDE_CREATED_TIME | Created Time      |
-| CLOSED_AT    |     | ZDE_CLOSED_DATE  | Closed Date       |
+| Field Name       | Key | Data Element     | Short Description |
+| ---------------- | --- | ---------------- | ----------------- |
+| MANDT            | ✓   | MANDT            | Client            |
+| BUG_ID           | ✓   | ZDE_BUG_ID       | Bug ID            |
+| TITLE            |     | ZDE_BUG_TITLE    | Bug Title         |
+| DESC_TEXT        |     | ZDE_BUG_DESC     | Description       |
+| MODULE           |     | ZDE_SAP_MODULE   | SAP Module        |
+| PRIORITY         |     | ZDE_PRIORITY     | Priority          |
+| STATUS           |     | ZDE_BUG_STATUS   | Status            |
+| BUG_TYPE         |     | ZDE_BUG_TYPE     | Bug Type          |
+| REASONS          |     | ZDE_REASONS      | Root Causes       |
+| TESTER_ID        |     | ZDE_USERNAME     | Logic Tester      |
+| VERIFY_TESTER_ID |     | ZDE_USERNAME     | Verify Tester     |
+| DEV_ID           |     | ZDE_USERNAME     | Developer         |
+| APPROVED_BY      |     | ZDE_USERNAME     | Manager Approver  |
+| APPROVED_AT      |     | ZDE_APPROVED_DATE | Approval Date     |
+| CREATED_AT       |     | ZDE_CREATED_DATE | Created Date      |
+| CREATED_TIME     |     | ZDE_CREATED_TIME | Created Time      |
+| CLOSED_AT        |     | ZDE_CLOSED_DATE  | Closed Date       |
+| ATT_REPORT       |     | ZDE_ATT_PATH     | Tester Report     |
+| ATT_FIX          |     | ZDE_ATT_PATH     | Developer Fix     |
+| ATT_VERIFY       |     | ZDE_ATT_PATH     | Tester Verify     |
 
-7. Tab **Technical Settings**:
+1. Tab **Technical Settings**:
 
 ```
 Data Class: APPL0 (Master data)
 Size Category: 1 (0-10,000 records)
 ```
 
-8. Click **Save** → Package `ZBUGTRACK`
-9. Click **Activate**
+1. Click **Save** → Package `ZBUGTRACK`
+2. Click **Activate**
 
-**✅ Checkpoint:** Table status = Active
+**✅ Checkpoint:** Table `ZBUG_TRACKER` status = Active
 
 ---
 
-### Bước 1.4: Tạo Number Range Object
+### Bước 1.4: Tạo Bảng ZBUG_USERS
+
+1. Vào T-code `SE11`, tạo bảng `ZBUG_USERS`.
+2. Tab **Delivery and Maintenance**: Maintenance Allowed, Class A.
+3. Tab **Fields**:
+
+| Field Name       | Key | Data Element     | Short Description |
+| ---------------- | --- | ---------------- | ----------------- |
+| MANDT            | ✓   | MANDT            | Client            |
+| USER_ID          | ✓   | ZDE_USERNAME     | Username          |
+| ROLE             |     | ZDE_ROLE         | Role              |
+| FULL_NAME        |     | ZDE_FULL_NAME    | Full Name         |
+| MODULE           |     | ZDE_SAP_MODULE   | Assigned Module   |
+| AVAILABLE_STATUS |     | ZDE_AVAIL_STATUS | Current Status    |
+| IS_ACTIVE        |     | CHAR1            | Is Active         |
+| EMAIL            |     | ZDE_EMAIL        | Email Address     |
+
+1. Tab **Technical Settings**: Data Class APPL0, Size 0.
+2. Click Save và Activate.
+
+---
+
+### Bước 1.5: Tạo Bảng ZBUG_HISTORY
+
+1. Vào T-code `SE11`, tạo bảng `ZBUG_HISTORY`.
+2. Tab **Delivery and Maintenance**: Maintenance Allowed, Class A.
+3. Tab **Fields**:
+
+| Field Name       | Key | Data Element     | Short Description |
+| ---------------- | --- | ---------------- | ----------------- |
+| MANDT            | ✓   | MANDT            | Client            |
+| LOG_ID           | ✓   | NUMC10           | Log ID            |
+| BUG_ID           |     | ZDE_BUG_ID       | Bug ID            |
+| CHANGED_BY       |     | ZDE_USERNAME     | Changed By        |
+| CHANGED_AT       |     | ZDE_CREATED_DATE | Change Date       |
+| CHANGED_TIME     |     | ZDE_CREATED_TIME | Change Time       |
+| ACTION_TYPE      |     | ZDE_ACTION_TYPE  | Action Type       |
+| OLD_VALUE        |     | ZDE_BUG_TITLE    | Old Value         |
+| NEW_VALUE        |     | ZDE_BUG_TITLE    | New Value         |
+| REASON           |     | ZDE_REASONS      | Action Reason     |
+
+1. Tab **Technical Settings**: Data Class APPL0, Size 1 (vì log sẽ phình to).
+2. Click Save và Activate.
+
+---
+
+### Bước 1.6: Tạo Number Range Object
 
 #### **Create Number Range**
 
@@ -345,10 +394,10 @@ Object: ZNRO_BUG
 Short Text: Bug ID Number Range
 ```
 
-5. Click **Save**
-6. Click **Number Ranges** button
-7. Click **Insert Interval** (F6)
-8. Điền:
+1. Click **Save**
+2. Click **Number Ranges** button
+3. Click **Insert Interval** (F6)
+4. Điền:
 
 ```
 No: 01
@@ -358,13 +407,13 @@ Current Number: (để trống)
 Ext: (unchecked)
 ```
 
-9. Click **Save**
+1. Click **Save**
 
 **✅ Checkpoint:** Number range created
 
 ---
 
-### Bước 1.5: Test Database
+### Bước 1.7: Test Database
 
 #### **Insert Test Data**
 
@@ -384,7 +433,7 @@ REPORTER: (your username)
 CREATED_AT: (today's date)
 ```
 
-5. Click **Save**
+1. Click **Save**
 
 **✅ Checkpoint:** Data saved successfully
 
@@ -409,7 +458,7 @@ Function Group: ZBUG_FG
 Short Text: Bug Tracking Function Group
 ```
 
-6. Click **Save** → Package `ZBUGTRACK`
+1. Click **Save** → Package `ZBUGTRACK`
 
 ---
 
@@ -521,7 +570,7 @@ FUNCTION z_bug_create.
 ENDFUNCTION.
 ```
 
-4. Click **Save** → **Activate**
+1. Click **Save** → **Activate**
 
 ---
 
@@ -591,8 +640,8 @@ Mail Host: smtp.company.com (hoặc IP)
 Port: 25 (hoặc 587)
 ```
 
-6. Click **Save**
-7. Test bằng T-code `SBWP` (SAP Business Workplace)
+1. Click **Save**
+2. Test bằng T-code `SBWP` (SAP Business Workplace)
 
 #### **Function: Z_BUG_SEND_EMAIL**
 
@@ -727,7 +776,7 @@ START-OF-SELECTION.
   ENDIF.
 ```
 
-6. Click **Save** → **Activate**
+1. Click **Save** → **Activate**
 
 ---
 
@@ -746,7 +795,7 @@ Program: Z_BUG_CREATE_SCREEN
 Screen Number: 1000 (default)
 ```
 
-6. Click **Save**
+1. Click **Save**
 
 **✅ Checkpoint:** Test T-code `ZBUG_CREATE` → Màn hình nhập liệu hiển thị
 
@@ -910,7 +959,7 @@ ENDFORM.
 
 ---
 
-## 🎯 HOÀN THÀNH!
+## 🎯 HOÀN THÀNH
 
 Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 
@@ -986,7 +1035,7 @@ W - Waiting (Manager assign)
 | IS_ACTIVE        |     | CHAR1            | X=Active         |
 | EMAIL            |     | ZDE_EMAIL        | Email            |
 
-3. Technical Settings: APPL0, Size 0
+1. Technical Settings: APPL0, Size 0
 
 ---
 
@@ -1247,7 +1296,7 @@ ls_layout-info_fieldname = 'ROW_COLOR'.
 
 ---
 
-## 🎯 HOÀN THÀNH!
+## 🎯 HOÀN THÀNH
 
 Hệ thống SAP Bug Tracking Management đã được bổ sung đầy đủ các chức năng mới.
 
