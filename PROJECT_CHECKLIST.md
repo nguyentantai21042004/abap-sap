@@ -76,7 +76,8 @@
 
 **📅 Deadline:** Cuối tuần 1  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 1  
-**🎯 Mục tiêu:** Tạo đầy đủ 3 bảng và Data Dictionary objects
+**🎯 Mục tiêu:** Tạo đầy đủ 3 bảng và Data Dictionary objects  
+>**👤 Account sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)
 
 ### ✅ Checklist Phase 1
 
@@ -177,7 +178,8 @@
 
 **📅 Deadline:** Cuối tuần 3  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 2  
-**🎯 Mục tiêu:** Tạo Function Group với 8 function modules
+**🎯 Mục tiêu:** Tạo Function Group với 8 function modules  
+>**👤 Account sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)
 
 ### ✅ Checklist Phase 2
 
@@ -237,7 +239,8 @@
 
 **📅 Deadline:** Cuối tuần 3  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 3  
-**🎯 Mục tiêu:** Tạo 4 programs và 4 T-codes
+**🎯 Mục tiêu:** Tạo 4 programs và 4 T-codes  
+>**👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
 
 ### ✅ Checklist Phase 3
 
@@ -285,7 +288,8 @@
 
 **📅 Deadline:** Cuối tuần 5  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 4  
-**🎯 Mục tiêu:** SmartForm và Enhanced ALV
+**🎯 Mục tiêu:** SmartForm và Enhanced ALV  
+>**👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
 
 ### ✅ Checklist Phase 4
 
@@ -328,7 +332,8 @@
 
 **📅 Deadline:** Cuối tuần 5  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 5  
-**🎯 Mục tiêu:** GOS attachments và Email integration
+**🎯 Mục tiêu:** GOS attachments và Email integration  
+>**👤 Account sử dụng:** **DEV-237** (Pass: `toiyeufpt`) & **DEV-242** (Pass: `12345678`)
 
 ### ✅ Checklist Phase 5
 
@@ -364,7 +369,8 @@
 
 **📅 Deadline:** Cuối tuần 6  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 6  
-**🎯 Mục tiêu:** Code quality và performance optimization
+**🎯 Mục tiêu:** Code quality và performance optimization  
+>**👤 Account sử dụng:** **DEV-118** (Pass: `Qwer123@`)
 
 ### ✅ Checklist Phase 6
 

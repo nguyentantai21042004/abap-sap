@@ -10,11 +10,32 @@
 ## 📋 MỤC LỤC
 
 - [Phase 0: Chuẩn Bị Môi Trường](#phase-0-chuẩn-bị-môi-trường)
+- [Ma Trận Sử Dụng Tài Khoản (Account Matrix)](#ma-trận-sử-dụng-tài-khoản-account-matrix)
 - [Phase 1: Database Layer](#phase-1-database-layer-tuần-1)
 - [Phase 2: Business Logic Layer](#phase-2-business-logic-layer-tuần-2-3)
 - [Phase 3: Presentation Layer](#phase-3-presentation-layer-tuần-2-3)
 - [Phase 4: Reporting Module](#phase-4-reporting-module-tuần-4-5)
 - [Phase 5: Testing & Deployment](#phase-5-testing--deployment-tuần-6-8)
+
+---
+
+## MA TRẬN SỬ DỤNG TÀI KHOẢN (ACCOUNT MATRIX)
+
+Vì hệ thống S40 phân tách quyền hạn theo chức năng (Role-based), bạn cần sử dụng đúng tài khoản cho từng giai đoạn:
+
+| Phase | Đối tượng | Tài khoản (Account) | Chức năng chính |
+| :--- | :--- | :--- | :--- |
+| **Phase 0** | **Setup/Verify** | **DEV-118** | Quản lý lỗi & Kiểm tra hệ thống |
+| **Phase 1** | **Database** | **DEV-089** | Tạo bảng, domain, data element (SE11) |
+| **Phase 2** | **Business Logic** | **DEV-089** | Viết code ABAP (SE38/SE80) |
+| **Phase 3** | **Presentation** | **DEV-061** | ALV Grid & SmartForms |
+| **Phase 4** | **Reporting** | **DEV-061** | Design Forms & ALV Reports |
+| **Phase 5** | **Integration** | **DEV-237** | Đính kèm file (GOS) |
+| **Phase 5** | **Email** | **DEV-242** | Cấu hình Email (SCOT) |
+| **Phase 6** | **Management** | **DEV-118** | Thống kê & Kiểm tra cuối cùng |
+
+> [!IMPORTANT]
+> Tất cả tài khoản `DEV-*` đều đã được cấp **Developer Key**. Nếu hệ thống yêu cầu Key khi tạo Object mới, hãy kiểm tra lại xem bạn có đang đăng nhập đúng tài khoản được phân công hay không.
 
 ---
 
@@ -72,8 +93,6 @@ Chuỗi Expert Mode Route (nếu dùng): conn=/H/saprouter.hcc.in.tum.de/S/3298/
 
 **✅ Success:** Nếu vào được SAP Easy Access screen → Connection OK.
 
-![SAP Easy Access](/Users/tailung/Workspaces/others/abap-sap/images/verify/phase0/verification_success_sap_easy_access.png)
-
 **❌ Error:** Nếu lỗi kết nối:
 
 - Kiểm tra VPN (nếu work from home)
@@ -127,6 +146,10 @@ Software Component: HOME (local objects)
 ---
 
 ## PHASE 1: DATABASE LAYER (Tuần 1)
+
+> [!TIP]
+> **Tài khoản sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)  
+> Đây là tài khoản có quyền SE11 để tạo các Z-objects cơ bản cho Database.
 
 > **Mục tiêu:** Tạo bảng `ZBUG_TRACKER` và các Data Dictionary objects
 
@@ -441,6 +464,10 @@ CREATED_AT: (today's date)
 
 ## PHASE 2: BUSINESS LOGIC LAYER (Tuần 2-3)
 
+> [!TIP]
+> **Tài khoản sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)  
+> Sử dụng tài khoản này để viết code ABAP, Function Modules và Classes.
+
 > **Mục tiêu:** Tạo Function Group và CRUD logic
 
 ### Bước 2.1: Tạo Function Group
@@ -711,6 +738,10 @@ ENDFUNCTION.
 
 ## PHASE 3: PRESENTATION LAYER (Tuần 2-3)
 
+> [!TIP]
+> **Tài khoản sử dụng:** **DEV-061** (Pass: `@57Dt766`)  
+> SE38/SE93 cho giao diện người dùng và ALV Grid.
+
 > **Mục tiêu:** Tạo màn hình nhập liệu
 
 ### Bước 3.1: Tạo Report Program
@@ -802,6 +833,10 @@ Screen Number: 1000 (default)
 ---
 
 ## PHASE 4: REPORTING MODULE (Tuần 4-5)
+
+> [!TIP]
+> **Tài khoản sử dụng:** **DEV-061** (Pass: `@57Dt766`)  
+> Dùng cho SmartForms và các Report in ấn.
 
 ### Bước 4.1: Tạo ALV Report
 
@@ -934,7 +969,14 @@ ENDFORM.
 
 ## PHASE 5: TESTING & DEPLOYMENT (Tuần 6-8)
 
-### Bước 5.1: Code Inspector
+> [!TIP]
+> **Tài khoản sử dụng:**
+>
+> - Đính kèm file: **DEV-237** (Pass: `toiyeufpt`)
+> - Cấu hình Email: **DEV-242** (Pass: `12345678`)
+> - Verify & Management: **DEV-118** (Pass: `Qwer123@`)
+
+> **Mục tiêu:** Code Inspector
 
 1. Vào T-code `SCI`
 2. Create inspection với variant `DEFAULT`
