@@ -276,7 +276,8 @@ Heading: Bug ID
 2. Chọn radio button **Database table**
 3. Nhập: `ZBUG_TRACKER`
 4. Click **Create**
-5. Tab **Delivery and Maintenance**:
+5. Điền **Short Description**: `Bug Tracking Table`
+6. Tab **Delivery and Maintenance**:
 
 ```
 Delivery Class: A (Application table)
@@ -285,28 +286,28 @@ Data Browser/Table View Maint.: Display/Maintenance Allowed
 
 1. Tab **Fields**:
 
-| Field Name       | Key | Data Element     | Short Description |
-| ---------------- | --- | ---------------- | ----------------- |
-| MANDT            | ✓   | MANDT            | Client            |
-| BUG_ID           | ✓   | ZDE_BUG_ID       | Bug ID            |
-| TITLE            |     | ZDE_BUG_TITLE    | Bug Title         |
-| DESC_TEXT        |     | ZDE_BUG_DESC     | Description       |
-| MODULE           |     | ZDE_SAP_MODULE   | SAP Module        |
-| PRIORITY         |     | ZDE_PRIORITY     | Priority          |
-| STATUS           |     | ZDE_BUG_STATUS   | Status            |
-| BUG_TYPE         |     | ZDE_BUG_TYPE     | Bug Type          |
-| REASONS          |     | ZDE_REASONS      | Root Causes       |
-| TESTER_ID        |     | ZDE_USERNAME     | Logic Tester      |
-| VERIFY_TESTER_ID |     | ZDE_USERNAME     | Verify Tester     |
-| DEV_ID           |     | ZDE_USERNAME     | Developer         |
-| APPROVED_BY      |     | ZDE_USERNAME     | Manager Approver  |
-| APPROVED_AT      |     | ZDE_APPROVED_DATE | Approval Date     |
-| CREATED_AT       |     | ZDE_BUG_CR_DATE | Created Date      |
-| CREATED_TIME     |     | ZDE_BUG_CR_TIME | Created Time      |
-| CLOSED_AT        |     | ZDE_BUG_CL_DATE  | Closed Date       |
-| ATT_REPORT       |     | ZDE_BUG_ATT_PATH | Tester Report     |
-| ATT_FIX          |     | ZDE_BUG_ATT_PATH | Developer Fix     |
-| ATT_VERIFY       |     | ZDE_BUG_ATT_PATH | Tester Verify     |
+| Field Name       | Key | Data Element      |
+| ---------------- | --- | ----------------- |
+| MANDT            | ✓   | MANDT             |
+| BUG_ID           | ✓   | ZDE_BUG_ID        |
+| TITLE            |     | ZDE_BUG_TITLE     |
+| DESC_TEXT        |     | ZDE_BUG_DESC      |
+| SAP_MODULE       |     | ZDE_SAP_MODULE    |
+| PRIORITY         |     | ZDE_PRIORITY      |
+| STATUS           |     | ZDE_BUG_STATUS    |
+| BUG_TYPE         |     | ZDE_BUG_TYPE      |
+| REASONS          |     | ZDE_REASONS       |
+| TESTER_ID        |     | ZDE_USERNAME      |
+| VERIFY_TESTER_ID |     | ZDE_USERNAME      |
+| DEV_ID           |     | ZDE_USERNAME      |
+| APPROVED_BY      |     | ZDE_USERNAME      |
+| APPROVED_AT      |     | ZDE_BUG_APP_DATE  |
+| CREATED_AT       |     | ZDE_BUG_CR_DATE   |
+| CREATED_TIME     |     | ZDE_BUG_CR_TIME   |
+| CLOSED_AT        |     | ZDE_BUG_CL_DATE   |
+| ATT_REPORT       |     | ZDE_BUG_ATT_PATH  |
+| ATT_FIX          |     | ZDE_BUG_ATT_PATH  |
+| ATT_VERIFY       |     | ZDE_BUG_ATT_PATH  |
 
 1. Tab **Technical Settings**:
 
@@ -325,19 +326,20 @@ Size Category: 1 (0-10,000 records)
 ### Bước 1.4: Tạo Bảng ZBUG_USERS
 
 1. Vào T-code `SE11`, tạo bảng `ZBUG_USERS`.
-2. Tab **Delivery and Maintenance**: Maintenance Allowed, Class A.
-3. Tab **Fields**:
+2. Điền **Short Description**: `Bug Tracking Users`
+3. Tab **Delivery and Maintenance**: Maintenance Allowed, Class A.
+4. Tab **Fields**:
 
-| Field Name       | Key | Data Element     | Short Description |
-| ---------------- | --- | ---------------- | ----------------- |
-| MANDT            | ✓   | MANDT            | Client            |
-| USER_ID          | ✓   | ZDE_USERNAME     | Username          |
-| ROLE             |     | ZDE_BUG_ROLE     | Role              |
-| FULL_NAME        |     | ZDE_BUG_FULL_NAME | Full Name         |
-| MODULE           |     | ZDE_SAP_MODULE   | Assigned Module   |
-| AVAILABLE_STATUS |     | ZDE_AVAIL_STATUS | Current Status    |
-| IS_ACTIVE        |     | CHAR1            | Is Active         |
-| EMAIL            |     | ZDE_BUG_EMAIL    | Email Address     |
+| Field Name       | Key | Data Element      |
+| ---------------- | --- | ----------------- |
+| MANDT            | ✓   | MANDT             |
+| USER_ID          | ✓   | ZDE_USERNAME      |
+| ROLE             |     | ZDE_BUG_ROLE      |
+| FULL_NAME        |     | ZDE_BUG_FULL_NAME |
+| SAP_MODULE       |     | ZDE_SAP_MODULE    |
+| AVAILABLE_STATUS |     | ZDE_AVAIL_STATUS  |![alt text](image.png)
+| IS_ACTIVE        |     | CHAR1             |
+| EMAIL            |     | ZDE_BUG_EMAIL     |
 
 1. Tab **Technical Settings**: Data Class APPL0, Size 0.
 2. Click Save và Activate.
@@ -350,18 +352,18 @@ Size Category: 1 (0-10,000 records)
 2. Tab **Delivery and Maintenance**: Maintenance Allowed, Class A.
 3. Tab **Fields**:
 
-| Field Name       | Key | Data Element     | Short Description |
-| ---------------- | --- | ---------------- | ----------------- |
-| MANDT            | ✓   | MANDT            | Client            |
-| LOG_ID           | ✓   | NUMC10           | Log ID            |
-| BUG_ID           |     | ZDE_BUG_ID       | Bug ID            |
-| CHANGED_BY       |     | ZDE_USERNAME     | Changed By        |
-| CHANGED_AT       |     | ZDE_BUG_CR_DATE | Change Date       |
-| CHANGED_TIME     |     | ZDE_BUG_CR_TIME | Change Time       |
-| ACTION_TYPE      |     | ZDE_BUG_ACT_TYPE | Action Type       |
-| OLD_VALUE        |     | ZDE_BUG_TITLE    | Old Value         |
-| NEW_VALUE        |     | ZDE_BUG_TITLE    | New Value         |
-| REASON           |     | ZDE_REASONS      | Action Reason     |
+| Field Name   | Key | Data Element     |
+| ------------ | --- | ---------------- |
+| MANDT        | ✓   | MANDT            |
+| LOG_ID       | ✓   | NUMC10           |
+| BUG_ID       |     | ZDE_BUG_ID       |
+| CHANGED_BY   |     | ZDE_USERNAME     |
+| CHANGED_AT   |     | ZDE_BUG_CR_DATE  |
+| CHANGED_TIME |     | ZDE_BUG_CR_TIME  |
+| ACTION_TYPE  |     | ZDE_BUG_ACT_TYPE |
+| OLD_VALUE    |     | ZDE_BUG_TITLE    |
+| NEW_VALUE    |     | ZDE_BUG_TITLE    |
+| REASON       |     | ZDE_REASONS      |
 
 1. Tab **Technical Settings**: Data Class APPL0, Size 1 (vì log sẽ phình to).
 2. Click Save và Activate.
@@ -375,27 +377,28 @@ Size Category: 1 (0-10,000 records)
 1. Vào T-code `SNRO`
 2. Object: `ZNRO_BUG`
 3. Click **Create** (F5)
-4. Điền:
+4. Điền thông tin cơ bản:
 
 ```
-Object: ZNRO_BUG
-Short Text: Bug ID Number Range
+Short Text: Bug ID NR
+Long Text: Bug Tracking ID Number Range
+Number Length Domain: ZDOM_BUG_ID
+% Warning: 10,0
 ```
 
-1. Click **Save**
-2. Click **Number Ranges** button
-3. Click **Insert Interval** (F6)
-4. Điền:
+1. Click **Save** (Ctrl + S)
+2. Nhấn phím **F7** (hoặc Menu: *Goto -> Number Ranges*)
+3. Click nút **Intervals** (biểu tượng hình cái Bút)
+4. Nhấn phím **F6** (Insert Line) và điền:
 
 ```
 No: 01
-From Number: 0000001
-To Number: 9999999
-Current Number: (để trống)
-Ext: (unchecked)
+From Number: 0000000001
+To Number: 0009999999
+Ext: (để trống)
 ```
 
-1. Click **Save**
+1. Click **Save** (Ctrl + S)
 
 **✅ Checkpoint:** Number range created
 
