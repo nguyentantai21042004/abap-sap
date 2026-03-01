@@ -541,10 +541,10 @@ FUNCTION z_bug_create.
   ls_bug-bug_id       = ev_bug_id.
   ls_bug-title        = iv_title.
   ls_bug-desc_text    = iv_desc.
-  ls_bug-module       = iv_module.
+  ls_bug-sap_module   = iv_module.
   ls_bug-priority     = iv_priority.
   ls_bug-status       = '1'.  " New
-  ls_bug-reporter     = sy-uname.
+  ls_bug-tester_id    = sy-uname.
   ls_bug-dev_id       = iv_dev_id.
   ls_bug-created_at   = sy-datum.
   ls_bug-created_time = sy-uzeit.
@@ -573,6 +573,21 @@ ENDFUNCTION.
 
 #### **Function: Z_BUG_UPDATE_STATUS**
 
+**Import Parameters**
+
+| Parameter       | Type | Associated Type | Description     |
+| --------------- | ---- | --------------- | --------------- |
+| IV_BUG_ID       | TYPE | ZDE_BUG_ID      | Bug ID          |
+| IV_NEW_STATUS   | TYPE | ZDE_BUG_STATUS  | New status code |
+| IV_CHANGED_BY   | TYPE | ZDE_USERNAME    | User changing   |
+
+**Export Parameters**
+
+| Parameter  | Type | Associated Type | Description |
+| ---------- | ---- | --------------- | ----------- |
+| EV_SUCCESS | TYPE | CHAR1           | Y/N flag    |
+| EV_MESSAGE | TYPE | STRING          | Message     |
+
 ```abap
 FUNCTION z_bug_update_status.
 *"----------------------------------------------------------------------
@@ -580,6 +595,7 @@ FUNCTION z_bug_update_status.
 *"  IMPORTING
 *"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
 *"     VALUE(IV_NEW_STATUS) TYPE  ZDE_BUG_STATUS
+*"     VALUE(IV_CHANGED_BY) TYPE  ZDE_USERNAME OPTIONAL
 *"  EXPORTING
 *"     VALUE(EV_SUCCESS) TYPE  CHAR1
 *"     VALUE(EV_MESSAGE) TYPE  STRING
@@ -599,7 +615,7 @@ FUNCTION z_bug_update_status.
 
   " Update status
   UPDATE zbug_tracker
-    SET status = iv_new_status
+    SET status    = iv_new_status
         closed_at = CASE WHEN iv_new_status = '5'
                          THEN sy-datum
                          ELSE closed_at END
@@ -618,9 +634,105 @@ FUNCTION z_bug_update_status.
 ENDFUNCTION.
 ```
 
+1. Click **Save** → **Activate** (Ctrl+F3)
+
 ---
 
-### Bước 2.4: Email Configuration
+### Bước 2.4: Tạo Function Module - Get Bug
+
+#### **Function: Z_BUG_GET**
+
+**Import Parameters**
+
+| Parameter | Type | Associated Type | Description |
+| --------- | ---- | --------------- | ----------- |
+| IV_BUG_ID | TYPE | ZDE_BUG_ID      | Bug ID      |
+
+**Export Parameters**
+
+| Parameter  | Type | Associated Type    | Description         |
+| ---------- | ---- | ------------------ | ------------------- |
+| ES_BUG     | TYPE | ZBUG_TRACKER       | Bug record (struct) |
+| EV_SUCCESS | TYPE | CHAR1              | Y/N flag            |
+| EV_MESSAGE | TYPE | STRING             | Message             |
+
+```abap
+FUNCTION z_bug_get.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"  EXPORTING
+*"     VALUE(ES_BUG) TYPE  ZBUG_TRACKER
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
+
+  SELECT SINGLE * FROM zbug_tracker INTO es_bug
+    WHERE bug_id = iv_bug_id.
+
+  IF sy-subrc = 0.
+    ev_success = 'Y'.
+  ELSE.
+    ev_success = 'N'.
+    ev_message = 'Bug not found'.
+  ENDIF.
+
+ENDFUNCTION.
+```
+
+1. Click **Save** → **Activate** (Ctrl+F3)
+
+---
+
+### Bước 2.5: Tạo Function Module - Delete Bug
+
+#### **Function: Z_BUG_DELETE**
+
+**Import Parameters**
+
+| Parameter | Type | Associated Type | Description |
+| --------- | ---- | --------------- | ----------- |
+| IV_BUG_ID | TYPE | ZDE_BUG_ID      | Bug ID      |
+
+**Export Parameters**
+
+| Parameter  | Type | Associated Type | Description |
+| ---------- | ---- | --------------- | ----------- |
+| EV_SUCCESS | TYPE | CHAR1           | Y/N flag    |
+| EV_MESSAGE | TYPE | STRING          | Message     |
+
+```abap
+FUNCTION z_bug_delete.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"  EXPORTING
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
+
+  DELETE FROM zbug_tracker WHERE bug_id = iv_bug_id.
+
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    ev_success = 'Y'.
+    ev_message = |Bug { iv_bug_id } deleted|.
+  ELSE.
+    ROLLBACK WORK.
+    ev_success = 'N'.
+    ev_message = 'Bug not found or delete failed'.
+  ENDIF.
+
+ENDFUNCTION.
+```
+
+1. Click **Save** → **Activate** (Ctrl+F3)
+
+---
+
+### Bước 2.6: Email Configuration
 
 #### **Setup SMTP (T-code SCOT)**
 
@@ -669,9 +781,9 @@ FUNCTION z_bug_send_email.
 
   APPEND |Bug ID: { ls_bug-bug_id }| TO lt_text.
   APPEND |Title: { ls_bug-title }| TO lt_text.
-  APPEND |Module: { ls_bug-module }| TO lt_text.
+  APPEND |Module: { ls_bug-sap_module }| TO lt_text.
   APPEND |Priority: { ls_bug-priority }| TO lt_text.
-  APPEND |Reporter: { ls_bug-reporter }| TO lt_text.
+  APPEND |Reporter: { ls_bug-tester_id }| TO lt_text.
   APPEND |Description: { ls_bug-desc_text }| TO lt_text.
 
   TRY.
@@ -880,7 +992,7 @@ FORM build_fieldcat.
   APPEND ls_fieldcat TO lt_fieldcat.
 
   CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'MODULE'.
+  ls_fieldcat-fieldname = 'SAP_MODULE'.
   ls_fieldcat-seltext_m = 'Module'.
   ls_fieldcat-col_pos = 3.
   APPEND ls_fieldcat TO lt_fieldcat.
