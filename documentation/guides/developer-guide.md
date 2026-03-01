@@ -171,83 +171,42 @@ Output Length: 10
 
 1. Tab **Value Range**: (để trống)
 2. Click **Save** → Assign to package `ZBUGTRACK`
-3. Click **Activate** (icon đèn giao thông)
+   - Khi hiện pop-up **Prompt for transportable workbench request**:
+   - Nếu chưa có Request, nhấn icon **Create (tờ giấy trắng)**.
+   - **Short Description:** `BUG_TRACKING_DATABASE_SETUP`
+   - Nhấn **Save** để lấy mã Request (ví dụ: `S40K9...`).
+   - Nhấn **Continue (tích xanh)**.
+3. Click **Activate** (icon đèn giao thông - Ctrl+F3)
+   - Chọn object và nhấn **Enter**.
 
-**✅ Checkpoint:** Domain status = Active (màu xanh)
+**✅ Checkpoint:** Domain status = Active (màu xanh) - Thông báo "No inconsistencies found" chỉ là kiểm tra cú pháp, bạn **BẮT BUỘC** phải nhấn Activate để hoàn tất.
+
+> [!IMPORTANT]
+> **QUY TẮC VÀNG VỀ TRANSPORT REQUEST (TR):**
+>
+> 1. Tất cả các Domain trong cùng một Phase **PHẢI** nằm trong cùng **một Request** và cùng **một Task** (thư mục con).
+> 2. Khi nhấn **Save** cho các domain tiếp theo: **KHÔNG** tạo Request mới. Hãy nhấn nút **Own Requests** (icon xe tải), tìm và chọn đúng cái Request đã tạo ở Domain 1.
+> 3. Nếu bạn lưu rời rạc, SAP sẽ báo lỗi `Object locked in inconsistent task` khi bạn cố gắng Activate hàng loạt.
 
 #### **Tạo Các Domains Còn Lại**
 
 Lặp lại quy trình trên cho các domains sau:
 
-| Domain          | Data Type | Length | Description |
-| --------------- | --------- | ------ | ----------- |
-| `ZDOM_TITLE`    | CHAR      | 100    | Bug title   |
-| `ZDOM_LONGTEXT` | STRG      | -      | Long text   |
-| `ZDOM_MODULE`   | CHAR      | 20     | SAP module  |
-| `ZDOM_PRIORITY` | CHAR      | 1      | Priority    |
-| `ZDOM_STATUS`   | CHAR      | 1      | Status      |
-| `ZDOM_USER`     | CHAR      | 12     | Username    |
-| `ZDOM_DATE`     | DATS      | 8      | Date        |
-| `ZDOM_TIME`     | TIMS      | 6      | Time        |
-| `ZDOM_ROLE`       | CHAR      | 1      | Role              |
-| `ZDOM_AVAIL_STATUS`| CHAR   | 1      | Available status  |
-| `ZDOM_BUG_TYPE`   | CHAR      | 1      | Bug Type          |
-| `ZDOM_ACTION_TYPE`| CHAR      | 2      | Action Type       |
-| `ZDOM_ATT_PATH`   | CHAR      | 100    | Attachment Path   |
-
-**💡 Tip:** Với một số domain, thêm **Fixed Values** trong tab Value Range:
-
-**ZDOM_PRIORITY:**
-
-```
-H - High
-M - Medium
-L - Low
-```
-
-**ZDOM_STATUS:**
-
-```
-1 - New
-W - Waiting
-2 - Assigned
-3 - In Progress
-4 - Fixed
-5 - Closed
-```
-
-**ZDOM_ROLE:**
-
-```
-T - Tester
-D - Developer
-M - Manager
-```
-
-**ZDOM_AVAIL_STATUS:**
-
-```
-A - Available
-B - Busy
-L - Leave
-W - Working
-```
-
-**ZDOM_BUG_TYPE:**
-
-```
-C - Code
-F - Configuration
-```
-
-**ZDOM_ACTION_TYPE:**
-
-```
-CR - Create
-AS - Assign
-RS - Reassign
-ST - Status
-```
+| Domain | Data Type | Length | Description | Fixed Values (Tab: Value Range) |
+| :--- | :--- | :--- | :--- | :--- |
+| `ZDOM_TITLE` | CHAR | 100 | Bug title | (Để trống) |
+| `ZDOM_LONGTEXT` | STRING | - | Long text | (Để trống) |
+| `ZDOM_MODULE` | CHAR | 20 | SAP module | (Để trống) |
+| `ZDOM_PRIORITY` | CHAR | 1 | Priority | H: High, M: Medium, L: Low |
+| `ZDOM_STATUS` | CHAR | 1 | Status | 1: New, W: Waiting, 2: Assigned, 3: InProgress, 4: Fixed, 5: Closed |
+| `ZDOM_USER` | CHAR | 12 | Username | (Để trống) |
+| `ZDOM_DATE` | DATS | 8 | Date | (Để trống) |
+| `ZDOM_TIME` | TIMS | 6 | Time | (Để trống) |
+| `ZDOM_ROLE` | CHAR | 1 | Role | T: Tester, D: Developer, M: Manager |
+| `ZDOM_AVAIL_STATUS` | CHAR | 1 | Available status | A: Available, B: Busy, L: Leave, W: Working |
+| `ZDOM_BUG_TYPE` | CHAR | 1 | Bug Type | C: Code, F: Configuration |
+| `ZDOM_ACTION_TYPE` | CHAR | 2 | Action Type | CR: Create, AS: Assign, RS: Reassign, ST: Status |
+| `ZDOM_ATT_PATH` | CHAR | 100 | Attachment Path | (Để trống) |
 
 ---
 
@@ -278,6 +237,12 @@ Heading: Bug ID
 1. Click **Save** → Package `ZBUGTRACK`
 2. Click **Activate**
 
+> [!CAUTION]
+> **Tính thống nhất của TR:**
+> Tương tự như Domain, tất cả **Data Elements** này cũng phải được lưu vào **cùng một Request và Task** với các Domain ở bước 1.1. Điều này đảm bảo toàn bộ Database Layer của Phase 1 có thể được vận chuyển và kích hoạt đồng bộ.
+>
+> - Luôn dùng nút **Own Requests** để chọn Request hiện có.
+
 #### **Tạo Các Data Elements Còn Lại**
 
 | Data Element       | Domain        | Short Label | Medium Label | Long Label           |
@@ -289,17 +254,17 @@ Heading: Bug ID
 | `ZDE_PRIORITY`     | ZDOM_PRIORITY | Priority    | Priority     | Priority Level       |
 | `ZDE_BUG_STATUS`   | ZDOM_STATUS   | Status      | Bug Status   | Bug Status           |
 | `ZDE_USERNAME`     | ZDOM_USER     | User        | Username     | SAP Username         |
-| `ZDE_ROLE`         | ZDOM_ROLE     | Role        | Role         | SAP Role             |
+| `ZDE_BUG_ROLE`     | ZDOM_ROLE     | Role        | Role         | SAP Role             |
 | `ZDE_AVAIL_STATUS` | ZDOM_AVAIL_STATUS| AvailStatus | Avail Status | Available Status     |
 | `ZDE_BUG_TYPE`     | ZDOM_BUG_TYPE | BugType     | Bug Type     | Bug Type             |
-| `ZDE_ACTION_TYPE`  | ZDOM_ACTION_TYPE | Action   | Action Type  | Action Type          |
-| `ZDE_ATT_PATH`     | ZDOM_ATT_PATH | Att Path    | Attachment   | Attachment Path      |
-| `ZDE_FULL_NAME`    | (CHAR 50)     | Name        | Full Name    | Full Name            |
-| `ZDE_EMAIL`        | (CHAR 100)    | Email       | Email Adr    | Email Address        |
-| `ZDE_APPROVED_DATE`| ZDOM_DATE     | Approved    | Approve Date | Approved Date        |
-| `ZDE_CREATED_DATE` | ZDOM_DATE     | Created     | Created Date | Created Date         |
-| `ZDE_CREATED_TIME` | ZDOM_TIME     | Time        | Created Time | Created Time         |
-| `ZDE_CLOSED_DATE`  | ZDOM_DATE     | Closed      | Closed Date  | Closed Date          |
+| `ZDE_BUG_ACT_TYPE`  | ZDOM_ACTION_TYPE | Action   | Action Type  | Action Type          |
+| `ZDE_BUG_ATT_PATH` | ZDOM_ATT_PATH | Att Path    | Attachment   | Attachment Path      |
+| `ZDE_BUG_FULL_NAME` | (CHAR 50)     | Name        | Full Name    | Full Name            |
+| `ZDE_BUG_EMAIL`    | (CHAR 100)    | Email       | Email Adr    | Email Address        |
+| `ZDE_BUG_APP_DATE` | ZDOM_DATE     | Approved    | Approve Date | Approved Date        |
+| `ZDE_BUG_CR_DATE`  | ZDOM_DATE     | Created     | Created Date | Created Date         |
+| `ZDE_BUG_CR_TIME`  | ZDOM_TIME     | Time        | Created Time | Created Time         |
+| `ZDE_BUG_CL_DATE`  | ZDOM_DATE     | Closed      | Closed Date  | Closed Date          |
 
 ---
 
@@ -336,12 +301,12 @@ Data Browser/Table View Maint.: Display/Maintenance Allowed
 | DEV_ID           |     | ZDE_USERNAME     | Developer         |
 | APPROVED_BY      |     | ZDE_USERNAME     | Manager Approver  |
 | APPROVED_AT      |     | ZDE_APPROVED_DATE | Approval Date     |
-| CREATED_AT       |     | ZDE_CREATED_DATE | Created Date      |
-| CREATED_TIME     |     | ZDE_CREATED_TIME | Created Time      |
-| CLOSED_AT        |     | ZDE_CLOSED_DATE  | Closed Date       |
-| ATT_REPORT       |     | ZDE_ATT_PATH     | Tester Report     |
-| ATT_FIX          |     | ZDE_ATT_PATH     | Developer Fix     |
-| ATT_VERIFY       |     | ZDE_ATT_PATH     | Tester Verify     |
+| CREATED_AT       |     | ZDE_BUG_CR_DATE | Created Date      |
+| CREATED_TIME     |     | ZDE_BUG_CR_TIME | Created Time      |
+| CLOSED_AT        |     | ZDE_BUG_CL_DATE  | Closed Date       |
+| ATT_REPORT       |     | ZDE_BUG_ATT_PATH | Tester Report     |
+| ATT_FIX          |     | ZDE_BUG_ATT_PATH | Developer Fix     |
+| ATT_VERIFY       |     | ZDE_BUG_ATT_PATH | Tester Verify     |
 
 1. Tab **Technical Settings**:
 
@@ -367,12 +332,12 @@ Size Category: 1 (0-10,000 records)
 | ---------------- | --- | ---------------- | ----------------- |
 | MANDT            | ✓   | MANDT            | Client            |
 | USER_ID          | ✓   | ZDE_USERNAME     | Username          |
-| ROLE             |     | ZDE_ROLE         | Role              |
-| FULL_NAME        |     | ZDE_FULL_NAME    | Full Name         |
+| ROLE             |     | ZDE_BUG_ROLE     | Role              |
+| FULL_NAME        |     | ZDE_BUG_FULL_NAME | Full Name         |
 | MODULE           |     | ZDE_SAP_MODULE   | Assigned Module   |
 | AVAILABLE_STATUS |     | ZDE_AVAIL_STATUS | Current Status    |
 | IS_ACTIVE        |     | CHAR1            | Is Active         |
-| EMAIL            |     | ZDE_EMAIL        | Email Address     |
+| EMAIL            |     | ZDE_BUG_EMAIL    | Email Address     |
 
 1. Tab **Technical Settings**: Data Class APPL0, Size 0.
 2. Click Save và Activate.
@@ -391,9 +356,9 @@ Size Category: 1 (0-10,000 records)
 | LOG_ID           | ✓   | NUMC10           | Log ID            |
 | BUG_ID           |     | ZDE_BUG_ID       | Bug ID            |
 | CHANGED_BY       |     | ZDE_USERNAME     | Changed By        |
-| CHANGED_AT       |     | ZDE_CREATED_DATE | Change Date       |
-| CHANGED_TIME     |     | ZDE_CREATED_TIME | Change Time       |
-| ACTION_TYPE      |     | ZDE_ACTION_TYPE  | Action Type       |
+| CHANGED_AT       |     | ZDE_BUG_CR_DATE | Change Date       |
+| CHANGED_TIME     |     | ZDE_BUG_CR_TIME | Change Time       |
+| ACTION_TYPE      |     | ZDE_BUG_ACT_TYPE | Action Type       |
 | OLD_VALUE        |     | ZDE_BUG_TITLE    | Old Value         |
 | NEW_VALUE        |     | ZDE_BUG_TITLE    | New Value         |
 | REASON           |     | ZDE_REASONS      | Action Reason     |

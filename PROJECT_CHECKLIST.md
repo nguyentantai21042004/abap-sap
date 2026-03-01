@@ -13,7 +13,7 @@
 | Phase | Tên Phase                 | Thời gian    | Status | Hoàn thành |
 | ----- | ------------------------- | ------------ | ------ | ---------- |
 | P0    | Chuẩn bị môi trường       | Trước tuần 1 | ✅     | 6/6        |
-| P1    | Database Layer            | Tuần 1       | ⏳     | 0/12       |
+| P1    | Database Layer            | Tuần 1       | 🚧     | 2/7        |
 | P2    | Business Logic            | Tuần 2-3     | ⏳     | 0/8        |
 | P3    | Presentation Layer        | Tuần 2-3     | ⏳     | 0/6        |
 | P4    | Reporting & Printing      | Tuần 4-5     | ⏳     | 0/5        |
@@ -22,7 +22,7 @@
 | P7    | Deployment & Training     | Tuần 7-8     | ⏳     | 0/5        |
 | P8    | Final Presentation        | 29/03/2026   | ⏳     | 0/10       |
 
-**🎯 Tổng tiến độ: 6/62 items (9.6%)**
+**🎯 Tổng tiến độ: 8/62 items (12.9%)**
 
 ---
 
@@ -81,40 +81,42 @@
 
 ### ✅ Checklist Phase 1
 
-- [ ] **1.1 Tạo 12 Domains**
-  - [ ] ZDOM_BUG_ID (CHAR 10)
-  - [ ] ZDOM_TITLE (CHAR 100)
-  - [ ] ZDOM_LONGTEXT (STRG)
-  - [ ] ZDOM_MODULE (CHAR 20)
-  - [ ] ZDOM_PRIORITY (CHAR 1) + Fixed Values H/M/L
-  - [ ] ZDOM_STATUS (CHAR 1) + Fixed Values 1/W/2/3/4/5
-  - [ ] ZDOM_USER (CHAR 12)
-  - [ ] ZDOM_ROLE (CHAR 1) + Fixed Values T/D/M
-  - [ ] ZDOM_AVAIL_STATUS (CHAR 1) + Fixed Values A/B/L/W
-  - [ ] ZDOM_BUG_TYPE (CHAR 1) + Fixed Values C/F
-  - [ ] ZDOM_ACTION_TYPE (CHAR 2) + Fixed Values CR/AS/RS/ST
-  - [ ] ZDOM_ATT_PATH (CHAR 100)
+- [x] **1.1 Tạo 14 Domains**
+  - [x] ZDOM_BUG_ID (CHAR 10)
+  - [x] ZDOM_TITLE (CHAR 100)
+  - [x] ZDOM_LONGTEXT (STRING)
+  - [x] ZDOM_MODULE (CHAR 20)
+  - [x] ZDOM_PRIORITY (CHAR 1) + Fixed Values H/M/L
+  - [x] ZDOM_STATUS (CHAR 1) + Fixed Values 1/W/2/3/4/5
+  - [x] ZDOM_USER (CHAR 12)
+  - [x] ZDOM_DATE (DATS 8)
+  - [x] ZDOM_TIME (TIMS 6)
+  - [x] ZDOM_ROLE (CHAR 1) + Fixed Values T/D/M
+  - [x] ZDOM_AVAIL_STATUS (CHAR 1) + Fixed Values A/B/L/W
+  - [x] ZDOM_BUG_TYPE (CHAR 1) + Fixed Values C/F
+  - [x] ZDOM_ACTION_TYPE (CHAR 2) + Fixed Values CR/AS/RS/ST
+  - [x] ZDOM_ATT_PATH (CHAR 100)
 
-- [ ] **1.2 Tạo 18 Data Elements**
-  - [ ] ZDE_BUG_ID → ZDOM_BUG_ID
-  - [ ] ZDE_BUG_TITLE → ZDOM_TITLE
-  - [ ] ZDE_BUG_DESC → ZDOM_LONGTEXT
-  - [ ] ZDE_REASONS → ZDOM_LONGTEXT
-  - [ ] ZDE_SAP_MODULE → ZDOM_MODULE
-  - [ ] ZDE_PRIORITY → ZDOM_PRIORITY
-  - [ ] ZDE_BUG_STATUS → ZDOM_STATUS
-  - [ ] ZDE_USERNAME → ZDOM_USER
-  - [ ] ZDE_ROLE → ZDOM_ROLE
-  - [ ] ZDE_AVAIL_STATUS → ZDOM_AVAIL_STATUS
-  - [ ] ZDE_BUG_TYPE → ZDOM_BUG_TYPE
-  - [ ] ZDE_ACTION_TYPE → ZDOM_ACTION_TYPE
-  - [ ] ZDE_ATT_PATH → ZDOM_ATT_PATH
-  - [ ] ZDE_FULL_NAME (CHAR50)
-  - [ ] ZDE_EMAIL (CHAR100)
-  - [ ] ZDE_CREATED_DATE (DATS)
-  - [ ] ZDE_CREATED_TIME (TIMS)
-  - [ ] ZDE_CLOSED_DATE (DATS)
-  - [ ] ZDE_APPROVED_DATE (DATS)
+- [x] **1.2 Tạo 19 Data Elements**
+  - [x] ZDE_BUG_ID → ZDOM_BUG_ID
+  - [x] ZDE_BUG_TITLE → ZDOM_TITLE
+  - [x] ZDE_BUG_DESC → ZDOM_LONGTEXT
+  - [x] ZDE_REASONS → ZDOM_LONGTEXT
+  - [x] ZDE_SAP_MODULE → ZDOM_MODULE
+  - [x] ZDE_PRIORITY → ZDOM_PRIORITY
+  - [x] ZDE_BUG_STATUS → ZDOM_STATUS
+  - [x] ZDE_USERNAME → ZDOM_USER
+  - [x] ZDE_BUG_ROLE → ZDOM_ROLE
+  - [x] ZDE_AVAIL_STATUS → ZDOM_AVAIL_STATUS
+  - [x] ZDE_BUG_TYPE → ZDOM_BUG_TYPE
+  - [x] ZDE_BUG_ACT_TYPE → ZDOM_ACTION_TYPE
+  - [x] ZDE_BUG_ATT_PATH → ZDOM_ATT_PATH
+  - [x] ZDE_BUG_FULL_NAME (CHAR50)
+  - [x] ZDE_BUG_EMAIL (CHAR100)
+  - [x] ZDE_BUG_CR_DATE (DATS)
+  - [x] ZDE_BUG_CR_TIME (TIMS)
+  - [x] ZDE_BUG_CL_DATE (DATS)
+  - [x] ZDE_BUG_APP_DATE (DATS)
 
 - [ ] **1.3 Tạo Bảng ZBUG_TRACKER (20 fields)**
   - [ ] MANDT (CLNT 3) - Client
@@ -141,12 +143,12 @@
 - [ ] **1.4 Tạo Bảng ZBUG_USERS (8 fields)**
   - [ ] MANDT (CLNT 3) - Client
   - [ ] USER_ID (ZDE_USERNAME) - Primary Key
-  - [ ] ROLE (ZDE_ROLE)
-  - [ ] FULL_NAME (ZDE_FULL_NAME)
+  - [ ] ROLE (ZDE_BUG_ROLE)
+  - [ ] FULL_NAME (ZDE_BUG_FULL_NAME)
   - [ ] MODULE (ZDE_SAP_MODULE)
   - [ ] AVAILABLE_STATUS (ZDE_AVAIL_STATUS)
   - [ ] IS_ACTIVE (CHAR1)
-  - [ ] EMAIL (ZDE_EMAIL)
+  - [ ] EMAIL (ZDE_BUG_EMAIL)
 
 - [ ] **1.5 Tạo Bảng ZBUG_HISTORY (10 fields)**
   - [ ] MANDT (CLNT 3) - Client
