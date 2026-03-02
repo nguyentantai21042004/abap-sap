@@ -176,25 +176,15 @@
 
 ---
 
-## ⚙️ PHASE 2: BUSINESS LOGIC LAYER (Tuần 2-3)
+## Phase 2: Business Logic Layer (Internal API)
 
-**📅 Deadline:** Cuối tuần 3  
-**📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 2  
-**🎯 Mục tiêu:** Tạo Function Group với 8 function modules  
->**👤 Account sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)
-
-### ✅ Checklist Phase 2
-
-- [ ] **2.1 Tạo Function Group**
-  - [ ] SE80 → Function Group → ZBUG_FG
-  - [ ] Description: "Bug Tracking Function Group"
-  - [ ] Assign to package ZBUGTRACK
-
-- [ ] **2.2 Function Module Z_BUG_CREATE**
-  - [ ] Import: IV_TITLE, IV_DESC, IV_MODULE, IV_PRIORITY, IV_BUG_TYPE
-  - [ ] Export: EV_BUG_ID, EV_SUCCESS, EV_MESSAGE
-  - [ ] Source code implementation (copy từ guide)
-  - [ ] Test function với F8
+- [x] 2.1: Setup Function Group `ZBUG_FG`
+- [x] 2.2: FM `Z_BUG_CREATE` (with validation & NRO)
+- [ ] 2.3: FM `Z_BUG_UPDATE_STATUS`
+- [ ] 2.4: FM `Z_BUG_GET` (Read)
+- [ ] 2.5: FM `Z_BUG_DELETE` (Delete)
+- [ ] 2.6: Configure SCOT (Email Infrastructure)
+- [ ] 2.7: FM `Z_BUG_SEND_EMAIL` (cl_bcs)
 
 - [ ] **2.3 Function Module Z_BUG_AUTO_ASSIGN**
   - [ ] Import: IV_BUG_ID, IV_MODULE

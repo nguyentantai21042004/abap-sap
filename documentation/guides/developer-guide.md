@@ -467,21 +467,21 @@ Short Text: Bug Tracking Function Group
 
 #### **Import Parameters**
 
-| Parameter   | Type | Associated Type | Description          |
-| ----------- | ---- | --------------- | -------------------- |
-| IV_TITLE    | TYPE | ZDE_BUG_TITLE   | Bug title            |
-| IV_DESC     | TYPE | ZDE_BUG_DESC    | Description          |
-| IV_MODULE   | TYPE | ZDE_SAP_MODULE  | Module               |
-| IV_PRIORITY | TYPE | ZDE_PRIORITY    | Priority             |
-| IV_DEV_ID   | TYPE | ZDE_USERNAME    | Developer (optional) |
+| Parameter   | Typin | Associated Type | Default | Opti | Pass | Description          |
+| ----------- | ----- | --------------- | ------- | ---- | ---- | -------------------- |
+| IV_TITLE    | TYPE  | ZDE_BUG_TITLE   |         | [ ]  | [x]  | Bug title            |
+| IV_DESC     | TYPE  | ZDE_BUG_DESC    |         | [ ]  | [x]  | Description          |
+| IV_MODULE   | TYPE  | ZDE_SAP_MODULE  |         | [ ]  | [x]  | Module               |
+| IV_PRIORITY | TYPE  | ZDE_PRIORITY    | 'M'     | [x]  | [x]  | Priority             |
+| IV_DEV_ID   | TYPE  | ZDE_USERNAME    |         | [x]  | [x]  | Developer (optional) |
 
 #### **Export Parameters**
 
-| Parameter  | Type | Associated Type | Description      |
-| ---------- | ---- | --------------- | ---------------- |
-| EV_BUG_ID  | TYPE | ZDE_BUG_ID      | Generated Bug ID |
-| EV_SUCCESS | TYPE | CHAR1           | Success flag     |
-| EV_MESSAGE | TYPE | STRING          | Message          |
+| Parameter  | Typin | Associated Type | Pass | Description      |
+| ---------- | ----- | --------------- | ---- | ---------------- |
+| EV_BUG_ID  | TYPE  | ZDE_BUG_ID      | [x]  | Generated Bug ID |
+| EV_SUCCESS | TYPE  | CHAR1           | [x]  | Success flag     |
+| EV_MESSAGE | TYPE  | STRING          | [x]  | Message          |
 
 #### **Source Code**
 
