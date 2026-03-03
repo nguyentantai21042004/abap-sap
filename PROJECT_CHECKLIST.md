@@ -14,7 +14,7 @@
 | ----- | ------------------------- | ------------ | ------ | ---------- |
 | P0    | Chuẩn bị môi trường       | Trước tuần 1 | ✅     | 6/6        |
 | P1    | Database Layer            | Tuần 1       | ✅     | 7/7        |
-| P2    | Business Logic            | Tuần 2-3     | ⏳     | 0/8        |
+| P2    | Business Logic            | Tuần 2-3     | ✅     | 7/7        |
 | P3    | Presentation Layer        | Tuần 2-3     | ⏳     | 0/6        |
 | P4    | Reporting & Printing      | Tuần 4-5     | ⏳     | 0/5        |
 | P5    | Integration & Attachments | Tuần 4-5     | ⏳     | 0/4        |
@@ -22,7 +22,7 @@
 | P7    | Deployment & Training     | Tuần 7-8     | ⏳     | 0/5        |
 | P8    | Final Presentation        | 29/03/2026   | ⏳     | 0/10       |
 
-**🎯 Tổng tiến độ: 13/62 items (20.9%)**
+**🎯 Tổng tiến độ: 20/62 items (32.3%)**
 
 ---
 
@@ -176,54 +176,56 @@
 
 ---
 
-## Phase 2: Business Logic Layer (Internal API)
+## ⚙️ PHASE 2: BUSINESS LOGIC LAYER (Tuần 2-3)
 
-- [x] 2.1: Setup Function Group `ZBUG_FG`
-- [x] 2.2: FM `Z_BUG_CREATE` (with validation & NRO)
-- [ ] 2.3: FM `Z_BUG_UPDATE_STATUS`
-- [ ] 2.4: FM `Z_BUG_GET` (Read)
-- [ ] 2.5: FM `Z_BUG_DELETE` (Delete)
-- [ ] 2.6: Configure SCOT (Email Infrastructure)
-- [ ] 2.7: FM `Z_BUG_SEND_EMAIL` (cl_bcs)
+**📅 Deadline:** Cuối tuần 3  
+**📖 Tài liệu:** `developer-guide.md` - Phase 2  
+**🎯 Mục tiêu:** Xây dựng core logic CRUD và tích hợp Email  
+>**👤 Account sử dụng:** **DEV-061** (CRUD/FG) & **DEV-242** (SCOT)
 
-- [ ] **2.3 Function Module Z_BUG_AUTO_ASSIGN**
-  - [ ] Import: IV_BUG_ID, IV_MODULE
-  - [ ] Export: EV_DEV_ID, EV_STATUS, EV_MESSAGE
-  - [ ] Logic: Find dev với ít bug nhất trong cùng module
-  - [ ] Test auto-assign logic
+### ✅ Checklist Phase 2
 
-- [ ] **2.4 Function Module Z_BUG_UPDATE_STATUS**
-  - [ ] Import: IV_BUG_ID, IV_NEW_STATUS
-  - [ ] Export: EV_SUCCESS, EV_MESSAGE
-  - [ ] Update status và closed_at nếu status = '5'
-  - [ ] Test status transitions
+- [x] **2.1 Setup Function Group `ZBUG_FG`**
+  - [x] Tạo FG `ZBUG_FG` trong Package `ZBUGTRACK`
+  - [x] Verify: FG xuất hiện trong SE80
+  - [x] Kích hoạt thành công
 
-- [ ] **2.5 Function Module Z_BUG_CHECK_PERMISSION**
-  - [ ] Import: IV_USER, IV_BUG_ID, IV_ACTION
-  - [ ] Export: EV_ALLOWED, EV_MESSAGE
-  - [ ] Role-based permission logic
-  - [ ] Test với different roles
+- [x] **2.2 Tạo FM `Z_BUG_CREATE`**
+  - [x] Import: `IS_BUG` (Optional), `IV_TITLE`, `IV_MODULE`, etc.
+  - [x] Export: `EV_BUG_ID`, `EV_SUCCESS`, `EV_MESSAGE`
+  - [x] Logic: Generate ID qua SNRO, Validation, Insert `ZBUG_TRACKER`
+  - [x] Verify: Active trong SE80
 
-- [ ] **2.6 Function Module Z_BUG_LOG_HISTORY**
-  - [ ] Import: IV_BUG_ID, IV_ACTION_TYPE, IV_OLD_VALUE, IV_NEW_VALUE, IV_REASON
-  - [ ] Insert log record vào ZBUG_HISTORY
-  - [ ] Test history logging
+- [x] **2.3 Tạo FM `Z_BUG_UPDATE_STATUS`**
+  - [x] Import: `IV_BUG_ID`, `IV_NEW_STATUS`, `IV_CHANGED_BY`
+  - [x] Export: `EV_SUCCESS`, `EV_MESSAGE`
+  - [x] Logic: Cập nhật status, tự động điền `CLOSED_AT` nếu đóng Bug
+  - [x] Verify: Active trong SE80
 
-- [ ] **2.7 Function Module Z_BUG_SEND_EMAIL**
-  - [ ] Import: IV_BUG_ID, IV_RECIPIENT
-  - [ ] Email content với bug details
-  - [ ] Test email sending (cần SCOT config)
+- [x] **2.4 Tạo FM `Z_BUG_GET`**
+  - [x] Import: `IV_BUG_ID`
+  - [x] Export: `ES_BUG`, `EV_SUCCESS`, `EV_MESSAGE`
+  - [x] Logic: SELECT SINGLE dữ liệu từ `ZBUG_TRACKER`
+  - [x] Verify: Active trong SE80
 
-- [ ] **2.8 Function Module Z_BUG_GET_LIST**
-  - [ ] Import: Selection criteria
-  - [ ] Export: Internal table với bug list
-  - [ ] Test data retrieval
+- [x] **2.5 Tạo FM `Z_BUG_DELETE`**
+  - [x] Import: `IV_BUG_ID`
+  - [x] Export: `EV_SUCCESS`, `EV_MESSAGE`
+  - [x] Logic: Thực hiện DELETE và COMMIT WORK
+  - [x] Verify: Active trong SE80
 
-- [ ] **2.9 Function Module Z_BUG_MANAGE_USER**
-  - [ ] CRUD operations cho ZBUG_USERS
-  - [ ] Test user management
+- [x] **2.6 Email Configuration (SCOT)**
+  - [x] Thiết lập Default Domain (`fpt.edu.vn`)
+  - [x] Tạo SMTP Node `ZBUG_M`
+  - [x] Cấu hình Host (`smtp.gmail.com`) và Port (`587`)
+  - [x] Cấu hình Supported Address Types: Internet (*)
 
-**✅ Phase 2 Checkpoint:** 8 function modules active, test basic CRUD operations
+- [x] **2.7 Tạo FM `Z_BUG_SEND_EMAIL`**
+  - [x] Sử dụng class `CL_BCS` để gửi mail
+  - [x] Refactor sang Legacy-compatible code (ABAP cũ)
+  - [x] Verify: Active thành công
+
+**✅ Phase 2 Checkpoint:** 7 function modules active, cấu hình SCOT hoàn tất, toàn bộ logic CRUD vận hành tốt.
 
 ---
 

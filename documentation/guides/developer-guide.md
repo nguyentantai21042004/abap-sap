@@ -575,18 +575,18 @@ ENDFUNCTION.
 
 **Import Parameters**
 
-| Parameter       | Type | Associated Type | Description     |
-| --------------- | ---- | --------------- | --------------- |
-| IV_BUG_ID       | TYPE | ZDE_BUG_ID      | Bug ID          |
-| IV_NEW_STATUS   | TYPE | ZDE_BUG_STATUS  | New status code |
-| IV_CHANGED_BY   | TYPE | ZDE_USERNAME    | User changing   |
+| Parameter     | Typin | Associated Type | Default | Opti | Pass | Description     |
+| ------------- | ----- | --------------- | ------- | ---- | ---- | --------------- |
+| IV_BUG_ID     | TYPE  | ZDE_BUG_ID      |         | [ ]  | [x]  | Bug ID          |
+| IV_NEW_STATUS | TYPE  | ZDE_BUG_STATUS  |         | [ ]  | [x]  | New status code |
+| IV_CHANGED_BY | TYPE  | ZDE_USERNAME    |         | [x]  | [x]  | User changing   |
 
 **Export Parameters**
 
-| Parameter  | Type | Associated Type | Description |
-| ---------- | ---- | --------------- | ----------- |
-| EV_SUCCESS | TYPE | CHAR1           | Y/N flag    |
-| EV_MESSAGE | TYPE | STRING          | Message     |
+| Parameter  | Typin | Associated Type | Pass | Description |
+| ---------- | ----- | --------------- | ---- | ----------- |
+| EV_SUCCESS | TYPE  | CHAR1           | [x]  | Y/N flag    |
+| EV_MESSAGE | TYPE  | STRING          | [x]  | Message     |
 
 ```abap
 FUNCTION z_bug_update_status.
@@ -644,17 +644,17 @@ ENDFUNCTION.
 
 **Import Parameters**
 
-| Parameter | Type | Associated Type | Description |
-| --------- | ---- | --------------- | ----------- |
-| IV_BUG_ID | TYPE | ZDE_BUG_ID      | Bug ID      |
+| Parameter | Typin | Associated Type | Opti | Pass | Description |
+| --------- | ----- | --------------- | ---- | ---- | ----------- |
+| IV_BUG_ID | TYPE  | ZDE_BUG_ID      | [ ]  | [x]  | Bug ID      |
 
 **Export Parameters**
 
-| Parameter  | Type | Associated Type    | Description         |
-| ---------- | ---- | ------------------ | ------------------- |
-| ES_BUG     | TYPE | ZBUG_TRACKER       | Bug record (struct) |
-| EV_SUCCESS | TYPE | CHAR1              | Y/N flag            |
-| EV_MESSAGE | TYPE | STRING             | Message             |
+| Parameter  | Typin | Associated Type | Pass | Description         |
+| ---------- | ----- | --------------- | ---- | ------------------- |
+| ES_BUG     | TYPE  | ZBUG_TRACKER    | [x]  | Bug record (struct) |
+| EV_SUCCESS | TYPE  | CHAR1           | [x]  | Y/N flag            |
+| EV_MESSAGE | TYPE  | STRING          | [x]  | Message             |
 
 ```abap
 FUNCTION z_bug_get.
@@ -691,16 +691,16 @@ ENDFUNCTION.
 
 **Import Parameters**
 
-| Parameter | Type | Associated Type | Description |
-| --------- | ---- | --------------- | ----------- |
-| IV_BUG_ID | TYPE | ZDE_BUG_ID      | Bug ID      |
+| Parameter | Typin | Associated Type | Opti | Pass | Description |
+| --------- | ----- | --------------- | ---- | ---- | ----------- |
+| IV_BUG_ID | TYPE  | ZDE_BUG_ID      | [ ]  | [x]  | Bug ID      |
 
 **Export Parameters**
 
-| Parameter  | Type | Associated Type | Description |
-| ---------- | ---- | --------------- | ----------- |
-| EV_SUCCESS | TYPE | CHAR1           | Y/N flag    |
-| EV_MESSAGE | TYPE | STRING          | Message     |
+| Parameter  | Typin | Associated Type | Pass | Description |
+| ---------- | ----- | --------------- | ---- | ----------- |
+| EV_SUCCESS | TYPE  | CHAR1           | [x]  | Y/N flag    |
+| EV_MESSAGE | TYPE  | STRING          | [x]  | Message     |
 
 ```abap
 FUNCTION z_bug_delete.
@@ -752,21 +752,25 @@ Port: 25 (hoặc 587)
 
 #### **Function: Z_BUG_SEND_EMAIL**
 
+**1. Import Parameters**
+
+| Parameter Name | Typing | Associated Type | Pass Value | Optional | Short Text |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| `IV_BUG_ID` | TYPE | `ZDE_BUG_ID` | [x] | [ ] | Bug ID |
+| `IV_RECIPIENT` | TYPE | `AD_SMTPADR` | [x] | [ ] | Recipient Email Address |
+
+**2. Source Code**
+
 ```abap
-FUNCTION z_bug_send_email.
-*"----------------------------------------------------------------------
-*"*"Local Interface:
-*"  IMPORTING
-*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
-*"     VALUE(IV_RECIPIENT) TYPE  AD_SMTPADR
-*"----------------------------------------------------------------------
 
   DATA: lo_send_request TYPE REF TO cl_bcs,
         lo_document     TYPE REF TO cl_document_bcs,
         lo_recipient    TYPE REF TO if_recipient_bcs,
         lv_subject      TYPE so_obj_des,
         lt_text         TYPE bcsy_text,
-        ls_bug          TYPE zbug_tracker.
+        ls_bug          TYPE zbug_tracker,
+        lx_bcs          TYPE REF TO cx_bcs,
+        lv_content      TYPE string.
 
   " Get bug details
   SELECT SINGLE * FROM zbug_tracker INTO ls_bug
@@ -776,15 +780,26 @@ FUNCTION z_bug_send_email.
     RETURN.
   ENDIF.
 
-  " Prepare email content
-  lv_subject = |New Bug: { ls_bug-title }|.
+  " Prepare email content (Legacy Compatible)
+  CONCATENATE 'New Bug: ' ls_bug-title INTO lv_subject.
 
-  APPEND |Bug ID: { ls_bug-bug_id }| TO lt_text.
-  APPEND |Title: { ls_bug-title }| TO lt_text.
-  APPEND |Module: { ls_bug-sap_module }| TO lt_text.
-  APPEND |Priority: { ls_bug-priority }| TO lt_text.
-  APPEND |Reporter: { ls_bug-tester_id }| TO lt_text.
-  APPEND |Description: { ls_bug-desc_text }| TO lt_text.
+  CONCATENATE 'Bug ID: ' ls_bug-bug_id INTO lv_content.
+  APPEND lv_content TO lt_text.
+
+  CONCATENATE 'Title: ' ls_bug-title INTO lv_content.
+  APPEND lv_content TO lt_text.
+
+  CONCATENATE 'Module: ' ls_bug-sap_module INTO lv_content.
+  APPEND lv_content TO lt_text.
+
+  CONCATENATE 'Priority: ' ls_bug-priority INTO lv_content.
+  APPEND lv_content TO lt_text.
+
+  CONCATENATE 'Reporter: ' ls_bug-tester_id INTO lv_content.
+  APPEND lv_content TO lt_text.
+
+  CONCATENATE 'Description: ' ls_bug-desc_text INTO lv_content.
+  APPEND lv_content TO lt_text.
 
   TRY.
       " Create send request
@@ -806,9 +821,10 @@ FUNCTION z_bug_send_email.
       lo_send_request->send( ).
       COMMIT WORK.
 
-    CATCH cx_bcs INTO DATA(lx_bcs).
+    CATCH cx_bcs INTO lx_bcs.
       " Log error
-      WRITE: / 'Email send failed:', lx_bcs->get_text( ).
+      lv_content = lx_bcs->get_text( ).
+      WRITE: / 'Email send failed:', lv_content.
   ENDTRY.
 
 ENDFUNCTION.
