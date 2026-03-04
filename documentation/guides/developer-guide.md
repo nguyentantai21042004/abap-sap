@@ -846,8 +846,22 @@ ENDFUNCTION.
 1. Vào T-code `SE38`
 2. Program: `Z_BUG_CREATE_SCREEN`
 3. Click **Create**
-4. Type: **Executable Program**
-5. Source code:
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug Creation Screen`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+7. Xóa phần gán `TEXT-001` (nếu có) và nhấn **Save**.
+8. **Định nghĩa Text Symbol:**
+   - Lên menu: **Goto** -> **Text Elements** -> **Text Symbols**.
+   - Dòng `001`: Nhập `Create New Bug`.
+   - Nhấn **Save** và **Activate** (trong màn hình Text Elements).
+9. Quay lại code và nhấn **Activate** (Ctrl+F3).
+
+**Source code:**
 
 ```abap
 *&---------------------------------------------------------------------*
@@ -855,20 +869,18 @@ ENDFUNCTION.
 *&---------------------------------------------------------------------*
 REPORT z_bug_create_screen.
 
-TABLES: zbug_tracker.
+" Không dùng TABLES zbug_tracker để tránh lỗi STRING field
 
 " Selection Screen
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
-  PARAMETERS: p_title  TYPE zde_bug_title OBLIGATORY,
-              p_module TYPE zde_sap_module OBLIGATORY,
-              p_prior  TYPE zde_priority DEFAULT 'M',
-              p_devid  TYPE zde_username.
-  SELECTION-SCREEN SKIP 1.
-  PARAMETERS: p_desc TYPE zde_bug_desc LOWER CASE OBLIGATORY.
+PARAMETERS: p_title TYPE zde_bug_title OBLIGATORY,
+            p_module TYPE zde_sap_module OBLIGATORY,
+            p_prior TYPE zde_priority DEFAULT 'M',
+            p_devid TYPE zde_username.
+SELECTION-SCREEN SKIP 1.
+" Dùng TYPE char255 cho Screen vì PARAMETERS không hỗ trợ STRING
+PARAMETERS: p_desc TYPE char255 LOWER CASE OBLIGATORY.
 SELECTION-SCREEN END OF BLOCK b1.
-
-" Text symbols
-TEXT-001: 'Create New Bug'.
 
 START-OF-SELECTION.
 
@@ -917,7 +929,7 @@ START-OF-SELECTION.
 5. Chọn **Program and Selection Screen (Report Transaction)**
 6. Điền:
 
-```
+```text
 Program: Z_BUG_CREATE_SCREEN
 Screen Number: 1000 (default)
 ```
@@ -934,8 +946,24 @@ Screen Number: 1000 (default)
 
 1. Vào T-code `SE38`
 2. Program: `Z_BUG_UPDATE_SCREEN`
-3. Click **Create** → **Executable Program**
-4. Source code:
+3. Click **Create**
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug Update/View Screen`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+6. Xóa phần gán `TEXT-001`, `TEXT-002` (nếu có) và nhấn **Save**.
+7. **Định nghĩa Text Symbol:**
+   - Lên menu: **Goto** -> **Text Elements** -> **Text Symbols**.
+   - Dòng `001`: Nhập `Bug Information`.
+   - Dòng `002`: Nhập `Update Bug`.
+   - Nhấn **Save** và **Activate**.
+8. Quay lại code và nhấn **Activate** (Ctrl+F3).
+
+**Source code:**
 
 ```abap
 *&---------------------------------------------------------------------*
@@ -951,11 +979,8 @@ SELECTION-SCREEN END OF BLOCK b1.
 SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-002.
   PARAMETERS: p_status TYPE zde_bug_status,
               p_devid  TYPE zde_username,
-              p_reason TYPE zde_reasons LOWER CASE.
+              p_reason TYPE char255 LOWER CASE. " Dùng char255 vì PARAMETERS không hỗ trợ STRING
 SELECTION-SCREEN END OF BLOCK b2.
-
-TEXT-001: 'Bug Information'.
-TEXT-002: 'Update Bug'.
 
 DATA: ls_bug      TYPE zbug_tracker,
       lv_success  TYPE char1,
@@ -1009,11 +1034,17 @@ START-OF-SELECTION.
 
 ### Bước 3.4: Tạo T-code ZBUG_UPDATE
 
-1. Vào T-code `SE93`
-2. Transaction: `ZBUG_UPDATE`
-3. Short Description: `View/Update Bug Detail`
-4. Program: `Z_BUG_UPDATE_SCREEN`
-5. Click **Save**
+1. Vào T-code **`SE93`**
+2. Transaction Code: **`ZBUG_UPDATE`** -> Click **Create**.
+3. Điền các thuộc tính (Attributes):
+   - **Short text:** `View/Update Bug Detail`
+   - **Start object:** Chọn **Program and selection screen (report transaction)**.
+4. Nhấn **Continue (Enter)**.
+5. Ở màn hình tiếp theo, điền:
+   - **Program:** `Z_BUG_UPDATE_SCREEN`
+   - **Selection screen:** `1000`
+   - **GUI support:** Tích chọn cả 3 ô (HTML, Java, Windows).
+6. Click **Save** → Gán Package `ZBUGTRACK`.
 
 **✅ Checkpoint:** Gõ T-code `ZBUG_UPDATE` + nhập Bug ID → Thấy thông tin Bug, có thể cập nhật Status
 
@@ -1027,8 +1058,16 @@ START-OF-SELECTION.
 
 1. Vào T-code `SE38`
 2. Program: `Z_BUG_REPORT_ALV`
-3. Click **Create** → **Executable Program**
-4. Source code:
+3. Click **Create**
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug Tracking ALV Report`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+6. Source code:
 
 ```abap
 *&---------------------------------------------------------------------*
@@ -1261,7 +1300,18 @@ Page: FIRST
 
 #### Tạo Driver Program cho SmartForm: Z_BUG_PRINT
 
-```abap
+1. Vào T-code `SE38`
+2. Program: `Z_BUG_PRINT`
+3. Click **Create**
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug Printing Driver Program`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+6. Source code:
 REPORT z_bug_print.
 
 PARAMETERS: p_bugid TYPE zde_bug_id OBLIGATORY.
@@ -1326,7 +1376,16 @@ Tạo T-code `ZBUG_PRINT` → Program `Z_BUG_PRINT`.
 
 1. Vào T-code `SE38`
 2. Program: `Z_BUG_MANAGER_DASHBOARD`
-3. Type: **Executable Program**
+3. Click **Create**
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug Manager Dashboard`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+6. Source code:
 
 ```abap
 *&---------------------------------------------------------------------*
@@ -1424,6 +1483,113 @@ START-OF-SELECTION.
 2. Tạo T-code `ZBUG_MANAGER` → Program `Z_BUG_MANAGER_DASHBOARD` (SE93)
 
 **✅ Checkpoint:** Gõ `ZBUG_MANAGER` → Thấy thống kê tổng Bug + bảng Waiting Bugs
+
+---
+
+### Bước 4.6: Tạo Program Z_BUG_USER_MANAGEMENT (Quản lý tài khoản)
+
+> **Lý do (requirements #6 + #10):** Manager cần màn hình để xem và quản lý danh sách Users, đặc biệt là chỉnh `AVAILABLE_STATUS` của Developer.
+
+> [!TIP]
+> **Tài khoản sử dụng:** **DEV-118** (Pass: `Qwer123@`) — Full system access.
+
+1. Vào T-code `SE38`
+2. Program: `Z_BUG_USER_MANAGEMENT`
+3. Click **Create**
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug User Management`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+6. Xóa phần gán `TEXT-001` (nếu có) và nhấn **Save**.
+7. **Định nghĩa Text Symbol:**
+   - Lên menu: **Goto** -> **Text Elements** -> **Text Symbols**.
+   - Dòng `001`: Nhập `Filter by Role (T=Tester D=Developer M=Manager)`.
+   - Nhấn **Save** và **Activate**.
+8. Quay lại code và nhấn **Activate** (Ctrl+F3).
+
+**Source code:**
+
+```abap
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_USER_MANAGEMENT
+*&---------------------------------------------------------------------*
+REPORT z_bug_user_management.
+
+TABLES: zbug_users.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+  PARAMETERS: p_role TYPE zde_bug_role.
+SELECTION-SCREEN END OF BLOCK b1.
+
+DATA: lt_users    TYPE TABLE OF zbug_users,
+      lt_fieldcat TYPE slis_t_fieldcat_alv,
+      ls_fieldcat TYPE slis_fieldcat_alv,
+      ls_layout   TYPE slis_layout_alv.
+
+START-OF-SELECTION.
+
+  IF p_role IS NOT INITIAL.
+    SELECT * FROM zbug_users INTO TABLE lt_users
+      WHERE role = p_role AND is_active = 'X'
+      ORDER BY user_id.
+  ELSE.
+    SELECT * FROM zbug_users INTO TABLE lt_users
+      WHERE is_active = 'X'
+      ORDER BY role.
+  ENDIF.
+
+  IF lt_users IS INITIAL.
+    MESSAGE 'No users found' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'USER_ID'.          ls_fieldcat-seltext_m = 'User ID'.      ls_fieldcat-col_pos = 1. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'FULL_NAME'.        ls_fieldcat-seltext_m = 'Full Name'.    ls_fieldcat-col_pos = 2. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'ROLE'.             ls_fieldcat-seltext_m = 'Role'.         ls_fieldcat-col_pos = 3. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'SAP_MODULE'.       ls_fieldcat-seltext_m = 'Module'.       ls_fieldcat-col_pos = 4. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'AVAILABLE_STATUS'. ls_fieldcat-seltext_m = 'Avail Status'. ls_fieldcat-col_pos = 5. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'EMAIL'.            ls_fieldcat-seltext_m = 'Email'.        ls_fieldcat-col_pos = 6. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'IS_ACTIVE'.        ls_fieldcat-seltext_m = 'Active'.       ls_fieldcat-col_pos = 7. APPEND ls_fieldcat TO lt_fieldcat.
+
+  ls_layout-zebra             = 'X'.
+  ls_layout-colwidth_optimize = 'X'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program = sy-repid
+      is_layout          = ls_layout
+      it_fieldcat        = lt_fieldcat
+    TABLES
+      t_outtab           = lt_users
+    EXCEPTIONS
+      program_error      = 1
+      OTHERS             = 2.
+```
+
+5. Click **Save** → **Activate**
+
+---
+
+### Bước 4.7: Tạo T-code ZBUG_USERS
+
+1. Vào T-code `SE93`
+2. Transaction: `ZBUG_USERS`
+3. Short Description: `User Management`
+4. Program: `Z_BUG_USER_MANAGEMENT`
+5. Click **Save**
+
+**✅ Checkpoint:** Gõ `ZBUG_USERS` → ALV hiển thị danh sách Users, lọc được theo Role (T/D/M)
 
 ---
 
@@ -1996,7 +2162,7 @@ Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 | 1 | Database Layer | ZBUG_TRACKER, ZBUG_USERS, ZBUG_HISTORY, ZNRO_BUG | ✅ |
 | 2 | Business Logic | Z_BUG_CREATE/GET/UPDATE_STATUS/DELETE/SEND_EMAIL, SCOT | ✅ |
 | 3 | Presentation | Z_BUG_CREATE_SCREEN, Z_BUG_UPDATE_SCREEN, ZBUG_CREATE, ZBUG_UPDATE | ⏳ |
-| 4 | Reporting | Z_BUG_REPORT_ALV (Interactive), ZBUG_FORM, Z_BUG_MANAGER_DASHBOARD | ⏳ |
+| 4 | Reporting | Z_BUG_REPORT_ALV (Interactive), ZBUG_FORM, Z_BUG_MANAGER_DASHBOARD, Z_BUG_USER_MANAGEMENT | ⏳ |
 | 5 | Advanced FMs | Z_BUG_LOG_HISTORY, Z_BUG_AUTO_ASSIGN, Z_BUG_CHECK_PERMISSION, Z_BUG_UPLOAD_ATTACHMENT, Z_BUG_REASSIGN, ALV Colors | ⏳ |
 | 6 | Testing & Deploy | SCI, Transport Request, UAT 12 test cases | ⏳ |
 
@@ -2009,6 +2175,7 @@ Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 | `ZBUG_REPORT` | Z_BUG_REPORT_ALV | Tester / Developer / Manager |
 | `ZBUG_PRINT` | Z_BUG_PRINT | Tester / Manager |
 | `ZBUG_MANAGER` | Z_BUG_MANAGER_DASHBOARD | Manager |
+| `ZBUG_USERS` | Z_BUG_USER_MANAGEMENT | Manager |
 
 ---
 

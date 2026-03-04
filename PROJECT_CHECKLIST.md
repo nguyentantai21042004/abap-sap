@@ -301,7 +301,14 @@
   - [ ] ZBUG_PRINT in preview SmartForm đúng thông tin
   - [ ] ZBUG_MANAGER hiển thị thống kê + Waiting list
 
-**✅ Phase 4 Checkpoint:** 4 T-codes hoạt động, SmartForm preview được, Manager Dashboard có thống kê
+- [ ] **4.6 Program `Z_BUG_USER_MANAGEMENT`** + T-code `ZBUG_USERS`
+  - [ ] SE38 → Executable program, TABLES: zbug_users
+  - [ ] Selection Screen lọc theo Role (T/D/M)
+  - [ ] ALV Grid hiển thị 7 cột: USER_ID, FULL_NAME, ROLE, MODULE, AVAILABLE_STATUS, EMAIL, IS_ACTIVE
+  - [ ] SE93 → T-code ZBUG_USERS → Program Z_BUG_USER_MANAGEMENT
+  - [ ] Test: Gõ ZBUG_USERS, lọc D → thấy danh sách Developer
+
+**✅ Phase 4 Checkpoint:** 6 T-codes hoạt động (CREATE/UPDATE/REPORT/PRINT/MANAGER/USERS), SmartForm preview được
 
 ---
 
