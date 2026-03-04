@@ -2,8 +2,8 @@
 
 **Dự án:** SAP Bug Tracking Management System  
 **Đối tượng:** Developer chưa có kinh nghiệm SAP hoặc chưa setup môi trường  
-**Ngày:** 31/01/2026  
-**Phiên bản:** 1.0
+**Ngày cập nhật:** 03/03/2026  
+**Phiên bản:** 2.0
 
 ---
 
@@ -12,10 +12,11 @@
 - [Phase 0: Chuẩn Bị Môi Trường](#phase-0-chuẩn-bị-môi-trường)
 - [Ma Trận Sử Dụng Tài Khoản (Account Matrix)](#ma-trận-sử-dụng-tài-khoản-account-matrix)
 - [Phase 1: Database Layer](#phase-1-database-layer-tuần-1)
-- [Phase 2: Business Logic Layer](#phase-2-business-logic-layer-tuần-2-3)
-- [Phase 3: Presentation Layer](#phase-3-presentation-layer-tuần-2-3)
-- [Phase 4: Reporting Module](#phase-4-reporting-module-tuần-4-5)
-- [Phase 5: Testing & Deployment](#phase-5-testing--deployment-tuần-6-8)
+- [Phase 2: Business Logic Layer](#phase-2-business-logic-layer-tuần-2-3) ✅ Hoàn thành
+- [Phase 3: Presentation Layer](#phase-3-presentation-layer-tuần-2-3) ⏳ Đang thực hiện
+- [Phase 4: ALV Report](#phase-4-alv-report-tuần-4-5)
+- [Phase 5: Advanced Function Modules](#phase-5-advanced-function-modules-nâng-cao)
+- [Phase 6: Testing & Deployment](#phase-6-testing--deployment-tuần-6-8)
 
 ---
 
@@ -838,11 +839,9 @@ ENDFUNCTION.
 > **Tài khoản sử dụng:** **DEV-061** (Pass: `@57Dt766`)  
 > SE38/SE93 cho giao diện người dùng và ALV Grid.
 
-> **Mục tiêu:** Tạo màn hình nhập liệu
+> **Mục tiêu:** Tạo màn hình nhập liệu và T-code cho người dùng
 
-### Bước 3.1: Tạo Report Program
-
-#### **Create Program Z_BUG_CREATE_SCREEN**
+### Bước 3.1: Tạo Report Program Z_BUG_CREATE_SCREEN
 
 1. Vào T-code `SE38`
 2. Program: `Z_BUG_CREATE_SCREEN`
@@ -903,19 +902,20 @@ START-OF-SELECTION.
   ENDIF.
 ```
 
-1. Click **Save** → **Activate**
+1. Click **Save** → **Activate** (Ctrl+F3)
+
+**✅ Checkpoint:** Program `Z_BUG_CREATE_SCREEN` Active trong SE38
 
 ---
 
-### Bước 3.2: Tạo T-code
-
-#### **Create T-code ZBUG_CREATE**
+### Bước 3.2: Tạo T-code ZBUG_CREATE
 
 1. Vào T-code `SE93`
 2. Transaction Code: `ZBUG_CREATE`
 3. Click **Create**
-4. Chọn **Program and Selection Screen (Report Transaction)**
-5. Điền:
+4. Short Description: `Create New Bug`
+5. Chọn **Program and Selection Screen (Report Transaction)**
+6. Điền:
 
 ```
 Program: Z_BUG_CREATE_SCREEN
@@ -924,19 +924,111 @@ Screen Number: 1000 (default)
 
 1. Click **Save**
 
-**✅ Checkpoint:** Test T-code `ZBUG_CREATE` → Màn hình nhập liệu hiển thị
+**✅ Checkpoint:** Gõ T-code `ZBUG_CREATE` → Màn hình nhập liệu "Create New Bug" hiển thị
 
 ---
 
-## PHASE 4: REPORTING MODULE (Tuần 4-5)
+### Bước 3.3: Tạo Report Program Z_BUG_UPDATE_SCREEN
+
+> **Lý do:** Theo yêu cầu, cả Tester và Developer dùng **chung một màn hình** để xem và cập nhật Bug. Màn hình này hiển thị thông tin chi tiết một Bug và cho phép cập nhật trạng thái, lý do, hoặc gán người xử lý.
+
+1. Vào T-code `SE38`
+2. Program: `Z_BUG_UPDATE_SCREEN`
+3. Click **Create** → **Executable Program**
+4. Source code:
+
+```abap
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_UPDATE_SCREEN
+*&---------------------------------------------------------------------*
+REPORT z_bug_update_screen.
+
+" Selection Screen - Nhập Bug ID
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+  PARAMETERS: p_bugid  TYPE zde_bug_id OBLIGATORY.
+SELECTION-SCREEN END OF BLOCK b1.
+
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-002.
+  PARAMETERS: p_status TYPE zde_bug_status,
+              p_devid  TYPE zde_username,
+              p_reason TYPE zde_reasons LOWER CASE.
+SELECTION-SCREEN END OF BLOCK b2.
+
+TEXT-001: 'Bug Information'.
+TEXT-002: 'Update Bug'.
+
+DATA: ls_bug      TYPE zbug_tracker,
+      lv_success  TYPE char1,
+      lv_message  TYPE string.
+
+INITIALIZATION.
+  " Nếu truyền Bug ID từ ALV, pre-fill thông tin
+  IF p_bugid IS NOT INITIAL.
+    CALL FUNCTION 'Z_BUG_GET'
+      EXPORTING iv_bug_id  = p_bugid
+      IMPORTING es_bug     = ls_bug
+                ev_success = lv_success.
+    IF lv_success = 'Y'.
+      p_status = ls_bug-status.
+      p_devid  = ls_bug-dev_id.
+    ENDIF.
+  ENDIF.
+
+START-OF-SELECTION.
+
+  " Update status nếu có thay đổi
+  IF p_status IS NOT INITIAL.
+    CALL FUNCTION 'Z_BUG_UPDATE_STATUS'
+      EXPORTING
+        iv_bug_id     = p_bugid
+        iv_new_status = p_status
+        iv_changed_by = sy-uname
+      IMPORTING
+        ev_success    = lv_success
+        ev_message    = lv_message.
+
+    IF lv_success = 'Y'.
+      " Log lịch sử
+      CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+        EXPORTING
+          iv_bug_id      = p_bugid
+          iv_action_type = 'ST'
+          iv_old_value   = ls_bug-status
+          iv_new_value   = p_status
+          iv_reason      = p_reason.
+      MESSAGE lv_message TYPE 'S'.
+    ELSE.
+      MESSAGE lv_message TYPE 'E'.
+    ENDIF.
+  ENDIF.
+```
+
+1. Click **Save** → **Activate**
+
+---
+
+### Bước 3.4: Tạo T-code ZBUG_UPDATE
+
+1. Vào T-code `SE93`
+2. Transaction: `ZBUG_UPDATE`
+3. Short Description: `View/Update Bug Detail`
+4. Program: `Z_BUG_UPDATE_SCREEN`
+5. Click **Save**
+
+**✅ Checkpoint:** Gõ T-code `ZBUG_UPDATE` + nhập Bug ID → Thấy thông tin Bug, có thể cập nhật Status
+
+---
 
 > [!TIP]
 > **Tài khoản sử dụng:** **DEV-061** (Pass: `@57Dt766`)  
-> Dùng cho SmartForms và các Report in ấn.
+> Dùng cho Report ALV hiển thị danh sách Bug.
 
-### Bước 4.1: Tạo ALV Report
+### Bước 4.1: Tạo Report Z_BUG_REPORT_ALV
 
-#### **Program: Z_BUG_REPORT_ALV**
+1. Vào T-code `SE38`
+2. Program: `Z_BUG_REPORT_ALV`
+3. Click **Create** → **Executable Program**
+4. Source code:
 
 ```abap
 *&---------------------------------------------------------------------*
@@ -949,12 +1041,12 @@ TABLES: zbug_tracker.
 " Selection Screen
 SELECT-OPTIONS: s_bugid FOR zbug_tracker-bug_id,
                 s_status FOR zbug_tracker-status,
-                s_module FOR zbug_tracker-module,
-                s_prior FOR zbug_tracker-priority.
+                s_module FOR zbug_tracker-sap_module,
+                s_prior  FOR zbug_tracker-priority.
 
 " Internal table
-DATA: lt_bugs TYPE TABLE OF zbug_tracker,
-      ls_bug  TYPE zbug_tracker.
+DATA: lt_bugs     TYPE TABLE OF zbug_tracker,
+      ls_bug      TYPE zbug_tracker.
 
 " ALV
 DATA: lt_fieldcat TYPE slis_t_fieldcat_alv,
@@ -965,9 +1057,9 @@ START-OF-SELECTION.
 
   " Fetch data
   SELECT * FROM zbug_tracker INTO TABLE lt_bugs
-    WHERE bug_id IN s_bugid
-      AND status IN s_status
-      AND module IN s_module
+    WHERE bug_id  IN s_bugid
+      AND status  IN s_status
+      AND sap_module IN s_module
       AND priority IN s_prior
     ORDER BY created_at DESCENDING.
 
@@ -1026,7 +1118,7 @@ FORM build_fieldcat.
   APPEND ls_fieldcat TO lt_fieldcat.
 
   CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'REPORTER'.
+  ls_fieldcat-fieldname = 'TESTER_ID'.
   ls_fieldcat-seltext_m = 'Reporter'.
   ls_fieldcat-col_pos = 6.
   APPEND ls_fieldcat TO lt_fieldcat.
@@ -1039,196 +1131,395 @@ FORM build_fieldcat.
 ENDFORM.
 ```
 
-#### **Create T-code ZBUG_REPORT**
+1. Click **Save** → **Activate**
 
-1. T-code `SE93`
+---
+
+### Bước 4.2: Tạo T-code ZBUG_REPORT
+
+1. Vào T-code `SE93`
 2. Transaction: `ZBUG_REPORT`
-3. Program: `Z_BUG_REPORT_ALV`
+3. Short Description: `Bug Tracking Report`
+4. Program: `Z_BUG_REPORT_ALV`
+5. Click **Save**
+
+**✅ Checkpoint:** Gõ T-code `ZBUG_REPORT` → ALV Grid hiển thị danh sách Bug
 
 ---
 
-### Bước 4.2: SmartForms
+### Bước 4.3: Nâng cấp ALV - Thêm nút tương tác (Interactive ALV)
 
-#### **Create SmartForm ZBUG_FORM**
+> **Lý do (extra-requirements #6):** User cần cập nhật Status/Assign ngay trên ALV thay vì chuyển sang màn hình khác cho các thao tác đơn giản. Thêm 2 nút: **"Update Status"** và **"Assign Dev"** vào Toolbar của ALV.
 
-1. Vào T-code `SMARTFORMS`
-2. Form Name: `ZBUG_FORM`
-3. Click **Create**
-4. Thiết kế layout:
-   - **Page**: FIRST
-   - **Window**: MAIN
-   - **Text**: Add bug details
+Thêm đoạn code sau vào `Z_BUG_REPORT_ALV`, bổ sung vào phần `DATA` và xây dựng thêm:
 
-(Chi tiết SmartForms design cần workshop riêng)
+```abap
+" Khai báo thêm vào phần DATA
+DATA: lt_excl     TYPE slis_t_extab,
+      ls_excl     TYPE slis_extab.
 
----
+" --- FORM hiển thị Toolbar tùy chỉnh ---
+FORM user_command USING lv_ucomm TYPE syucomm
+                        ls_selfield TYPE slis_selfield.
 
-## PHASE 5: TESTING & DEPLOYMENT (Tuần 6-8)
+  DATA: lv_bugid   TYPE zde_bug_id,
+        lv_success TYPE char1,
+        lv_message TYPE string.
 
-> [!TIP]
-> **Tài khoản sử dụng:**
->
-> - Đính kèm file: **DEV-237** (Pass: `toiyeufpt`)
-> - Cấu hình Email: **DEV-242** (Pass: `12345678`)
-> - Verify & Management: **DEV-118** (Pass: `Qwer123@`)
+  " Lấy Bug ID tại dòng được click
+  READ TABLE lt_bugs INDEX ls_selfield-tabindex INTO DATA(ls_sel).
+  lv_bugid = ls_sel-bug_id.
 
-> **Mục tiêu:** Code Inspector
+  CASE lv_ucomm.
+    WHEN 'ZUPD'.  " Nút Update - Mở Z_BUG_UPDATE_SCREEN
+      SET PARAMETER ID 'ZBG' FIELD lv_bugid.
+      CALL TRANSACTION 'ZBUG_UPDATE' AND SKIP FIRST SCREEN.
 
-1. Vào T-code `SCI`
-2. Create inspection với variant `DEFAULT`
-3. Add programs: `Z_BUG_*`
-4. Execute → Fix all errors/warnings
+    WHEN 'ZASGN'. " Nút Assign - Tự động assign
+      CALL FUNCTION 'Z_BUG_AUTO_ASSIGN'
+        EXPORTING
+          iv_bug_id  = lv_bugid
+          iv_module  = ls_sel-sap_module
+        IMPORTING
+          ev_message = lv_message.
+      MESSAGE lv_message TYPE 'S'.
+  ENDCASE.
 
-### Bước 5.2: Transport Request
+  ls_selfield-refresh = 'X'.
 
-1. Vào T-code `SE09`
-2. Create Transport Request
-3. Add all objects từ package `ZBUGTRACK`
-4. Release Transport
+ENDFORM.
 
-### Bước 5.3: UAT Checklist
-
-- [ ] Create bug successfully
-- [ ] Email sent to developer
-- [ ] ALV report displays correctly
-- [ ] Update status works
-- [ ] SmartForm prints correctly
-- [ ] Performance acceptable (< 2s response)
-
----
-
-## 🎯 HOÀN THÀNH
-
-Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
-
-**Next Steps:**
-
-- Deploy to Production
-- Train end users
-- Monitor system performance
-- Collect feedback for improvements
-
----
-
-**Prepared by:** [Your Name]  
-**Last Updated:** 02/02/2026
-
----
-
-## PHASE 1.5: BỔ SUNG DATABASE (YÊU CẦU MỚI)
-
-> **Cập nhật:** 02/02/2026  
-> **Mục tiêu:** Thêm bảng `ZBUG_USERS`, `ZBUG_HISTORY` và fields mới cho `ZBUG_TRACKER`
-
-### Bước 1.5.1: Tạo Thêm Domains
-
-| Domain              | Data Type | Length | Fixed Values                                 |
-| ------------------- | --------- | ------ | -------------------------------------------- |
-| `ZDOM_ROLE`         | CHAR      | 1      | T=Tester, D=Developer, M=Manager             |
-| `ZDOM_AVAIL_STATUS` | CHAR      | 1      | A=Available, B=Busy, L=Leave, W=Working      |
-| `ZDOM_BUG_TYPE`     | CHAR      | 1      | C=Code, F=Configuration                      |
-| `ZDOM_ACTION_TYPE`  | CHAR      | 2      | CR=Create, AS=Assign, RS=Reassign, ST=Status |
-
-**Cập nhật `ZDOM_STATUS`:**
-
-```text
-1 - New
-W - Waiting (Manager assign)
-2 - Assigned
-3 - In Progress
-4 - Fixed
-5 - Closed
+" --- FORM thêm nút vào Toolbar ---
+FORM pf_status_set USING lv_extab TYPE slis_t_extab.
+  SET PF-STATUS 'ZBUG_STATUS'.
+ENDFORM.
 ```
 
----
+Sau đó trong `CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'`, thêm 2 tham số Callback:
 
-### Bước 1.5.2: Tạo Thêm Data Elements
+```abap
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program       = sy-repid
+      i_callback_pf_status_set = 'PF_STATUS_SET'
+      i_callback_user_command  = 'USER_COMMAND'
+      is_layout                = ls_layout
+      it_fieldcat              = lt_fieldcat
+    TABLES
+      t_outtab                 = lt_bugs
+    EXCEPTIONS
+      program_error            = 1
+      OTHERS                   = 2.
+```
 
-| Data Element       | Domain            | Short Label | Long Label       |
-| ------------------ | ----------------- | ----------- | ---------------- |
-| `ZDE_ROLE`         | ZDOM_ROLE         | Role        | User Role        |
-| `ZDE_AVAIL_STATUS` | ZDOM_AVAIL_STATUS | Avail       | Available Status |
-| `ZDE_BUG_TYPE`     | ZDOM_BUG_TYPE     | Type        | Bug Type         |
-| `ZDE_ACTION_TYPE`  | ZDOM_ACTION_TYPE  | Action      | Action Type      |
-| `ZDE_FULL_NAME`    | CHAR50            | Name        | Full Name        |
-| `ZDE_EMAIL`        | CHAR100           | Email       | Email Address    |
-| `ZDE_ATT_PATH`     | CHAR100           | File        | Attachment Path  |
-| `ZDE_REASONS`      | STRG              | Reason      | Bug Reason       |
-
----
-
-### Bước 1.5.3: Tạo Bảng ZBUG_USERS
-
-1. Vào T-code `SE11` → Database table → `ZBUG_USERS`
-2. Tab Fields:
-
-| Field            | Key | Data Element     | Description      |
-| ---------------- | --- | ---------------- | ---------------- |
-| MANDT            | ✓   | MANDT            | Client           |
-| USER_ID          | ✓   | ZDE_USERNAME     | SAP Username     |
-| ROLE             |     | ZDE_ROLE         | T/D/M            |
-| FULL_NAME        |     | ZDE_FULL_NAME    | Họ tên           |
-| MODULE           |     | ZDE_SAP_MODULE   | Module phụ trách |
-| AVAILABLE_STATUS |     | ZDE_AVAIL_STATUS | Trạng thái       |
-| IS_ACTIVE        |     | CHAR1            | X=Active         |
-| EMAIL            |     | ZDE_EMAIL        | Email            |
-
-1. Technical Settings: APPL0, Size 0
+> [!NOTE]
+> Tạo thêm GUI Status `ZBUG_STATUS` trong SE80 cho program `Z_BUG_REPORT_ALV` với 2 Function Code: `ZUPD` (Update Bug) và `ZASGN` (Auto Assign).
 
 ---
 
-### Bước 1.5.4: Tạo Bảng ZBUG_HISTORY
+### Bước 4.4: Tạo SmartForm ZBUG_FORM (In ấn Bug Report)
 
-1. Vào T-code `SE11` → Database table → `ZBUG_HISTORY`
-2. Tab Fields:
+> **Lý do (requirements #3B):** In biên bản bàn giao lỗi dạng văn bản chính thức (PDF/Print).
 
-| Field        | Key | Data Element     | Description    |
-| ------------ | --- | ---------------- | -------------- |
-| MANDT        | ✓   | MANDT            | Client         |
-| LOG_ID       | ✓   | NUMC10           | Log ID         |
-| BUG_ID       |     | ZDE_BUG_ID       | Bug reference  |
-| CHANGED_BY   |     | ZDE_USERNAME     | Người thay đổi |
-| CHANGED_AT   |     | ZDE_CREATED_DATE | Ngày           |
-| CHANGED_TIME |     | ZDE_CREATED_TIME | Giờ            |
-| ACTION_TYPE  |     | ZDE_ACTION_TYPE  | Loại action    |
-| OLD_VALUE    |     | CHAR50           | Giá trị cũ     |
-| NEW_VALUE    |     | CHAR50           | Giá trị mới    |
-| REASON       |     | ZDE_REASONS      | Lý do          |
+1. Vào T-code **`SMARTFORMS`**
+2. Form Name: `ZBUG_FORM`
+3. Click **Create**
+4. Thiết kế layout theo cấu trúc sau:
+
+```
+Page: FIRST
+  Window: HEADER
+    - Logo + Tên công ty (BMPFILE nếu có)
+    - Tiêu đề: "BUG TRACKING REPORT"
+    - Số Bug ID, Ngày in: &DATE& &TIME&
+
+  Window: MAIN
+    Text node:
+    - Bug ID:     &BUG_ID&
+    - Title:      &TITLE&
+    - Module:     &SAP_MODULE&
+    - Priority:   &PRIORITY&
+    - Status:     &STATUS&
+    - Reporter:   &TESTER_ID&
+    - Developer:  &DEV_ID&
+    - Created:    &CREATED_AT&
+    - Closed:     &CLOSED_AT&
+    - Description: &DESC_TEXT&
+    - Reasons:    &REASONS&
+
+  Window: FOOTER
+    - Chữ ký Tester / Developer / Manager
+```
+
+1. Tab **Form Interface** → Khai báo Parameters vào Import:
+
+| Parameter | Type   | Associated Type |
+| --------- | ------ | --------------- |
+| IS_BUG    | Import | ZBUG_TRACKER    |
+
+1. Click **Check** → **Activate**
+
+#### Tạo Driver Program cho SmartForm: Z_BUG_PRINT
+
+```abap
+REPORT z_bug_print.
+
+PARAMETERS: p_bugid TYPE zde_bug_id OBLIGATORY.
+
+DATA: ls_bug           TYPE zbug_tracker,
+      lv_success       TYPE char1,
+      lv_fm_name       TYPE rs38l_fnam,
+      lv_control_param TYPE ssfctrlop,
+      lv_output_param  TYPE ssfcompop.
+
+START-OF-SELECTION.
+
+  " Lấy thông tin Bug
+  CALL FUNCTION 'Z_BUG_GET'
+    EXPORTING  iv_bug_id  = p_bugid
+    IMPORTING  es_bug     = ls_bug
+               ev_success = lv_success.
+
+  IF lv_success <> 'Y'.
+    MESSAGE 'Bug not found' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  " Lấy tên FM của SmartForm
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING  formname           = 'ZBUG_FORM'
+    IMPORTING  fm_name            = lv_fm_name
+    EXCEPTIONS no_form            = 1
+               no_function_module = 2
+               OTHERS             = 3.
+
+  lv_control_param-no_dialog = 'X'.
+  lv_control_param-preview   = 'X'.
+
+  " Gọi SmartForm
+  CALL FUNCTION lv_fm_name
+    EXPORTING
+      control_parameters = lv_control_param
+      output_options     = lv_output_param
+      is_bug             = ls_bug
+    EXCEPTIONS
+      formatting_error   = 1
+      internal_error     = 2
+      send_error         = 3
+      user_canceled      = 4
+      OTHERS             = 5.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'SmartForm print failed' TYPE 'E'.
+  ENDIF.
+```
+
+Tạo T-code `ZBUG_PRINT` → Program `Z_BUG_PRINT`.
+
+**✅ Checkpoint:** Gõ `ZBUG_PRINT`, nhập Bug ID → Form in ấn preview hiển thị
 
 ---
 
-### Bước 1.5.5: Bổ Sung Fields cho ZBUG_TRACKER
+### Bước 4.5: Tạo Manager Dashboard Z_BUG_MANAGER_DASHBOARD
 
-Thêm các fields sau vào bảng `ZBUG_TRACKER`:
+> **Lý do (requirements #10 + extra #7):** Manager cần dashboard tổng hợp: số Bug theo Status/Module, danh sách Bug đang Waiting, và hiệu suất Tester/Developer.
 
-| Field            | Data Element     | Description      |
-| ---------------- | ---------------- | ---------------- |
-| BUG_TYPE         | ZDE_BUG_TYPE     | C=Code, F=Config |
-| REASONS          | ZDE_REASONS      | Nguyên nhân      |
-| TESTER_ID        | ZDE_USERNAME     | Tester báo lỗi   |
-| VERIFY_TESTER_ID | ZDE_USERNAME     | Tester verify    |
-| APPROVED_BY      | ZDE_USERNAME     | Manager duyệt    |
-| APPROVED_AT      | ZDE_CREATED_DATE | Ngày duyệt       |
-| ATT_REPORT       | ZDE_ATT_PATH     | File report      |
-| ATT_FIX          | ZDE_ATT_PATH     | File fix         |
-| ATT_VERIFY       | ZDE_ATT_PATH     | File verify      |
+1. Vào T-code `SE38`
+2. Program: `Z_BUG_MANAGER_DASHBOARD`
+3. Type: **Executable Program**
+
+```abap
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_MANAGER_DASHBOARD
+*&---------------------------------------------------------------------*
+REPORT z_bug_manager_dashboard.
+
+TYPES: BEGIN OF ty_stat,
+         status   TYPE zde_bug_status,
+         cnt      TYPE i,
+       END OF ty_stat.
+
+TYPES: BEGIN OF ty_module_stat,
+         sap_module TYPE zde_sap_module,
+         cnt        TYPE i,
+       END OF ty_module_stat.
+
+DATA: lt_stat        TYPE TABLE OF ty_stat,
+      ls_stat        TYPE ty_stat,
+      lt_mod_stat    TYPE TABLE OF ty_module_stat,
+      ls_mod_stat    TYPE ty_module_stat,
+      lt_waiting     TYPE TABLE OF zbug_tracker,
+      lt_fieldcat    TYPE slis_t_fieldcat_alv,
+      ls_fieldcat    TYPE slis_fieldcat_alv,
+      ls_layout      TYPE slis_layout_alv,
+      lv_total       TYPE i.
+
+START-OF-SELECTION.
+
+  " --- Thống kê theo Status ---
+  SELECT status COUNT(*) AS cnt FROM zbug_tracker
+    INTO TABLE lt_stat
+    GROUP BY status.
+
+  SELECT COUNT(*) FROM zbug_tracker INTO lv_total.
+
+  WRITE: / '=== BUG TRACKING DASHBOARD ==='.
+  WRITE: / 'Total bugs:', lv_total.
+  SKIP.
+  WRITE: / '-- By Status --'.
+
+  LOOP AT lt_stat INTO ls_stat.
+    WRITE: / ls_stat-status, ':', ls_stat-cnt.
+  ENDLOOP.
+
+  " --- Thống kê theo Module ---
+  SELECT sap_module COUNT(*) AS cnt FROM zbug_tracker
+    INTO TABLE lt_mod_stat
+    GROUP BY sap_module
+    ORDER BY cnt DESCENDING.
+
+  SKIP.
+  WRITE: / '-- By Module --'.
+  LOOP AT lt_mod_stat INTO ls_mod_stat.
+    WRITE: / ls_mod_stat-sap_module, ':', ls_mod_stat-cnt.
+  ENDLOOP.
+
+  " --- Danh sách Bug đang Waiting (cần Manager assign thủ công) ---
+  SELECT * FROM zbug_tracker INTO TABLE lt_waiting
+    WHERE status = 'W'
+    ORDER BY created_at ASCENDING.
+
+  SKIP.
+  WRITE: / '-- Waiting Bugs (Manual Assign Required) --'.
+
+  " Build fieldcat cho Waiting ALV
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'BUG_ID'.    ls_fieldcat-seltext_m = 'Bug ID'.    ls_fieldcat-col_pos = 1. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'TITLE'.     ls_fieldcat-seltext_m = 'Title'.     ls_fieldcat-col_pos = 2. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'SAP_MODULE'.ls_fieldcat-seltext_m = 'Module'.    ls_fieldcat-col_pos = 3. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'PRIORITY'.  ls_fieldcat-seltext_m = 'Priority'.  ls_fieldcat-col_pos = 4. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'TESTER_ID'. ls_fieldcat-seltext_m = 'Reporter'.  ls_fieldcat-col_pos = 5. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'CREATED_AT'.ls_fieldcat-seltext_m = 'Created'.   ls_fieldcat-col_pos = 6. APPEND ls_fieldcat TO lt_fieldcat.
+
+  ls_layout-zebra = 'X'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program = sy-repid
+      is_layout          = ls_layout
+      it_fieldcat        = lt_fieldcat
+    TABLES
+      t_outtab           = lt_waiting
+    EXCEPTIONS
+      program_error      = 1
+      OTHERS             = 2.
+```
+
+1. Click **Save** → **Activate**
+2. Tạo T-code `ZBUG_MANAGER` → Program `Z_BUG_MANAGER_DASHBOARD` (SE93)
+
+**✅ Checkpoint:** Gõ `ZBUG_MANAGER` → Thấy thống kê tổng Bug + bảng Waiting Bugs
 
 ---
 
-## PHASE 2.5: BỔ SUNG FUNCTION MODULES (YÊU CẦU MỚI)
+## PHASE 5: ADVANCED FUNCTION MODULES (Nâng Cao)
 
-### Bước 2.5.1: Function Z_BUG_AUTO_ASSIGN
+> [!TIP]
+> **Tài khoản sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)  
+> Thêm các Function Modules nâng cao vào Function Group `ZBUG_FG`.
+
+> **Mục tiêu:** Auto-assign, Permission Check, History Logging và ALV màu sắc
+
+### Bước 5.1: Z_BUG_LOG_HISTORY (Lưu vết thay đổi)
+
+Đây là FM đơn giản nhất trong Phase 5. Làm trước để có lịch sử thay đổi ngay.
+
+**Import Parameters**
+
+| Parameter      | Typing | Associated Type  | Pass | Opt | Description     |
+| -------------- | ------ | ---------------- | ---- | --- | --------------- |
+| IV_BUG_ID      | TYPE   | ZDE_BUG_ID       | [x]  | [ ] | Bug ID          |
+| IV_ACTION_TYPE | TYPE   | ZDE_BUG_ACT_TYPE | [x]  | [ ] | Loại action     |
+| IV_OLD_VALUE   | TYPE   | ZDE_BUG_TITLE    | [x]  | [x] | Giá trị cũ     |
+| IV_NEW_VALUE   | TYPE   | ZDE_BUG_TITLE    | [x]  | [x] | Giá trị mới   |
+| IV_REASON      | TYPE   | ZDE_REASONS      | [x]  | [x] | Lý do           |
+
+```abap
+FUNCTION z_bug_log_history.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_ACTION_TYPE) TYPE  ZDE_BUG_ACT_TYPE
+*"     VALUE(IV_OLD_VALUE) TYPE  ZDE_BUG_TITLE OPTIONAL
+*"     VALUE(IV_NEW_VALUE) TYPE  ZDE_BUG_TITLE OPTIONAL
+*"     VALUE(IV_REASON) TYPE  ZDE_REASONS OPTIONAL
+*"----------------------------------------------------------------------
+
+  DATA: ls_log   TYPE zbug_history,
+        lv_logid TYPE numc10.
+
+  " Get next log ID
+  SELECT MAX( log_id ) FROM zbug_history INTO lv_logid.
+  lv_logid = lv_logid + 1.
+
+  ls_log-mandt        = sy-mandt.
+  ls_log-log_id       = lv_logid.
+  ls_log-bug_id       = iv_bug_id.
+  ls_log-changed_by   = sy-uname.
+  ls_log-changed_at   = sy-datum.
+  ls_log-changed_time = sy-uzeit.
+  ls_log-action_type  = iv_action_type.
+  ls_log-old_value    = iv_old_value.
+  ls_log-new_value    = iv_new_value.
+  ls_log-reason       = iv_reason.
+
+  INSERT zbug_history FROM ls_log.
+  COMMIT WORK.
+
+ENDFUNCTION.
+```
+
+Click **Save** → **Activate**
+
+---
+
+### Bước 5.2: Z_BUG_AUTO_ASSIGN (Tự động phân công)
+
+> [!WARNING]
+> FM này dùng cú pháp ABAP mới (`SELECT ... INTO @DATA(...)`). Nếu máy bạn báo lỗi cú pháp, hãy chuyển sang phiên bản Legacy bên dưới.
+
+**Import Parameters**
+
+| Parameter | Typing | Associated Type | Pass | Description     |
+| --------- | ------ | --------------- | ---- | --------------- |
+| IV_BUG_ID | TYPE   | ZDE_BUG_ID      | [x]  | Bug ID          |
+| IV_MODULE | TYPE   | ZDE_SAP_MODULE  | [x]  | Module của Bug  |
+
+**Export Parameters**
+
+| Parameter  | Typing | Associated Type | Pass | Description     |
+| ---------- | ------ | --------------- | ---- | --------------- |
+| EV_DEV_ID  | TYPE   | ZDE_USERNAME    | [x]  | Dev được assign |
+| EV_STATUS  | TYPE   | ZDE_BUG_STATUS  | [x]  | Trạng thái mới |
+| EV_MESSAGE | TYPE   | STRING          | [x]  | Message         |
 
 ```abap
 FUNCTION z_bug_auto_assign.
 *"----------------------------------------------------------------------
+*"*"Local Interface:
 *"  IMPORTING
-*"     VALUE(IV_BUG_ID) TYPE ZDE_BUG_ID
-*"     VALUE(IV_MODULE) TYPE ZDE_SAP_MODULE
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_MODULE) TYPE  ZDE_SAP_MODULE
 *"  EXPORTING
-*"     VALUE(EV_DEV_ID) TYPE ZDE_USERNAME
-*"     VALUE(EV_STATUS) TYPE ZDE_BUG_STATUS
-*"     VALUE(EV_MESSAGE) TYPE STRING
+*"     VALUE(EV_DEV_ID) TYPE  ZDE_USERNAME
+*"     VALUE(EV_STATUS) TYPE  ZDE_BUG_STATUS
+*"     VALUE(EV_MESSAGE) TYPE  STRING
 *"----------------------------------------------------------------------
 
   TYPES: BEGIN OF ty_dev_workload,
@@ -1237,35 +1528,38 @@ FUNCTION z_bug_auto_assign.
          END OF ty_dev_workload.
 
   DATA: lt_devs     TYPE TABLE OF ty_dev_workload,
+        lt_available TYPE TABLE OF zde_username,
         ls_dev      TYPE ty_dev_workload,
+        lv_user     TYPE zde_username,
+        lv_count    TYPE i,
         lv_min_load TYPE i VALUE 999.
 
-  " Get available developers for this module
-  SELECT user_id FROM zbug_users INTO TABLE @DATA(lt_available)
-    WHERE module = @iv_module
+  " Get available developers for this module (Legacy syntax)
+  SELECT user_id FROM zbug_users INTO TABLE lt_available
+    WHERE sap_module = iv_module
       AND role = 'D'
       AND available_status = 'A'
       AND is_active = 'X'.
 
   IF sy-subrc <> 0.
-    " No dev available → set Waiting
+    " No dev available - set Waiting
     ev_status = 'W'.
     ev_message = 'No developer available. Bug set to Waiting.'.
-
     UPDATE zbug_tracker SET status = 'W' WHERE bug_id = iv_bug_id.
     COMMIT WORK.
     RETURN.
   ENDIF.
 
-  " Count workload for each dev
-  LOOP AT lt_available INTO DATA(ls_avail).
+  " Count workload for each dev (Legacy syntax)
+  LOOP AT lt_available INTO lv_user.
     CLEAR ls_dev.
-    ls_dev-user_id = ls_avail-user_id.
+    ls_dev-user_id = lv_user.
 
-    SELECT COUNT(*) FROM zbug_tracker INTO @ls_dev-workload
-      WHERE dev_id = @ls_avail-user_id
+    SELECT COUNT(*) FROM zbug_tracker INTO lv_count
+      WHERE dev_id = lv_user
         AND status IN ('2', '3').
 
+    ls_dev-workload = lv_count.
     APPEND ls_dev TO lt_devs.
   ENDLOOP.
 
@@ -1287,25 +1581,48 @@ FUNCTION z_bug_auto_assign.
 
   COMMIT WORK.
   ev_status = '2'.
-  ev_message = |Bug assigned to { ev_dev_id }|.
+  CONCATENATE 'Bug assigned to ' ev_dev_id INTO ev_message.
 
 ENDFUNCTION.
 ```
 
+Click **Save** → **Activate**
+
 ---
 
-### Bước 2.5.2: Function Z_BUG_CHECK_PERMISSION
+### Bước 5.3: Z_BUG_CHECK_PERMISSION (Phân quyền theo Role)
+
+> [!WARNING]
+> FM này cũng dùng cú pháp `COND #(...)` (ABAP 7.40+). Phiên bản dưới đây đã được viết lại theo **Legacy syntax** để đảm bảo tương thích.
+
+**Import Parameters**
+
+| Parameter | Typing | Associated Type | Pass | Description           |
+| --------- | ------ | --------------- | ---- | --------------------- |
+| IV_USER   | TYPE   | ZDE_USERNAME    | [x]  | User ID               |
+| IV_BUG_ID | TYPE   | ZDE_BUG_ID      | [x]  | Bug cần kiểm tra      |
+| IV_ACTION | TYPE   | CHAR20          | [x]  | Action (xem bảng)     |
+
+> Các giá trị `IV_ACTION` hợp lệ: `CREATE`, `UPDATE_STATUS`, `UPLOAD_REPORT`, `UPLOAD_FIX`, `UPLOAD_VERIFY`
+
+**Export Parameters**
+
+| Parameter  | Typing | Associated Type | Pass | Description     |
+| ---------- | ------ | --------------- | ---- | --------------- |
+| EV_ALLOWED | TYPE   | CHAR1           | [x]  | Y=Allowed, N=No |
+| EV_MESSAGE | TYPE   | STRING          | [x]  | Message lý do   |
 
 ```abap
 FUNCTION z_bug_check_permission.
 *"----------------------------------------------------------------------
+*"*"Local Interface:
 *"  IMPORTING
-*"     VALUE(IV_USER) TYPE ZDE_USERNAME
-*"     VALUE(IV_BUG_ID) TYPE ZDE_BUG_ID
-*"     VALUE(IV_ACTION) TYPE CHAR20  " CREATE, UPDATE_STATUS, UPLOAD_REPORT, etc.
+*"     VALUE(IV_USER) TYPE  ZDE_USERNAME
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_ACTION) TYPE  CHAR20
 *"  EXPORTING
-*"     VALUE(EV_ALLOWED) TYPE CHAR1
-*"     VALUE(EV_MESSAGE) TYPE STRING
+*"     VALUE(EV_ALLOWED) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
 *"----------------------------------------------------------------------
 
   DATA: ls_user TYPE zbug_users,
@@ -1333,11 +1650,14 @@ FUNCTION z_bug_check_permission.
 
   CASE iv_action.
     WHEN 'CREATE'.
-      " Only Tester can create
-      ev_allowed = COND #( WHEN ls_user-role = 'T' THEN 'Y' ELSE 'N' ).
+      IF ls_user-role = 'T'.
+        ev_allowed = 'Y'.
+      ELSE.
+        ev_allowed = 'N'.
+        ev_message = 'Only Tester can create bugs'.
+      ENDIF.
 
     WHEN 'UPDATE_STATUS'.
-      " Dev can only update if assigned to them
       IF ls_user-role = 'D' AND ls_bug-dev_id = iv_user.
         ev_allowed = 'Y'.
       ELSEIF ls_user-role = 'T' AND ls_bug-status = '1'.
@@ -1348,100 +1668,349 @@ FUNCTION z_bug_check_permission.
       ENDIF.
 
     WHEN 'UPLOAD_REPORT'.
-      ev_allowed = COND #( WHEN ls_user-role = 'T' AND ls_bug-tester_id = iv_user THEN 'Y' ELSE 'N' ).
+      IF ls_user-role = 'T' AND ls_bug-tester_id = iv_user.
+        ev_allowed = 'Y'.
+      ELSE.
+        ev_allowed = 'N'.
+        ev_message = 'Only the assigned Tester can upload report'.
+      ENDIF.
 
     WHEN 'UPLOAD_FIX'.
-      ev_allowed = COND #( WHEN ls_user-role = 'D' AND ls_bug-dev_id = iv_user THEN 'Y' ELSE 'N' ).
+      IF ls_user-role = 'D' AND ls_bug-dev_id = iv_user.
+        ev_allowed = 'Y'.
+      ELSE.
+        ev_allowed = 'N'.
+        ev_message = 'Only the assigned Developer can upload fix'.
+      ENDIF.
 
     WHEN 'UPLOAD_VERIFY'.
-      ev_allowed = COND #( WHEN ls_user-role = 'T' THEN 'Y' ELSE 'N' ).
+      IF ls_user-role = 'T'.
+        ev_allowed = 'Y'.
+      ELSE.
+        ev_allowed = 'N'.
+        ev_message = 'Only Tester can upload verify file'.
+      ENDIF.
 
     WHEN OTHERS.
       ev_allowed = 'N'.
+      ev_message = 'Unknown action'.
   ENDCASE.
 
 ENDFUNCTION.
 ```
 
----
-
-### Bước 2.5.3: Function Z_BUG_LOG_HISTORY
-
-```abap
-FUNCTION z_bug_log_history.
-*"  IMPORTING
-*"     VALUE(IV_BUG_ID) TYPE ZDE_BUG_ID
-*"     VALUE(IV_ACTION_TYPE) TYPE ZDE_ACTION_TYPE
-*"     VALUE(IV_OLD_VALUE) TYPE CHAR50 OPTIONAL
-*"     VALUE(IV_NEW_VALUE) TYPE CHAR50
-*"     VALUE(IV_REASON) TYPE STRING OPTIONAL
-*"----------------------------------------------------------------------
-
-  DATA: ls_log   TYPE zbug_history,
-        lv_logid TYPE numc10.
-
-  " Get next log ID
-  SELECT MAX( log_id ) FROM zbug_history INTO @lv_logid.
-  lv_logid = lv_logid + 1.
-
-  ls_log-mandt        = sy-mandt.
-  ls_log-log_id       = lv_logid.
-  ls_log-bug_id       = iv_bug_id.
-  ls_log-changed_by   = sy-uname.
-  ls_log-changed_at   = sy-datum.
-  ls_log-changed_time = sy-uzeit.
-  ls_log-action_type  = iv_action_type.
-  ls_log-old_value    = iv_old_value.
-  ls_log-new_value    = iv_new_value.
-  ls_log-reason       = iv_reason.
-
-  INSERT zbug_history FROM ls_log.
-  COMMIT WORK.
-
-ENDFUNCTION.
-```
+Click **Save** → **Activate**
 
 ---
 
-## PHASE 3.5: ALV COLOR-CODED STATUS
+### Bước 5.4: ALV - Màu sắc theo Status (Bonus)
 
-### Cách thêm màu cho Status trong ALV
+Để thêm màu vào **`Z_BUG_REPORT_ALV`**, sửa `Z_BUG_REPORT_ALV` như sau:
+
+**1. Tạo type mới có field `ROW_COLOR`:**
 
 ```abap
-" Thêm field màu vào internal table
 TYPES: BEGIN OF ty_bug_display,
          bug_id      TYPE zde_bug_id,
+         title       TYPE zde_bug_title,
+         sap_module  TYPE zde_sap_module,
+         priority    TYPE zde_priority,
          status      TYPE zde_bug_status,
-         " ... other fields
-         row_color   TYPE char4,  " Color field
+         tester_id   TYPE zde_username,
+         created_at  TYPE zde_bug_cr_date,
+         row_color   TYPE c LENGTH 4,
        END OF ty_bug_display.
 
-" Set color based on status
-LOOP AT lt_bugs ASSIGNING FIELD-SYMBOL(<fs_bug>).
-  CASE <fs_bug>-status.
-    WHEN '1'. <fs_bug>-row_color = 'C100'. " Blue - New
-    WHEN 'W'. <fs_bug>-row_color = 'C310'. " Yellow - Waiting
-    WHEN '2'. <fs_bug>-row_color = 'C300'. " Orange - Assigned
-    WHEN '3'. <fs_bug>-row_color = 'C500'. " Purple - In Progress
-    WHEN '4'. <fs_bug>-row_color = 'C510'. " Green - Fixed
-    WHEN '5'. <fs_bug>-row_color = 'C200'. " Grey - Closed
-  ENDCASE.
-ENDLOOP.
+DATA: lt_display TYPE TABLE OF ty_bug_display,
+      ls_display TYPE ty_bug_display.
+```
 
-" Set layout for coloring
+**2. Map data và gán màu sau khi SELECT:**
+
+```abap
+LOOP AT lt_bugs INTO ls_bug.
+  CLEAR ls_display.
+  ls_display-bug_id     = ls_bug-bug_id.
+  ls_display-title      = ls_bug-title.
+  ls_display-sap_module = ls_bug-sap_module.
+  ls_display-priority   = ls_bug-priority.
+  ls_display-status     = ls_bug-status.
+  ls_display-tester_id  = ls_bug-tester_id.
+  ls_display-created_at = ls_bug-created_at.
+
+  CASE ls_bug-status.
+    WHEN '1'. ls_display-row_color = 'C100'. " Blue   - New
+    WHEN 'W'. ls_display-row_color = 'C310'. " Yellow - Waiting
+    WHEN '2'. ls_display-row_color = 'C300'. " Orange - Assigned
+    WHEN '3'. ls_display-row_color = 'C500'. " Purple - In Progress
+    WHEN '4'. ls_display-row_color = 'C510'. " Green  - Fixed
+    WHEN '5'. ls_display-row_color = 'C200'. " Grey   - Closed
+  ENDCASE.
+  APPEND ls_display TO lt_display.
+ENDLOOP.
+```
+
+**3. Set layout để kích hoạt màu:**
+
+```abap
 ls_layout-info_fieldname = 'ROW_COLOR'.
 ```
 
 ---
 
+### Bước 5.5: Z_BUG_UPLOAD_ATTACHMENT (Đính kèm file qua GOS)
+
+> **Lý do (requirements #5 + extra #4):** Mỗi Bug có 3 loại file đính kèm (ATT_REPORT/ATT_FIX/ATT_VERIFY), mỗi loại do đúng người có trách nhiệm upload. Dùng GOS (Generic Object Services) của SAP với account **DEV-237**.
+
+> [!IMPORTANT]
+> Sử dụng account **DEV-237** (Pass: `toiyeufpt`) để thực hiện bước này.
+
+**Import Parameters**
+
+| Parameter      | Typing | Associated Type | Pass | Description                  |
+| -------------- | ------ | --------------- | ---- | ---------------------------- |
+| IV_BUG_ID      | TYPE   | ZDE_BUG_ID      | [x]  | Bug ID                       |
+| IV_ATT_TYPE    | TYPE   | CHAR10          | [x]  | REPORT / FIX / VERIFY        |
+| IV_FILE_PATH   | TYPE   | ZDE_BUG_ATT_PATH| [x]  | Đường dẫn file lưu trên GOS  |
+
+**Export Parameters**
+
+| Parameter  | Typing | Associated Type | Pass | Description |
+| ---------- | ------ | --------------- | ---- | ----------- |
+| EV_SUCCESS | TYPE   | CHAR1           | [x]  | Y/N         |
+| EV_MESSAGE | TYPE   | STRING          | [x]  | Message     |
+
+```abap
+FUNCTION z_bug_upload_attachment.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_ATT_TYPE) TYPE  CHAR10
+*"     VALUE(IV_FILE_PATH) TYPE  ZDE_BUG_ATT_PATH
+*"  EXPORTING
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
+
+  DATA: ls_bug  TYPE zbug_tracker.
+
+  " Kiểm tra Bug tồn tại
+  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
+    WHERE bug_id = iv_bug_id.
+
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    ev_message = 'Bug not found'.
+    RETURN.
+  ENDIF.
+
+  " Kiểm tra bug đã Closed - không cho upload thêm
+  IF ls_bug-status = '5'.
+    ev_success = 'N'.
+    ev_message = 'Bug is Closed. Attachments cannot be modified.'.
+    RETURN.
+  ENDIF.
+
+  " Cập nhật path file vào trường tương ứng
+  CASE iv_att_type.
+    WHEN 'REPORT'.
+      UPDATE zbug_tracker SET att_report = iv_file_path
+        WHERE bug_id = iv_bug_id.
+    WHEN 'FIX'.
+      UPDATE zbug_tracker SET att_fix = iv_file_path
+        WHERE bug_id = iv_bug_id.
+    WHEN 'VERIFY'.
+      UPDATE zbug_tracker SET att_verify = iv_file_path
+        WHERE bug_id = iv_bug_id.
+    WHEN OTHERS.
+      ev_success = 'N'.
+      ev_message = 'Invalid attachment type. Use: REPORT, FIX, VERIFY'.
+      RETURN.
+  ENDCASE.
+
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    ev_success = 'Y'.
+    CONCATENATE 'File ' iv_att_type ' uploaded successfully for Bug ' iv_bug_id INTO ev_message.
+  ELSE.
+    ROLLBACK WORK.
+    ev_success = 'N'.
+    ev_message = 'Failed to update attachment path'.
+  ENDIF.
+
+ENDFUNCTION.
+```
+
+Click **Save** → **Activate**
+
+> [!NOTE]
+> Để upload file thực sự lên GOS, sử dụng FM `GOS_EXECUTE_OPTION` hoặc class `CL_GOS_MANAGER` trong màn hình `Z_BUG_UPDATE_SCREEN`. GOS cho phép user duyệt file từ máy local và đính kèm vào object SAP.
+
+---
+
+### Bước 5.6: Z_BUG_REASSIGN (Developer từ chối - Re-assign)
+
+> **Lý do (extra-requirements #3):** Developer có thể từ chối Bug và yêu cầu Manager re-assign, hoặc Manager có thể chủ động re-assign cho Dev khác.
+
+**Import Parameters**
+
+| Parameter       | Typing | Associated Type | Pass | Description                    |
+| --------------- | ------ | --------------- | ---- | ------------------------------ |
+| IV_BUG_ID       | TYPE   | ZDE_BUG_ID      | [x]  | Bug ID                         |
+| IV_NEW_DEV_ID   | TYPE   | ZDE_USERNAME    | [x]  | Dev mới được assign            |
+| IV_REASON       | TYPE   | ZDE_REASONS     | [x]  | Lý do re-assign                |
+| IV_REQUESTED_BY | TYPE   | ZDE_USERNAME    | [x]  | Người yêu cầu (Dev hay Manager)|
+
+**Export Parameters**
+
+| Parameter  | Typing | Associated Type | Pass | Description |
+| ---------- | ------ | --------------- | ---- | ----------- |
+| EV_SUCCESS | TYPE   | CHAR1           | [x]  | Y/N         |
+| EV_MESSAGE | TYPE   | STRING          | [x]  | Message     |
+
+```abap
+FUNCTION z_bug_reassign.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_NEW_DEV_ID) TYPE  ZDE_USERNAME
+*"     VALUE(IV_REASON) TYPE  ZDE_REASONS
+*"     VALUE(IV_REQUESTED_BY) TYPE  ZDE_USERNAME
+*"  EXPORTING
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
+
+  DATA: ls_bug        TYPE zbug_tracker,
+        lv_old_dev_id TYPE zde_username.
+
+  " Kiểm tra Bug
+  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
+    WHERE bug_id = iv_bug_id.
+
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    ev_message = 'Bug not found'.
+    RETURN.
+  ENDIF.
+
+  lv_old_dev_id = ls_bug-dev_id.
+
+  " Cập nhật Dev mới
+  UPDATE zbug_tracker
+    SET dev_id = iv_new_dev_id,
+        status = '2'
+    WHERE bug_id = iv_bug_id.
+
+  IF sy-subrc <> 0.
+    ROLLBACK WORK.
+    ev_success = 'N'.
+    ev_message = 'Re-assign failed'.
+    RETURN.
+  ENDIF.
+
+  " Trả Dev cũ về Available
+  UPDATE zbug_users
+    SET available_status = 'A'
+    WHERE user_id = lv_old_dev_id.
+
+  " Đặt Dev mới thành Working
+  UPDATE zbug_users
+    SET available_status = 'W'
+    WHERE user_id = iv_new_dev_id.
+
+  COMMIT WORK.
+
+  " Log history
+  CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+    EXPORTING
+      iv_bug_id      = iv_bug_id
+      iv_action_type = 'RS'
+      iv_old_value   = lv_old_dev_id
+      iv_new_value   = iv_new_dev_id
+      iv_reason      = iv_reason.
+
+  ev_success = 'Y'.
+  CONCATENATE 'Bug ' iv_bug_id ' re-assigned from ' lv_old_dev_id ' to ' iv_new_dev_id INTO ev_message.
+
+ENDFUNCTION.
+```
+
+Click **Save** → **Activate**
+
+---
+
+## PHASE 6: TESTING & DEPLOYMENT (Tuần 6-8)
+
+> [!TIP]
+> **Tài khoản sử dụng:**
+>
+> - Code Inspector: **DEV-118** (Pass: `Qwer123@`)
+> - Đính kèm file (GOS): **DEV-237** (Pass: `toiyeufpt`)
+> - Cấu hình Email/Verify: **DEV-242** → **DEV-118**
+
+### Bước 6.1: Code Inspector (SCI)
+
+1. Vào T-code `SCI`
+2. Create inspection với variant `DEFAULT`
+3. Add programs: `Z_BUG_*`
+4. Execute → Fix all errors/warnings
+
+### Bước 6.2: Transport Request (SE09)
+
+1. Vào T-code `SE09`
+2. Create Transport Request
+3. Add all objects từ package `ZBUGTRACK`
+4. Release Transport
+
+### Bước 6.3: UAT Checklist (Đầy đủ)
+
+| # | Test Case | T-code / Object | Expected |
+| :-- | :--- | :--- | :--- |
+| 1 | Tạo Bug mới | `ZBUG_CREATE` | Bug ID sinh tự động, email gửi cho Dev |
+| 2 | Xem & Cập nhật Bug | `ZBUG_UPDATE` | Nhập Bug ID → thấy thông tin, đổi Status thành công |
+| 3 | Danh sách Bug có màu | `ZBUG_REPORT` | ALV hiển thị Bug với màu theo Status |
+| 4 | Nút tương tác trên ALV | `ZBUG_REPORT` | Click row → Nút Update/Assign xuất hiện, hoạt động |
+| 5 | In biên bản | `ZBUG_PRINT` | Preview PDF SmartForm hiện đúng thông tin Bug |
+| 6 | Manager Dashboard | `ZBUG_MANAGER` | Thống kê Bug + danh sách Waiting hiển thị |
+| 7 | Auto Assign | FM `Z_BUG_AUTO_ASSIGN` | Dev ít việc nhất nhận Bug, AVAILABLE_STATUS = W |
+| 8 | Re-assign | FM `Z_BUG_REASSIGN` | Dev cũ trở về A, Dev mới nhận Bug, log ghi vào ZBUG_HISTORY |
+| 9 | Upload attachment | FM `Z_BUG_UPLOAD_ATTACHMENT` | File path ghi vào ATT_REPORT/FIX/VERIFY tương ứng |
+| 10 | Phân quyền | FM `Z_BUG_CHECK_PERMISSION` | Dev không tạo được Bug, Tester không sửa Bug đã assign |
+| 11 | History Log | FM `Z_BUG_LOG_HISTORY` | Mọi thay đổi được ghi vào ZBUG_HISTORY |
+| 12 | Performance | Tất cả T-code | Response time < 3 giây |
+
+---
+
 ## 🎯 HOÀN THÀNH
 
-Hệ thống SAP Bug Tracking Management đã được bổ sung đầy đủ các chức năng mới.
+Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 
-**Các thay đổi chính:**
+**Tóm tắt những gì đã xây dựng:**
 
-- ✅ 2 bảng mới: `ZBUG_USERS`, `ZBUG_HISTORY`
-- ✅ 9 fields mới trong `ZBUG_TRACKER`
-- ✅ Auto-assign logic với Waiting status
-- ✅ Role-based permissions
-- ✅ ALV color-coded status
+| Phase | Nội dung | Deliverables | Status |
+| :--- | :--- | :--- | :--- |
+| 0 | Môi trường | SAP GUI, Package ZBUGTRACK | ✅ |
+| 1 | Database Layer | ZBUG_TRACKER, ZBUG_USERS, ZBUG_HISTORY, ZNRO_BUG | ✅ |
+| 2 | Business Logic | Z_BUG_CREATE/GET/UPDATE_STATUS/DELETE/SEND_EMAIL, SCOT | ✅ |
+| 3 | Presentation | Z_BUG_CREATE_SCREEN, Z_BUG_UPDATE_SCREEN, ZBUG_CREATE, ZBUG_UPDATE | ⏳ |
+| 4 | Reporting | Z_BUG_REPORT_ALV (Interactive), ZBUG_FORM, Z_BUG_MANAGER_DASHBOARD | ⏳ |
+| 5 | Advanced FMs | Z_BUG_LOG_HISTORY, Z_BUG_AUTO_ASSIGN, Z_BUG_CHECK_PERMISSION, Z_BUG_UPLOAD_ATTACHMENT, Z_BUG_REASSIGN, ALV Colors | ⏳ |
+| 6 | Testing & Deploy | SCI, Transport Request, UAT 12 test cases | ⏳ |
+
+**T-codes tổng hợp:**
+
+| T-code | Program | Người dùng |
+| :--- | :--- | :--- |
+| `ZBUG_CREATE` | Z_BUG_CREATE_SCREEN | Tester |
+| `ZBUG_UPDATE` | Z_BUG_UPDATE_SCREEN | Tester / Developer |
+| `ZBUG_REPORT` | Z_BUG_REPORT_ALV | Tester / Developer / Manager |
+| `ZBUG_PRINT` | Z_BUG_PRINT | Tester / Manager |
+| `ZBUG_MANAGER` | Z_BUG_MANAGER_DASHBOARD | Manager |
+
+---
+
+**Prepared by:** [Your Name]  
+**Last Updated:** 03/03/2026

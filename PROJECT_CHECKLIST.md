@@ -15,10 +15,10 @@
 | P0    | Chuẩn bị môi trường       | Trước tuần 1 | ✅     | 6/6        |
 | P1    | Database Layer            | Tuần 1       | ✅     | 7/7        |
 | P2    | Business Logic            | Tuần 2-3     | ✅     | 7/7        |
-| P3    | Presentation Layer        | Tuần 2-3     | ⏳     | 0/6        |
+| P3    | Presentation Layer        | Tuần 2-3     | ⏳     | 0/8        |
 | P4    | Reporting & Printing      | Tuần 4-5     | ⏳     | 0/5        |
-| P5    | Integration & Attachments | Tuần 4-5     | ⏳     | 0/4        |
-| P6    | Testing & Optimization    | Tuần 6       | ⏳     | 0/6        |
+| P5    | Advanced FMs & Attachments| Tuần 4-5     | ⏳     | 0/8        |
+| P6    | Testing & Deployment      | Tuần 6       | ⏳     | 0/4        |
 | P7    | Deployment & Training     | Tuần 7-8     | ⏳     | 0/5        |
 | P8    | Final Presentation        | 29/03/2026   | ⏳     | 0/10       |
 
@@ -232,130 +232,125 @@
 ## 🖥️ PHASE 3: PRESENTATION LAYER (Tuần 2-3)
 
 **📅 Deadline:** Cuối tuần 3  
-**📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 3  
-**🎯 Mục tiêu:** Tạo 4 programs và 4 T-codes  
+**📖 Tài liệu:** `developer-guide.md` - Phase 3  
+**🎯 Mục tiêu:** Tạo 2 Programs và 4 T-codes (Create & Update Screen dùng chung)  
 >**👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
 
 ### ✅ Checklist Phase 3
 
-- [ ] **3.1 Program Z_BUG_CREATE_SCREEN**
-  - [ ] SE38 → Create executable program
-  - [ ] Selection screen với parameters: title, module, type, priority, desc
-  - [ ] Call Z_BUG_CREATE function
+- [ ] **3.1 Tạo Program `Z_BUG_CREATE_SCREEN`**
+  - [ ] SE38 → Executable program
+  - [ ] Selection screen với parameters: title, desc, module, priority, dev_id
+  - [ ] Gọi `Z_BUG_CREATE` để tạo bug
+  - [ ] Gọi `Z_BUG_SEND_EMAIL` sau khi tạo thành công
   - [ ] Success/Error message handling
-  - [ ] Test program execution
 
-- [ ] **3.2 Program Z_BUG_REPORT_ALV**
-  - [ ] Selection screen với filters: bug_id, status, module, priority
-  - [ ] Fetch data từ ZBUG_TRACKER
-  - [ ] ALV Grid display với field catalog
-  - [ ] Test ALV report
+- [ ] **3.2 Tạo T-code `ZBUG_CREATE`**
+  - [ ] SE93 → Program: Z_BUG_CREATE_SCREEN
+  - [ ] Test: Màn hình nhập liệu hiển thị
 
-- [ ] **3.3 Program Z_BUG_MANAGER_DASHBOARD**
-  - [ ] Dashboard cho Manager role
-  - [ ] Statistics: total bugs, by status, by module
-  - [ ] Waiting bugs list for manual assign
-  - [ ] Test manager functions
+- [ ] **3.3 Tạo Program `Z_BUG_UPDATE_SCREEN`** *(Dùng chung Tester & Dev)*
+  - [ ] Block 1: Nhập Bug ID → Pre-fill thông tin từ Z_BUG_GET
+  - [ ] Block 2: Update Status / Assign Dev / Nhập Reason
+  - [ ] Gọi `Z_BUG_UPDATE_STATUS` và `Z_BUG_LOG_HISTORY`
+  - [ ] Validation phân quyền theo Role (gọi Z_BUG_CHECK_PERMISSION)
 
-- [ ] **3.4 Program Z_BUG_USER_MANAGEMENT**
-  - [ ] CRUD operations cho ZBUG_USERS
-  - [ ] ALV display với edit capabilities
-  - [ ] Test user management
+- [ ] **3.4 Tạo T-code `ZBUG_UPDATE`**
+  - [ ] SE93 → Program: Z_BUG_UPDATE_SCREEN
+  - [ ] Test: Nhập Bug ID → Xem thông tin, cập nhật Status
 
-- [ ] **3.5 Tạo 4 T-codes**
-  - [ ] ZBUG_CREATE → Z_BUG_CREATE_SCREEN
-  - [ ] ZBUG_REPORT → Z_BUG_REPORT_ALV
-  - [ ] ZBUG_MANAGER → Z_BUG_MANAGER_DASHBOARD
-  - [ ] ZBUG_USERS → Z_BUG_USER_MANAGEMENT
-
-- [ ] **3.6 Test All T-codes**
-  - [ ] Test ZBUG_CREATE: Tạo bug thành công
-  - [ ] Test ZBUG_REPORT: Hiển thị danh sách bugs
-  - [ ] Test ZBUG_MANAGER: Manager dashboard
-  - [ ] Test ZBUG_USERS: User management
-
-**✅ Phase 3 Checkpoint:** 4 T-codes hoạt động, có thể create/view bugs
+**✅ Phase 3 Checkpoint:** T-codes `ZBUG_CREATE` và `ZBUG_UPDATE` hoạt động
 
 ---
 
 ## 📊 PHASE 4: REPORTING & PRINTING (Tuần 4-5)
 
 **📅 Deadline:** Cuối tuần 5  
-**📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 4  
-**🎯 Mục tiêu:** SmartForm và Enhanced ALV  
+**📖 Tài liệu:** `developer-guide.md` - Phase 4  
+**🎯 Mục tiêu:** ALV report đầy đủ + SmartForm + Manager Dashboard  
 >**👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
 
 ### ✅ Checklist Phase 4
 
-- [ ] **4.1 Tạo SmartForm ZBUG_FORM**
-  - [ ] SMARTFORMS → Create form ZBUG_FORM
-  - [ ] Design layout: Header, Bug details, Signature section
-  - [ ] Add company logo và formatting
-  - [ ] Test form generation
+- [ ] **4.1 Tạo Program `Z_BUG_REPORT_ALV`**
+  - [ ] Selection screen: bug_id, status, module, priority
+  - [ ] Fetch data từ ZBUG_TRACKER
+  - [ ] ALV Grid display với field catalog (7 cột)
+  - [ ] T-code `ZBUG_REPORT` → Z_BUG_REPORT_ALV
 
-- [ ] **4.2 Enhanced ALV Features**
-  - [ ] Interactive buttons: Assign, Close, Print
-  - [ ] Status-based row coloring (Blue/Yellow/Orange/Purple/Green/Grey)
-  - [ ] Subtotals by module/priority
-  - [ ] Export options (Excel, PDF)
-  - [ ] Test enhanced ALV
+- [ ] **4.2 Nâng cấp Interactive ALV**
+  - [ ] Thêm GUI Status `ZBUG_STATUS` với Function Codes: ZUPD, ZASGN
+  - [ ] FORM user_command: Mở Z_BUG_UPDATE_SCREEN khi click ZUPD
+  - [ ] FORM user_command: Gọi Z_BUG_AUTO_ASSIGN khi click ZASGN
+  - [ ] FORM pf_status_set: Hiển thị toolbar tùy chỉnh
 
-- [ ] **4.3 Print Function Integration**
-  - [ ] Add Print button trong ALV
-  - [ ] Call SmartForm từ ALV selection
-  - [ ] PDF output generation
-  - [ ] Test printing functionality
+- [ ] **4.3 SmartForm `ZBUG_FORM` (In ấn)**
+  - [ ] SMARTFORMS → Tạo form ZBUG_FORM
+  - [ ] Layout: HEADER (logo, title), MAIN (bug info), FOOTER (chữ ký)
+  - [ ] Form Interface: IS_BUG TYPE ZBUG_TRACKER
+  - [ ] Program `Z_BUG_PRINT` gọi SmartForm qua SSF_FUNCTION_MODULE_NAME
+  - [ ] T-code `ZBUG_PRINT` → Z_BUG_PRINT
 
-- [ ] **4.4 Dashboard Statistics**
-  - [ ] SQL aggregation queries
-  - [ ] Summary tables by status/module/priority
-  - [ ] Performance metrics display
-  - [ ] Test dashboard performance
+- [ ] **4.4 Manager Dashboard `Z_BUG_MANAGER_DASHBOARD`**
+  - [ ] WRITE thống kê: Total bugs, By Status, By Module
+  - [ ] ALV Grid hiển thị danh sách Bug đang Waiting
+  - [ ] T-code `ZBUG_MANAGER` → Z_BUG_MANAGER_DASHBOARD
 
-- [ ] **4.5 Final Testing**
-  - [ ] SmartForm prints correctly với real data
-  - [ ] ALV colors display properly
-  - [ ] Export functions work
-  - [ ] Performance acceptable (< 3 seconds)
+- [ ] **4.5 Test toàn bộ Phase 4**
+  - [ ] ZBUG_REPORT ALV hiển thị + nút tương tác hoạt động
+  - [ ] ZBUG_PRINT in preview SmartForm đúng thông tin
+  - [ ] ZBUG_MANAGER hiển thị thống kê + Waiting list
 
-**✅ Phase 4 Checkpoint:** SmartForm prints correctly, ALV fully functional với colors và export
+**✅ Phase 4 Checkpoint:** 4 T-codes hoạt động, SmartForm preview được, Manager Dashboard có thống kê
 
 ---
 
-## 🔧 PHASE 5: INTEGRATION & ATTACHMENTS (Tuần 4-5)
+## 🔧 PHASE 5: ADVANCED FMs & ATTACHMENTS (Tuần 4-5)
 
 **📅 Deadline:** Cuối tuần 5  
-**📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 5  
-**🎯 Mục tiêu:** GOS attachments và Email integration  
->**👤 Account sử dụng:** **DEV-237** (Pass: `toiyeufpt`) & **DEV-242** (Pass: `12345678`)
+**📖 Tài liệu:** `developer-guide.md` - Phase 5  
+**🎯 Mục tiêu:** Advanced FM + GOS file attachment + Re-assign logic  
+>**👤 Account sử dụng:** **DEV-089** (FM) & **DEV-237** (Pass: `toiyeufpt`) (GOS)
 
 ### ✅ Checklist Phase 5
 
-- [ ] **5.1 GOS Configuration**
-  - [ ] Configure Generic Object Services
-  - [ ] Link với ZBUG_TRACKER table
-  - [ ] Set file type restrictions (.xlsx only)
-  - [ ] Set size limits (10MB)
+- [ ] **5.1 FM `Z_BUG_LOG_HISTORY`** *(Lưu vết thay đổi)*
+  - [ ] Parameters: IV_BUG_ID, IV_ACTION_TYPE, IV_OLD/NEW_VALUE, IV_REASON
+  - [ ] SELECT MAX(LOG_ID) + 1 để sinh Log ID
+  - [ ] INSERT vào ZBUG_HISTORY
+  - [ ] Activate
 
-- [ ] **5.2 File Upload Functions**
-  - [ ] Upload ATT_REPORT (Tester only)
-  - [ ] Upload ATT_FIX (Developer only)
-  - [ ] Upload ATT_VERIFY (Tester only)
-  - [ ] View attachments từ ALV
+- [ ] **5.2 FM `Z_BUG_AUTO_ASSIGN`** *(Tự động phân công - Legacy syntax)*
+  - [ ] SELECT devs cùng module, role=D, available, is_active=X
+  - [ ] Đếm workload (bugs status 2/3) cho từng dev
+  - [ ] Assign dev ít việc nhất, cập nhật AVAILABLE_STATUS=W
+  - [ ] Nếu không có dev: status=W (Waiting)
+  - [ ] Activate
 
-- [ ] **5.3 Email Integration**
-  - [ ] SCOT configuration cho SMTP
-  - [ ] Test email sending với SBWP
-  - [ ] Auto email khi create bug
-  - [ ] Email templates cho different events
+- [ ] **5.3 FM `Z_BUG_CHECK_PERMISSION`** *(Phân quyền - Legacy syntax)*
+  - [ ] Check role từ ZBUG_USERS
+  - [ ] Manager: full access
+  - [ ] CASE ACTION: CREATE/UPDATE_STATUS/UPLOAD_REPORT/UPLOAD_FIX/UPLOAD_VERIFY
+  - [ ] Activate
 
-- [ ] **5.4 Security & Permissions**
-  - [ ] File access permissions by role
-  - [ ] Prevent file deletion after bug closed
-  - [ ] Audit trail cho file operations
-  - [ ] Test security restrictions
+- [ ] **5.4 ALV màu sắc theo Status**
+  - [ ] Type ty_bug_display thêm field ROW_COLOR CHAR4
+  - [ ] LOOP gán màu C100/C310/C300/C500/C510/C200 theo status
+  - [ ] ls_layout-info_fieldname = 'ROW_COLOR'
 
-**✅ Phase 5 Checkpoint:** File attachments working, email notifications sent, security enforced
+- [ ] **5.5 FM `Z_BUG_UPLOAD_ATTACHMENT`** *(Đính kèm file)*
+  - [ ] Kiểm tra bug tồn tại và chưa Closed (status 5)
+  - [ ] CASE ATT_TYPE: REPORT/FIX/VERIFY → UPDATE đúng trường
+  - [ ] Account DEV-237 để test GOS
+  - [ ] Activate
+
+- [ ] **5.6 FM `Z_BUG_REASSIGN`** *(Dev từ chối - Re-assign)*
+  - [ ] UPDATE dev_id mới, status=2
+  - [ ] Dev cũ: AVAILABLE_STATUS=A; Dev mới: AVAILABLE_STATUS=W
+  - [ ] Gọi Z_BUG_LOG_HISTORY với action RS
+  - [ ] Activate
+
+**✅ Phase 5 Checkpoint:** 5 FMs active, màu ALV hiển thị, đính kèm file và re-assign hoạt động
 
 ---
 
@@ -535,7 +530,7 @@
 - [ ] Ngày 4: ****\*\*****\_****\*\*****
 - [ ] Ngày 5: ****\*\*****\_****\*\*****
 
-_(Continue for all 8 weeks...)_
+*(Continue for all 8 weeks...)*
 
 ### Issues & Resolutions Log
 
