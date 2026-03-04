@@ -199,7 +199,7 @@ Lặp lại quy trình trên cho các domains sau:
 | `ZDOM_LONGTEXT` | STRING | - | Long text | (Để trống) |
 | `ZDOM_MODULE` | CHAR | 20 | SAP module | (Để trống) |
 | `ZDOM_PRIORITY` | CHAR | 1 | Priority | H: High, M: Medium, L: Low |
-| `ZDOM_STATUS` | CHAR | 1 | Status | 1: New, W: Waiting, 2: Assigned, 3: InProgress, 4: Fixed, 5: Closed |
+| `ZDOM_STATUS` | CHAR | 1 | Status | 1: New, W: Waiting, 2: Assigned, 3: InProgress, 4: Fixed, 5: Closed, 6: Deleted |
 | `ZDOM_USER` | CHAR | 12 | Username | (Để trống) |
 | `ZDOM_DATE` | DATS | 8 | Date | (Để trống) |
 | `ZDOM_TIME` | TIMS | 6 | Time | (Để trống) |
@@ -551,7 +551,7 @@ FUNCTION z_bug_create.
   ls_bug-created_time = sy-uzeit.
 
   " Insert to database
-  INSERT zbug_tracker FROM ls_bug.
+  INSERT zbug_tracker FROM @ls_bug.
 
   IF sy-subrc = 0.
     COMMIT WORK.
@@ -580,6 +580,8 @@ ENDFUNCTION.
 | ------------- | ----- | --------------- | ------- | ---- | ---- | --------------- |
 | IV_BUG_ID     | TYPE  | ZDE_BUG_ID      |         | [ ]  | [x]  | Bug ID          |
 | IV_NEW_STATUS | TYPE  | ZDE_BUG_STATUS  |         | [ ]  | [x]  | New status code |
+| IV_DEV_ID     | TYPE  | ZDE_USERNAME    |         | [x]  | [x]  | Developer ID    |
+| IV_REASON     | TYPE  | ZDE_BUG_DESC    |         | [x]  | [x]  | Change reason   |
 | IV_CHANGED_BY | TYPE  | ZDE_USERNAME    |         | [x]  | [x]  | User changing   |
 
 **Export Parameters**
@@ -596,6 +598,8 @@ FUNCTION z_bug_update_status.
 *"  IMPORTING
 *"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
 *"     VALUE(IV_NEW_STATUS) TYPE  ZDE_BUG_STATUS
+*"     VALUE(IV_DEV_ID) TYPE  ZDE_USERNAME OPTIONAL
+*"     VALUE(IV_REASON) TYPE  ZDE_BUG_DESC OPTIONAL
 *"     VALUE(IV_CHANGED_BY) TYPE  ZDE_USERNAME OPTIONAL
 *"  EXPORTING
 *"     VALUE(EV_SUCCESS) TYPE  CHAR1
@@ -614,13 +618,21 @@ FUNCTION z_bug_update_status.
     RETURN.
   ENDIF.
 
-  " Update status
-  UPDATE zbug_tracker
-    SET status    = iv_new_status
-        closed_at = CASE WHEN iv_new_status = '5'
-                         THEN sy-datum
-                         ELSE closed_at END
-    WHERE bug_id = iv_bug_id.
+  " Update status and other fields
+  IF iv_new_status = '5'. " 5 = Closed
+    UPDATE zbug_tracker
+      SET status    = @iv_new_status,
+          dev_id    = @iv_dev_id,
+          desc_text = @iv_reason,
+          closed_at = @sy-datum
+      WHERE bug_id = @iv_bug_id.
+  ELSE.
+    UPDATE zbug_tracker
+      SET status    = @iv_new_status,
+          dev_id    = @iv_dev_id,
+          desc_text = @iv_reason
+      WHERE bug_id = @iv_bug_id.
+  ENDIF.
 
   IF sy-subrc = 0.
     COMMIT WORK.
@@ -669,8 +681,8 @@ FUNCTION z_bug_get.
 *"     VALUE(EV_MESSAGE) TYPE  STRING
 *"----------------------------------------------------------------------
 
-  SELECT SINGLE * FROM zbug_tracker INTO es_bug
-    WHERE bug_id = iv_bug_id.
+  SELECT SINGLE * FROM zbug_tracker INTO @es_bug
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc = 0.
     ev_success = 'Y'.
@@ -686,7 +698,10 @@ ENDFUNCTION.
 
 ---
 
-### Bước 2.5: Tạo Function Module - Delete Bug
+### Bước 2.5: Tạo Function Module - Delete Bug (Soft Delete)
+
+> [!IMPORTANT]
+> **Soft Delete:** FM này KHÔNG xóa dữ liệu vật lý. Thay vào đó, nó cập nhật `STATUS = '6'` (Deleted) để giữ lại lịch sử.
 
 #### **Function: Z_BUG_DELETE**
 
@@ -714,16 +729,38 @@ FUNCTION z_bug_delete.
 *"     VALUE(EV_MESSAGE) TYPE  STRING
 *"----------------------------------------------------------------------
 
-  DELETE FROM zbug_tracker WHERE bug_id = iv_bug_id.
+  DATA: ls_bug TYPE zbug_tracker.
+
+  " Check if bug exists and is not already deleted
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id.
+
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    ev_message = 'Bug not found'.
+    RETURN.
+  ENDIF.
+
+  IF ls_bug-status = '6'.
+    ev_success = 'N'.
+    ev_message = 'Bug is already deleted'.
+    RETURN.
+  ENDIF.
+
+  " Soft delete: update status to '6' (Deleted)
+  UPDATE zbug_tracker
+    SET status   = '6',
+        closed_at = @sy-datum
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc = 0.
     COMMIT WORK.
     ev_success = 'Y'.
-    ev_message = |Bug { iv_bug_id } deleted|.
+    ev_message = |Bug { iv_bug_id } marked as deleted (soft delete)|.
   ELSE.
     ROLLBACK WORK.
     ev_success = 'N'.
-    ev_message = 'Bug not found or delete failed'.
+    ev_message = 'Failed to delete bug'.
   ENDIF.
 
 ENDFUNCTION.
@@ -763,7 +800,13 @@ Port: 25 (hoặc 587)
 **2. Source Code**
 
 ```abap
-
+FUNCTION z_bug_send_email.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_RECIPIENT) TYPE  AD_SMTPADR
+*"----------------------------------------------------------------------
   DATA: lo_send_request TYPE REF TO cl_bcs,
         lo_document     TYPE REF TO cl_document_bcs,
         lo_recipient    TYPE REF TO if_recipient_bcs,
@@ -774,8 +817,8 @@ Port: 25 (hoặc 587)
         lv_content      TYPE string.
 
   " Get bug details
-  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
-    WHERE bug_id = iv_bug_id.
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc <> 0.
     RETURN.
@@ -854,12 +897,12 @@ ENDFUNCTION.
    - **Fixed point arithmetic:** Tích chọn (Checked)
 
 5. Click **Save** → Chọn Package `ZBUGTRACK`.
-7. Xóa phần gán `TEXT-001` (nếu có) và nhấn **Save**.
-8. **Định nghĩa Text Symbol:**
+6. Xóa phần gán `TEXT-001` (nếu có) và nhấn **Save**.
+7. **Định nghĩa Text Symbol:**
    - Lên menu: **Goto** -> **Text Elements** -> **Text Symbols**.
    - Dòng `001`: Nhập `Create New Bug`.
    - Nhấn **Save** và **Activate** (trong màn hình Text Elements).
-9. Quay lại code và nhấn **Activate** (Ctrl+F3).
+8. Quay lại code và nhấn **Activate** (Ctrl+F3).
 
 **Source code:**
 
@@ -886,13 +929,16 @@ START-OF-SELECTION.
 
   DATA: lv_bug_id  TYPE zde_bug_id,
         lv_success TYPE char1,
-        lv_message TYPE string.
+        lv_message TYPE string,
+        lv_desc    TYPE zde_bug_desc.
+
+  lv_desc = p_desc.
 
   " Call function to create bug
   CALL FUNCTION 'Z_BUG_CREATE'
     EXPORTING
       iv_title    = p_title
-      iv_desc     = p_desc
+      iv_desc     = lv_desc
       iv_module   = p_module
       iv_priority = p_prior
       iv_dev_id   = p_devid
@@ -987,7 +1033,11 @@ DATA: ls_bug      TYPE zbug_tracker,
       lv_message  TYPE string.
 
 INITIALIZATION.
-  " Nếu truyền Bug ID từ ALV, pre-fill thông tin
+  " Nếu truyền Bug ID từ ALV (startup only)
+  " IF p_bugid IS NOT INITIAL ... (logic moved below to support manual typing)
+
+AT SELECTION-SCREEN.
+  " Mỗi khi nhấn Enter hoặc thoát trường P_BUGID, pre-fill thông tin
   IF p_bugid IS NOT INITIAL.
     CALL FUNCTION 'Z_BUG_GET'
       EXPORTING iv_bug_id  = p_bugid
@@ -1001,30 +1051,33 @@ INITIALIZATION.
 
 START-OF-SELECTION.
 
-  " Update status nếu có thay đổi
-  IF p_status IS NOT INITIAL.
-    CALL FUNCTION 'Z_BUG_UPDATE_STATUS'
-      EXPORTING
-        iv_bug_id     = p_bugid
-        iv_new_status = p_status
-        iv_changed_by = sy-uname
-      IMPORTING
-        ev_success    = lv_success
-        ev_message    = lv_message.
+  DATA: lv_reason  TYPE zde_bug_desc.
 
-    IF lv_success = 'Y'.
-      " Log lịch sử
-      CALL FUNCTION 'Z_BUG_LOG_HISTORY'
-        EXPORTING
-          iv_bug_id      = p_bugid
-          iv_action_type = 'ST'
-          iv_old_value   = ls_bug-status
-          iv_new_value   = p_status
-          iv_reason      = p_reason.
-      MESSAGE lv_message TYPE 'S'.
-    ELSE.
-      MESSAGE lv_message TYPE 'E'.
-    ENDIF.
+  lv_reason = p_reason.
+
+  CALL FUNCTION 'Z_BUG_UPDATE_STATUS'
+    EXPORTING
+      iv_bug_id     = p_bugid
+      iv_new_status = p_status
+      iv_dev_id     = p_devid
+      iv_reason     = lv_reason
+      iv_changed_by = sy-uname
+    IMPORTING
+      ev_success    = lv_success
+      ev_message    = lv_message.
+
+  IF lv_success = 'Y'.
+    " Log lịch sử
+    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+      EXPORTING
+        iv_bug_id      = p_bugid
+        iv_action_type = 'ST'
+        iv_old_value   = ls_bug-status
+        iv_new_value   = p_status
+        iv_reason      = lv_reason.
+    MESSAGE lv_message TYPE 'S'.
+  ELSE.
+    MESSAGE lv_message TYPE 'E'.
   ENDIF.
 ```
 
@@ -1047,6 +1100,61 @@ START-OF-SELECTION.
 6. Click **Save** → Gán Package `ZBUGTRACK`.
 
 **✅ Checkpoint:** Gõ T-code `ZBUG_UPDATE` + nhập Bug ID → Thấy thông tin Bug, có thể cập nhật Status
+
+---
+
+### Bước 3.5: Z_BUG_LOG_HISTORY (Lưu vết thay đổi)
+
+> [!IMPORTANT]
+> **Lý do:** Đây là Function Module bắt buộc phải có để màn hình Update Bug (`Z_BUG_UPDATE_SCREEN`) hoạt động mà không bị dump.
+
+**Import Parameters**
+
+| Parameter      | Typing    | Associated Type  | Pass | Opt | Description     |
+| -------------- | --------- | ---------------- | ---- | --- | --------------- |
+| IV_BUG_ID      | TYPE      | ZDE_BUG_ID       | [x]  | [ ] | Bug ID          |
+| IV_ACTION_TYPE | TYPE      | ZDE_BUG_ACT_TYPE | [x]  | [ ] | Loại action     |
+| IV_OLD_VALUE   | TYPE      | C                | [x]  | [x] | Giá trị cũ     |
+| IV_NEW_VALUE   | TYPE      | C                | [x]  | [x] | Giá trị mới   |
+| IV_REASON      | TYPE      | ZDE_REASONS      | [x]  | [x] | Lý do           |
+
+```abap
+FUNCTION z_bug_log_history.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_ACTION_TYPE) TYPE  ZDE_BUG_ACT_TYPE
+*"     VALUE(IV_OLD_VALUE) TYPE  C OPTIONAL
+*"     VALUE(IV_NEW_VALUE) TYPE  C OPTIONAL
+*"     VALUE(IV_REASON) TYPE  ZDE_REASONS OPTIONAL
+*"----------------------------------------------------------------------
+
+  DATA: ls_log   TYPE zbug_history,
+        lv_logid TYPE numc10.
+
+  " Get next log ID
+  SELECT MAX( log_id ) FROM zbug_history INTO @lv_logid.
+  lv_logid = lv_logid + 1.
+
+  ls_log-mandt        = sy-mandt.
+  ls_log-log_id       = lv_logid.
+  ls_log-bug_id       = iv_bug_id.
+  ls_log-changed_by   = sy-uname.
+  ls_log-changed_at   = sy-datum.
+  ls_log-changed_time = sy-uzeit.
+  ls_log-action_type  = iv_action_type.
+  ls_log-old_value    = iv_old_value.
+  ls_log-new_value    = iv_new_value.
+  ls_log-reason       = iv_reason.
+
+  INSERT zbug_history FROM @ls_log.
+  COMMIT WORK.
+
+ENDFUNCTION.
+```
+
+1. Click **Save** → **Activate**
 
 ---
 
@@ -1095,11 +1203,11 @@ DATA: lt_fieldcat TYPE slis_t_fieldcat_alv,
 START-OF-SELECTION.
 
   " Fetch data
-  SELECT * FROM zbug_tracker INTO TABLE lt_bugs
-    WHERE bug_id  IN s_bugid
-      AND status  IN s_status
-      AND sap_module IN s_module
-      AND priority IN s_prior
+  SELECT * FROM zbug_tracker INTO TABLE @lt_bugs
+    WHERE bug_id  IN @s_bugid
+      AND status  IN @s_status
+      AND sap_module IN @s_module
+      AND priority IN @s_prior
     ORDER BY created_at DESCENDING.
 
   IF lt_bugs IS INITIAL.
@@ -1344,7 +1452,7 @@ START-OF-SELECTION.
                OTHERS             = 3.
 
   lv_control_param-no_dialog = 'X'.
-  lv_control_param-preview   = 'X'.
+  lv_control_param-preview    = 'X'.
 
   " Gọi SmartForm
   CALL FUNCTION lv_fm_name
@@ -1362,6 +1470,7 @@ START-OF-SELECTION.
   IF sy-subrc <> 0.
     MESSAGE 'SmartForm print failed' TYPE 'E'.
   ENDIF.
+
 ```
 
 Tạo T-code `ZBUG_PRINT` → Program `Z_BUG_PRINT`.
@@ -1417,10 +1526,10 @@ START-OF-SELECTION.
 
   " --- Thống kê theo Status ---
   SELECT status COUNT(*) AS cnt FROM zbug_tracker
-    INTO TABLE lt_stat
+    INTO TABLE @lt_stat
     GROUP BY status.
 
-  SELECT COUNT(*) FROM zbug_tracker INTO lv_total.
+  SELECT COUNT(*) FROM zbug_tracker INTO @lv_total.
 
   WRITE: / '=== BUG TRACKING DASHBOARD ==='.
   WRITE: / 'Total bugs:', lv_total.
@@ -1433,7 +1542,7 @@ START-OF-SELECTION.
 
   " --- Thống kê theo Module ---
   SELECT sap_module COUNT(*) AS cnt FROM zbug_tracker
-    INTO TABLE lt_mod_stat
+    INTO TABLE @lt_mod_stat
     GROUP BY sap_module
     ORDER BY cnt DESCENDING.
 
@@ -1444,7 +1553,7 @@ START-OF-SELECTION.
   ENDLOOP.
 
   " --- Danh sách Bug đang Waiting (cần Manager assign thủ công) ---
-  SELECT * FROM zbug_tracker INTO TABLE lt_waiting
+  SELECT * FROM zbug_tracker INTO TABLE @lt_waiting
     WHERE status = 'W'
     ORDER BY created_at ASCENDING.
 
@@ -1533,11 +1642,11 @@ DATA: lt_users    TYPE TABLE OF zbug_users,
 START-OF-SELECTION.
 
   IF p_role IS NOT INITIAL.
-    SELECT * FROM zbug_users INTO TABLE lt_users
-      WHERE role = p_role AND is_active = 'X'
+    SELECT * FROM zbug_users INTO TABLE @lt_users
+      WHERE role = @p_role AND is_active = 'X'
       ORDER BY user_id.
   ELSE.
-    SELECT * FROM zbug_users INTO TABLE lt_users
+    SELECT * FROM zbug_users INTO TABLE @lt_users
       WHERE is_active = 'X'
       ORDER BY role.
   ENDIF.
@@ -1577,7 +1686,7 @@ START-OF-SELECTION.
       OTHERS             = 2.
 ```
 
-5. Click **Save** → **Activate**
+1. Click **Save** → **Activate**
 
 ---
 
@@ -1601,61 +1710,7 @@ START-OF-SELECTION.
 
 > **Mục tiêu:** Auto-assign, Permission Check, History Logging và ALV màu sắc
 
-### Bước 5.1: Z_BUG_LOG_HISTORY (Lưu vết thay đổi)
-
-Đây là FM đơn giản nhất trong Phase 5. Làm trước để có lịch sử thay đổi ngay.
-
-**Import Parameters**
-
-| Parameter      | Typing | Associated Type  | Pass | Opt | Description     |
-| -------------- | ------ | ---------------- | ---- | --- | --------------- |
-| IV_BUG_ID      | TYPE   | ZDE_BUG_ID       | [x]  | [ ] | Bug ID          |
-| IV_ACTION_TYPE | TYPE   | ZDE_BUG_ACT_TYPE | [x]  | [ ] | Loại action     |
-| IV_OLD_VALUE   | TYPE   | ZDE_BUG_TITLE    | [x]  | [x] | Giá trị cũ     |
-| IV_NEW_VALUE   | TYPE   | ZDE_BUG_TITLE    | [x]  | [x] | Giá trị mới   |
-| IV_REASON      | TYPE   | ZDE_REASONS      | [x]  | [x] | Lý do           |
-
-```abap
-FUNCTION z_bug_log_history.
-*"----------------------------------------------------------------------
-*"*"Local Interface:
-*"  IMPORTING
-*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
-*"     VALUE(IV_ACTION_TYPE) TYPE  ZDE_BUG_ACT_TYPE
-*"     VALUE(IV_OLD_VALUE) TYPE  ZDE_BUG_TITLE OPTIONAL
-*"     VALUE(IV_NEW_VALUE) TYPE  ZDE_BUG_TITLE OPTIONAL
-*"     VALUE(IV_REASON) TYPE  ZDE_REASONS OPTIONAL
-*"----------------------------------------------------------------------
-
-  DATA: ls_log   TYPE zbug_history,
-        lv_logid TYPE numc10.
-
-  " Get next log ID
-  SELECT MAX( log_id ) FROM zbug_history INTO lv_logid.
-  lv_logid = lv_logid + 1.
-
-  ls_log-mandt        = sy-mandt.
-  ls_log-log_id       = lv_logid.
-  ls_log-bug_id       = iv_bug_id.
-  ls_log-changed_by   = sy-uname.
-  ls_log-changed_at   = sy-datum.
-  ls_log-changed_time = sy-uzeit.
-  ls_log-action_type  = iv_action_type.
-  ls_log-old_value    = iv_old_value.
-  ls_log-new_value    = iv_new_value.
-  ls_log-reason       = iv_reason.
-
-  INSERT zbug_history FROM ls_log.
-  COMMIT WORK.
-
-ENDFUNCTION.
-```
-
-Click **Save** → **Activate**
-
----
-
-### Bước 5.2: Z_BUG_AUTO_ASSIGN (Tự động phân công)
+### Bước 5.1: Z_BUG_AUTO_ASSIGN (Tự động phân công)
 
 > [!WARNING]
 > FM này dùng cú pháp ABAP mới (`SELECT ... INTO @DATA(...)`). Nếu máy bạn báo lỗi cú pháp, hãy chuyển sang phiên bản Legacy bên dưới.
@@ -1701,8 +1756,8 @@ FUNCTION z_bug_auto_assign.
         lv_min_load TYPE i VALUE 999.
 
   " Get available developers for this module (Legacy syntax)
-  SELECT user_id FROM zbug_users INTO TABLE lt_available
-    WHERE sap_module = iv_module
+  SELECT user_id FROM zbug_users INTO TABLE @lt_available
+    WHERE sap_module = @iv_module
       AND role = 'D'
       AND available_status = 'A'
       AND is_active = 'X'.
@@ -1711,7 +1766,7 @@ FUNCTION z_bug_auto_assign.
     " No dev available - set Waiting
     ev_status = 'W'.
     ev_message = 'No developer available. Bug set to Waiting.'.
-    UPDATE zbug_tracker SET status = 'W' WHERE bug_id = iv_bug_id.
+    UPDATE zbug_tracker SET status = 'W' WHERE bug_id = @iv_bug_id.
     COMMIT WORK.
     RETURN.
   ENDIF.
@@ -1721,8 +1776,8 @@ FUNCTION z_bug_auto_assign.
     CLEAR ls_dev.
     ls_dev-user_id = lv_user.
 
-    SELECT COUNT(*) FROM zbug_tracker INTO lv_count
-      WHERE dev_id = lv_user
+    SELECT COUNT(*) FROM zbug_tracker INTO @lv_count
+      WHERE dev_id = @lv_user
         AND status IN ('2', '3').
 
     ls_dev-workload = lv_count.
@@ -1738,12 +1793,12 @@ FUNCTION z_bug_auto_assign.
   ENDLOOP.
 
   " Assign bug
-  UPDATE zbug_tracker SET dev_id = ev_dev_id, status = '2'
-    WHERE bug_id = iv_bug_id.
+  UPDATE zbug_tracker SET dev_id = @ev_dev_id, status = '2'
+    WHERE bug_id = @iv_bug_id.
 
   " Update dev status to Working
   UPDATE zbug_users SET available_status = 'W'
-    WHERE user_id = ev_dev_id.
+    WHERE user_id = @ev_dev_id.
 
   COMMIT WORK.
   ev_status = '2'.
@@ -1795,8 +1850,8 @@ FUNCTION z_bug_check_permission.
         ls_bug  TYPE zbug_tracker.
 
   " Get user role
-  SELECT SINGLE * FROM zbug_users INTO ls_user
-    WHERE user_id = iv_user.
+  SELECT SINGLE * FROM zbug_users INTO @ls_user
+    WHERE user_id = @iv_user.
 
   IF sy-subrc <> 0.
     ev_allowed = 'N'.
@@ -1811,8 +1866,8 @@ FUNCTION z_bug_check_permission.
   ENDIF.
 
   " Get bug info
-  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
-    WHERE bug_id = iv_bug_id.
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id.
 
   CASE iv_action.
     WHEN 'CREATE'.
@@ -1962,8 +2017,8 @@ FUNCTION z_bug_upload_attachment.
   DATA: ls_bug  TYPE zbug_tracker.
 
   " Kiểm tra Bug tồn tại
-  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
-    WHERE bug_id = iv_bug_id.
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc <> 0.
     ev_success = 'N'.
@@ -1981,14 +2036,14 @@ FUNCTION z_bug_upload_attachment.
   " Cập nhật path file vào trường tương ứng
   CASE iv_att_type.
     WHEN 'REPORT'.
-      UPDATE zbug_tracker SET att_report = iv_file_path
-        WHERE bug_id = iv_bug_id.
+      UPDATE zbug_tracker SET att_report = @iv_file_path
+        WHERE bug_id = @iv_bug_id.
     WHEN 'FIX'.
-      UPDATE zbug_tracker SET att_fix = iv_file_path
-        WHERE bug_id = iv_bug_id.
+      UPDATE zbug_tracker SET att_fix = @iv_file_path
+        WHERE bug_id = @iv_bug_id.
     WHEN 'VERIFY'.
-      UPDATE zbug_tracker SET att_verify = iv_file_path
-        WHERE bug_id = iv_bug_id.
+      UPDATE zbug_tracker SET att_verify = @iv_file_path
+        WHERE bug_id = @iv_bug_id.
     WHEN OTHERS.
       ev_success = 'N'.
       ev_message = 'Invalid attachment type. Use: REPORT, FIX, VERIFY'.
@@ -2053,8 +2108,8 @@ FUNCTION z_bug_reassign.
         lv_old_dev_id TYPE zde_username.
 
   " Kiểm tra Bug
-  SELECT SINGLE * FROM zbug_tracker INTO ls_bug
-    WHERE bug_id = iv_bug_id.
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc <> 0.
     ev_success = 'N'.
