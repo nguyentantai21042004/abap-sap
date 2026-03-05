@@ -10,19 +10,19 @@
 
 ## 📊 TỔNG QUAN TIẾN ĐỘ
 
-| Phase | Tên Phase                 | Thời gian    | Status | Hoàn thành |
-| ----- | ------------------------- | ------------ | ------ | ---------- |
-| P0    | Chuẩn bị môi trường       | Trước tuần 1 | ✅     | 6/6        |
-| P1    | Database Layer            | Tuần 1       | ✅     | 7/7        |
-| P2    | Business Logic            | Tuần 2-3     | ✅     | 7/7        |
-| P3    | Presentation Layer        | Tuần 2-3     | ⏳     | 0/8        |
-| P4    | Reporting & Printing      | Tuần 4-5     | ⏳     | 0/5        |
-| P5    | Advanced FMs & Attachments| Tuần 4-5     | ⏳     | 0/8        |
-| P6    | Testing & Deployment      | Tuần 6       | ⏳     | 0/4        |
-| P7    | Deployment & Training     | Tuần 7-8     | ⏳     | 0/5        |
-| P8    | Final Presentation        | 29/03/2026   | ⏳     | 0/10       |
+| Phase | Tên Phase                  | Thời gian    | Status | Hoàn thành |
+| ----- | -------------------------- | ------------ | ------ | ---------- |
+| P0    | Chuẩn bị môi trường        | Trước tuần 1 | ✅     | 6/6        |
+| P1    | Database Layer             | Tuần 1       | ✅     | 7/7        |
+| P2    | Business Logic             | Tuần 2-3     | ✅     | 7/7        |
+| P3    | Presentation Layer         | Tuần 2-3     | ✅     | 4/4        |
+| P4    | Reporting & Printing       | Tuần 4-5     | ⏳     | 0/6        |
+| P5    | Advanced FMs & Attachments | Tuần 4-5     | ⏳     | 0/6        |
+| P6    | Testing & Optimization     | Tuần 6       | ⏳     | 0/6        |
+| P7    | Deployment & Training      | Tuần 7-8     | ⏳     | 0/5        |
+| P8    | Final Presentation         | 29/03/2026   | ⏳     | 0/10       |
 
-**🎯 Tổng tiến độ: 20/62 items (32.3%)**
+**🎯 Tổng tiến độ: 24/57 items (42.1%)**
 
 ---
 
@@ -76,8 +76,9 @@
 
 **📅 Deadline:** Cuối tuần 1  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 1  
-**🎯 Mục tiêu:** Tạo đầy đủ 3 bảng và Data Dictionary objects  
->**👤 Account sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)
+**🎯 Mục tiêu:** Tạo đầy đủ 3 bảng và Data Dictionary objects
+
+> **👤 Account sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)
 
 ### ✅ Checklist Phase 1
 
@@ -180,8 +181,9 @@
 
 **📅 Deadline:** Cuối tuần 3  
 **📖 Tài liệu:** `developer-guide.md` - Phase 2  
-**🎯 Mục tiêu:** Xây dựng core logic CRUD và tích hợp Email  
->**👤 Account sử dụng:** **DEV-061** (CRUD/FG) & **DEV-242** (SCOT)
+**🎯 Mục tiêu:** Xây dựng core logic CRUD và tích hợp Email
+
+> **👤 Account sử dụng:** **DEV-061** (CRUD/FG) & **DEV-242** (SCOT)
 
 ### ✅ Checklist Phase 2
 
@@ -218,7 +220,7 @@
   - [x] Thiết lập Default Domain (`fpt.edu.vn`)
   - [x] Tạo SMTP Node `ZBUG_M`
   - [x] Cấu hình Host (`smtp.gmail.com`) và Port (`587`)
-  - [x] Cấu hình Supported Address Types: Internet (*)
+  - [x] Cấu hình Supported Address Types: Internet (\*)
 
 - [x] **2.7 Tạo FM `Z_BUG_SEND_EMAIL`**
   - [x] Sử dụng class `CL_BCS` để gửi mail
@@ -233,31 +235,32 @@
 
 **📅 Deadline:** Cuối tuần 3  
 **📖 Tài liệu:** `developer-guide.md` - Phase 3  
-**🎯 Mục tiêu:** Tạo 2 Programs và 4 T-codes (Create & Update Screen dùng chung)  
->**👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
+**🎯 Mục tiêu:** Tạo 2 Programs và 4 T-codes (Create & Update Screen dùng chung)
+
+> **👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
 
 ### ✅ Checklist Phase 3
 
-- [ ] **3.1 Tạo Program `Z_BUG_CREATE_SCREEN`**
-  - [ ] SE38 → Executable program
-  - [ ] Selection screen với parameters: title, desc, module, priority, dev_id
-  - [ ] Gọi `Z_BUG_CREATE` để tạo bug
-  - [ ] Gọi `Z_BUG_SEND_EMAIL` sau khi tạo thành công
-  - [ ] Success/Error message handling
+- [x] **3.1 Tạo Program `Z_BUG_CREATE_SCREEN`**
+  - [x] SE38 → Executable program
+  - [x] Selection screen với parameters: title, desc, module, priority, dev_id
+  - [x] Gọi `Z_BUG_CREATE` để tạo bug
+  - [x] Gọi `Z_BUG_SEND_EMAIL` sau khi tạo thành công
+  - [x] Success/Error message handling
 
-- [ ] **3.2 Tạo T-code `ZBUG_CREATE`**
-  - [ ] SE93 → Program: Z_BUG_CREATE_SCREEN
-  - [ ] Test: Màn hình nhập liệu hiển thị
+- [x] **3.2 Tạo T-code `ZBUG_CREATE`**
+  - [x] SE93 → Program: Z_BUG_CREATE_SCREEN
+  - [x] Test: Màn hình nhập liệu hiển thị
 
-- [ ] **3.3 Tạo Program `Z_BUG_UPDATE_SCREEN`** *(Dùng chung Tester & Dev)*
-  - [ ] Block 1: Nhập Bug ID → Pre-fill thông tin từ Z_BUG_GET
-  - [ ] Block 2: Update Status / Assign Dev / Nhập Reason
-  - [ ] Gọi `Z_BUG_UPDATE_STATUS` và `Z_BUG_LOG_HISTORY`
-  - [ ] Validation phân quyền theo Role (gọi Z_BUG_CHECK_PERMISSION)
+- [x] **3.3 Tạo Program `Z_BUG_UPDATE_SCREEN`** _(Dùng chung Tester & Dev)_
+  - [x] Block 1: Nhập Bug ID → Pre-fill thông tin từ Z_BUG_GET
+  - [x] Block 2: Update Status / Assign Dev / Nhập Reason
+  - [x] Gọi `Z_BUG_UPDATE_STATUS` và `Z_BUG_LOG_HISTORY`
+  - [x] Validation phân quyền theo Role (gọi Z_BUG_CHECK_PERMISSION)
 
-- [ ] **3.4 Tạo T-code `ZBUG_UPDATE`**
-  - [ ] SE93 → Program: Z_BUG_UPDATE_SCREEN
-  - [ ] Test: Nhập Bug ID → Xem thông tin, cập nhật Status
+- [x] **3.4 Tạo T-code `ZBUG_UPDATE`**
+  - [x] SE93 → Program: Z_BUG_UPDATE_SCREEN
+  - [x] Test: Nhập Bug ID → Xem thông tin, cập nhật Status
 
 **✅ Phase 3 Checkpoint:** T-codes `ZBUG_CREATE` và `ZBUG_UPDATE` hoạt động
 
@@ -267,8 +270,9 @@
 
 **📅 Deadline:** Cuối tuần 5  
 **📖 Tài liệu:** `developer-guide.md` - Phase 4  
-**🎯 Mục tiêu:** ALV report đầy đủ + SmartForm + Manager Dashboard  
->**👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
+**🎯 Mục tiêu:** ALV report đầy đủ + SmartForm + Manager Dashboard
+
+> **👤 Account sử dụng:** **DEV-061** (Pass: `@57Dt766`)
 
 ### ✅ Checklist Phase 4
 
@@ -316,25 +320,26 @@
 
 **📅 Deadline:** Cuối tuần 5  
 **📖 Tài liệu:** `developer-guide.md` - Phase 5  
-**🎯 Mục tiêu:** Advanced FM + GOS file attachment + Re-assign logic  
->**👤 Account sử dụng:** **DEV-089** (FM) & **DEV-237** (Pass: `toiyeufpt`) (GOS)
+**🎯 Mục tiêu:** Advanced FM + GOS file attachment + Re-assign logic
+
+> **👤 Account sử dụng:** **DEV-089** (FM) & **DEV-237** (Pass: `toiyeufpt`) (GOS)
 
 ### ✅ Checklist Phase 5
 
-- [ ] **5.1 FM `Z_BUG_LOG_HISTORY`** *(Lưu vết thay đổi)*
+- [ ] **5.1 FM `Z_BUG_LOG_HISTORY`** _(Lưu vết thay đổi)_
   - [ ] Parameters: IV_BUG_ID, IV_ACTION_TYPE, IV_OLD/NEW_VALUE, IV_REASON
   - [ ] SELECT MAX(LOG_ID) + 1 để sinh Log ID
   - [ ] INSERT vào ZBUG_HISTORY
   - [ ] Activate
 
-- [ ] **5.2 FM `Z_BUG_AUTO_ASSIGN`** *(Tự động phân công - Legacy syntax)*
+- [ ] **5.2 FM `Z_BUG_AUTO_ASSIGN`** _(Tự động phân công - Legacy syntax)_
   - [ ] SELECT devs cùng module, role=D, available, is_active=X
   - [ ] Đếm workload (bugs status 2/3) cho từng dev
   - [ ] Assign dev ít việc nhất, cập nhật AVAILABLE_STATUS=W
   - [ ] Nếu không có dev: status=W (Waiting)
   - [ ] Activate
 
-- [ ] **5.3 FM `Z_BUG_CHECK_PERMISSION`** *(Phân quyền - Legacy syntax)*
+- [ ] **5.3 FM `Z_BUG_CHECK_PERMISSION`** _(Phân quyền - Legacy syntax)_
   - [ ] Check role từ ZBUG_USERS
   - [ ] Manager: full access
   - [ ] CASE ACTION: CREATE/UPDATE_STATUS/UPLOAD_REPORT/UPLOAD_FIX/UPLOAD_VERIFY
@@ -345,13 +350,13 @@
   - [ ] LOOP gán màu C100/C310/C300/C500/C510/C200 theo status
   - [ ] ls_layout-info_fieldname = 'ROW_COLOR'
 
-- [ ] **5.5 FM `Z_BUG_UPLOAD_ATTACHMENT`** *(Đính kèm file)*
+- [ ] **5.5 FM `Z_BUG_UPLOAD_ATTACHMENT`** _(Đính kèm file)_
   - [ ] Kiểm tra bug tồn tại và chưa Closed (status 5)
   - [ ] CASE ATT_TYPE: REPORT/FIX/VERIFY → UPDATE đúng trường
   - [ ] Account DEV-237 để test GOS
   - [ ] Activate
 
-- [ ] **5.6 FM `Z_BUG_REASSIGN`** *(Dev từ chối - Re-assign)*
+- [ ] **5.6 FM `Z_BUG_REASSIGN`** _(Dev từ chối - Re-assign)_
   - [ ] UPDATE dev_id mới, status=2
   - [ ] Dev cũ: AVAILABLE_STATUS=A; Dev mới: AVAILABLE_STATUS=W
   - [ ] Gọi Z_BUG_LOG_HISTORY với action RS
@@ -365,8 +370,9 @@
 
 **📅 Deadline:** Cuối tuần 6  
 **📖 Tài liệu:** `IMPLEMENTATION_GUIDE.md` - Phase 6  
-**🎯 Mục tiêu:** Code quality và performance optimization  
->**👤 Account sử dụng:** **DEV-118** (Pass: `Qwer123@`)
+**🎯 Mục tiêu:** Code quality và performance optimization
+
+> **👤 Account sử dụng:** **DEV-118** (Pass: `Qwer123@`)
 
 ### ✅ Checklist Phase 6
 
@@ -523,21 +529,21 @@
 
 **Tuần 1:**
 
-- [ ] Ngày 1: ****\*\*****\_****\*\*****
-- [ ] Ngày 2: ****\*\*****\_****\*\*****
-- [ ] Ngày 3: ****\*\*****\_****\*\*****
-- [ ] Ngày 4: ****\*\*****\_****\*\*****
-- [ ] Ngày 5: ****\*\*****\_****\*\*****
+- [ ] Ngày 1: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 2: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 3: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 4: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 5: \***\*\*\*\*\***\_\***\*\*\*\*\***
 
 **Tuần 2:**
 
-- [ ] Ngày 1: ****\*\*****\_****\*\*****
-- [ ] Ngày 2: ****\*\*****\_****\*\*****
-- [ ] Ngày 3: ****\*\*****\_****\*\*****
-- [ ] Ngày 4: ****\*\*****\_****\*\*****
-- [ ] Ngày 5: ****\*\*****\_****\*\*****
+- [ ] Ngày 1: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 2: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 3: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 4: \***\*\*\*\*\***\_\***\*\*\*\*\***
+- [ ] Ngày 5: \***\*\*\*\*\***\_\***\*\*\*\*\***
 
-*(Continue for all 8 weeks...)*
+_(Continue for all 8 weeks...)_
 
 ### Issues & Resolutions Log
 
