@@ -1777,7 +1777,7 @@ START-OF-SELECTION.
    - Nhấn **Save** và **Activate** màn hình Text. Bấm Back (F3) ngoài cùng bên trái để quay lại.
 8. Ở màn hình code hiện tại, nhấn **Activate** (Ctrl+F3) một lần nữa.
 
-> [!CAUTION] 
+> [!CAUTION]
 > **Thêm dữ liệu ảo (Dummy Data) cho bảng ZBUG_USERS:**
 > Do bảng User của chúng ta hiện tại đang... trống trơn (Chưa có ai trong hệ thống), nên ALV in ra sẽ không có gì.
 > Bạn cần mở 1 tab lệnh mới (`/oSE16N`) -> Điền bảng `ZBUG_USERS` -> Bấm Execute (F8) -> Thêm vài User mẫu (Ví dụ: `USER_ID` = `DEV-001`, `ROLE` = `D`, `IS_ACTIVE` = `X`). Bấm Save. Làm tương tự cho 2-3 người nữa với ROLE khác nhau.
@@ -1870,12 +1870,37 @@ START-OF-SELECTION.
 ## PHASE 5: ADVANCED FUNCTION MODULES (Nâng Cao)
 
 > [!TIP]
-> **Tài khoản sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)  
+> **Tài khoản sử dụng:** **DEV-089** (Pass: `@Anhtuoi123`)
 > Thêm các Function Modules nâng cao vào Function Group `ZBUG_FG`.
-
 > **Mục tiêu:** Auto-assign, Permission Check, History Logging và ALV màu sắc
 
-### Bước 5.1: Z_BUG_AUTO_ASSIGN (Tự động phân công)
+**⚠️ Lưu ý về đánh số:** `Z_BUG_LOG_HISTORY` (checklist **Phase 5, item 5.1**) được document ở **Bước 3.5** trong Phase 3 của guide (vì được dùng ở Z_BUG_UPDATE_SCREEN). Kiểm tra xem FM này đã tồn tại trong `ZBUG_FG` chưa (vào SE80 → Functions). **Nếu chưa có, tạo ngay theo hướng dẫn ở Bước 3.5** vì Bước 5.6 (Z_BUG_REASSIGN) gọi FM này.
+
+---
+
+### 📌 Quy trình tạo FM chuẩn (áp dụng cho tất cả Bước 5.2–5.6)
+
+Tất cả các Function Modules trong Phase 5 đều được tạo theo cùng một quy trình:
+
+1. Vào T-code **`SE80`**
+2. Dropdown chọn **Function Group** → nhập `ZBUG_FG` → Enter
+3. Trong cây bên trái: **right-click `ZBUG_FG`** → **Create** → **Function Module**
+4. Điền **Function Module name** và **Short text** (xem từng bước bên dưới)
+5. Tab **Attributes**: `Processing Type` = **Normal Function Module**
+6. Tab **Import**: Điền từng dòng theo bảng **Import Parameters**
+7. Tab **Export**: Điền từng dòng theo bảng **Export Parameters**
+8. Tab **Source code**: Paste toàn bộ code ABAP từ guide vào
+9. Click **Save** → chọn package `ZBUGTRACK` → chọn **Transport Request hiện có** (Own Requests)
+10. Click **Activate** (Ctrl+F3)
+
+---
+
+### Bước 5.2: Z_BUG_AUTO_ASSIGN (Tự động phân công)
+
+Thực hiện **Quy trình tạo FM chuẩn** ở trên với:
+
+- **Function Module:** `Z_BUG_AUTO_ASSIGN`
+- **Short text:** `Auto Assign Bug to Developer`
 
 > [!WARNING]
 > FM này dùng cú pháp ABAP mới (`SELECT ... INTO @DATA(...)`). Nếu máy bạn báo lỗi cú pháp, hãy chuyển sang phiên bản Legacy bên dưới.
@@ -1977,6 +2002,11 @@ Click **Save** → **Activate**
 ---
 
 ### Bước 5.3: Z_BUG_CHECK_PERMISSION (Phân quyền theo Role)
+
+Thực hiện **Quy trình tạo FM chuẩn** ở trên với:
+
+- **Function Module:** `Z_BUG_CHECK_PERMISSION`
+- **Short text:** `Check User Permission for Bug Action`
 
 > [!WARNING]
 > FM này cũng dùng cú pháp `COND #(...)` (ABAP 7.40+). Phiên bản dưới đây đã được viết lại theo **Legacy syntax** để đảm bảo tương thích.
@@ -2091,11 +2121,37 @@ Click **Save** → **Activate**
 
 ### Bước 5.4: ALV - Màu sắc theo Status (Bonus)
 
-Để thêm màu vào **`Z_BUG_REPORT_ALV`**, sửa `Z_BUG_REPORT_ALV` như sau:
+**Mục đích:** Sửa program `Z_BUG_REPORT_ALV` (đã tạo ở Phase 4) để thêm màu sắc hiển thị theo Status.
 
-**1. Tạo type mới có field `ROW_COLOR`:**
+**Cách làm:**
+
+1. Vào T-code **`SE38`**
+2. Program: `Z_BUG_REPORT_ALV` → Click **Change**
+3. Khi hiện **Create Task dialog** → Click ✓ (checkmark)
+4. **Thay thế toàn bộ code bằng code dưới đây:**
 
 ```abap
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_REPORT_ALV
+*&---------------------------------------------------------------------*
+REPORT z_bug_report_alv.
+
+" Helper variables for Selection Screen
+DATA: lv_bugid  TYPE zde_bug_id,
+      lv_status TYPE zde_bug_status,
+      lv_module TYPE zde_sap_module,
+      lv_prior  TYPE zde_priority.
+
+" Selection Screen
+SELECT-OPTIONS: s_bugid  FOR lv_bugid,
+                s_status FOR lv_status,
+                s_module FOR lv_module,
+                s_prior  FOR lv_prior.
+
+" Internal table - Original data
+DATA: lt_bugs     TYPE TABLE OF zbug_tracker.
+
+" Type with ROW_COLOR for display
 TYPES: BEGIN OF ty_bug_display,
          bug_id      TYPE zde_bug_id,
          title       TYPE zde_bug_title,
@@ -2107,40 +2163,131 @@ TYPES: BEGIN OF ty_bug_display,
          row_color   TYPE c LENGTH 4,
        END OF ty_bug_display.
 
-DATA: lt_display TYPE TABLE OF ty_bug_display,
-      ls_display TYPE ty_bug_display.
-```
+DATA: lt_display  TYPE TABLE OF ty_bug_display,
+      ls_display  TYPE ty_bug_display.
 
-**2. Map data và gán màu sau khi SELECT:**
+" ALV Data
+DATA: lt_fieldcat TYPE slis_t_fieldcat_alv,
+      ls_fieldcat TYPE slis_fieldcat_alv,
+      ls_layout   TYPE slis_layout_alv,
+      lt_excl     TYPE slis_t_extab.
 
-```abap
-LOOP AT lt_bugs INTO ls_bug.
-  CLEAR ls_display.
-  ls_display-bug_id     = ls_bug-bug_id.
-  ls_display-title      = ls_bug-title.
-  ls_display-sap_module = ls_bug-sap_module.
-  ls_display-priority   = ls_bug-priority.
-  ls_display-status     = ls_bug-status.
-  ls_display-tester_id  = ls_bug-tester_id.
-  ls_display-created_at = ls_bug-created_at.
+START-OF-SELECTION.
 
-  CASE ls_bug-status.
-    WHEN '1'. ls_display-row_color = 'C100'. " Blue   - New
-    WHEN 'W'. ls_display-row_color = 'C310'. " Yellow - Waiting
-    WHEN '2'. ls_display-row_color = 'C300'. " Orange - Assigned
-    WHEN '3'. ls_display-row_color = 'C500'. " Purple - In Progress
-    WHEN '4'. ls_display-row_color = 'C510'. " Green  - Fixed
-    WHEN '5'. ls_display-row_color = 'C200'. " Grey   - Closed
+  " 1. Fetch data
+  SELECT * FROM zbug_tracker INTO TABLE @lt_bugs
+    WHERE bug_id     IN @s_bugid
+      AND status     IN @s_status
+      AND sap_module IN @s_module
+      AND priority   IN @s_prior
+    ORDER BY created_at DESCENDING.
+
+  IF lt_bugs IS INITIAL.
+    MESSAGE 'No bugs found' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  " 2. Map data to display table with colors
+  LOOP AT lt_bugs INTO DATA(ls_bug).
+    CLEAR ls_display.
+    ls_display-bug_id     = ls_bug-bug_id.
+    ls_display-title      = ls_bug-title.
+    ls_display-sap_module = ls_bug-sap_module.
+    ls_display-priority   = ls_bug-priority.
+    ls_display-status     = ls_bug-status.
+    ls_display-tester_id  = ls_bug-tester_id.
+    ls_display-created_at = ls_bug-created_at.
+
+    " Assign color based on status
+    CASE ls_bug-status.
+      WHEN '1'. ls_display-row_color = 'C100'. " Blue   - New
+      WHEN 'W'. ls_display-row_color = 'C310'. " Yellow - Waiting
+      WHEN '2'. ls_display-row_color = 'C300'. " Orange - Assigned
+      WHEN '3'. ls_display-row_color = 'C500'. " Purple - In Progress
+      WHEN '4'. ls_display-row_color = 'C510'. " Green  - Fixed
+      WHEN '5'. ls_display-row_color = 'C200'. " Grey   - Closed
+    ENDCASE.
+    APPEND ls_display TO lt_display.
+  ENDLOOP.
+
+  " 3. Build field catalog
+  PERFORM build_fieldcat.
+
+  " 4. Display ALV with colors
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program       = sy-repid
+      i_callback_pf_status_set = 'PF_STATUS_SET'
+      i_callback_user_command  = 'USER_COMMAND'
+      is_layout                = ls_layout
+      it_fieldcat              = lt_fieldcat
+    TABLES
+      t_outtab                 = lt_display
+    EXCEPTIONS
+      program_error            = 1
+      OTHERS                   = 2.
+
+*&---------------------------------------------------------------------*
+*& Form build_fieldcat
+*&---------------------------------------------------------------------*
+FORM build_fieldcat.
+  ls_layout-zebra = 'X'.
+  ls_layout-colwidth_optimize = 'X'.
+  ls_layout-info_fieldname = 'ROW_COLOR'.
+
+  DEFINE m_fieldcat.
+    clear ls_fieldcat.
+    ls_fieldcat-fieldname = &1.
+    ls_fieldcat-seltext_m = &2.
+    ls_fieldcat-col_pos   = &3.
+    append ls_fieldcat to lt_fieldcat.
+  END-OF-DEFINITION.
+
+  m_fieldcat 'BUG_ID'     'Bug ID'    1.
+  m_fieldcat 'TITLE'      'Title'     2.
+  m_fieldcat 'SAP_MODULE' 'Module'    3.
+  m_fieldcat 'PRIORITY'   'Priority'  4.
+  m_fieldcat 'STATUS'     'Status'    5.
+  m_fieldcat 'TESTER_ID'  'Reporter'  6.
+  m_fieldcat 'CREATED_AT' 'Created'   7.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form pf_status_set
+*&---------------------------------------------------------------------*
+FORM pf_status_set USING lv_extab TYPE slis_t_extab.
+  SET PF-STATUS 'ZBUG_STATUS'.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+FORM user_command USING lv_ucomm TYPE syucomm
+                        ls_selfield TYPE slis_selfield.
+  DATA: lv_bugid   TYPE zde_bug_id,
+        lv_message TYPE string.
+
+  READ TABLE lt_display INDEX ls_selfield-tabindex INTO ls_display.
+  lv_bugid = ls_display-bug_id.
+
+  CASE lv_ucomm.
+    WHEN 'ZUPD'.  " Nút Update
+      SET PARAMETER ID 'ZBG' FIELD lv_bugid.
+      CALL TRANSACTION 'ZBUG_UPDATE' AND SKIP FIRST SCREEN.
+
+    WHEN 'ZASGN'. " Nút Auto Assign
+      CALL FUNCTION 'Z_BUG_AUTO_ASSIGN'
+        EXPORTING iv_bug_id = lv_bugid
+                  iv_module = ls_display-sap_module
+        IMPORTING ev_message = lv_message.
+      MESSAGE lv_message TYPE 'S'.
   ENDCASE.
-  APPEND ls_display TO lt_display.
-ENDLOOP.
+
+  ls_selfield-refresh = 'X'.
+ENDFORM.
 ```
 
-**3. Set layout để kích hoạt màu:**
-
-```abap
-ls_layout-info_fieldname = 'ROW_COLOR'.
-```
+Sau khi paste code xong: Click **Save** → **Activate** (Ctrl+F3)
 
 ---
 
@@ -2150,6 +2297,11 @@ ls_layout-info_fieldname = 'ROW_COLOR'.
 
 > [!IMPORTANT]
 > Sử dụng account **DEV-237** (Pass: `toiyeufpt`) để thực hiện bước này.
+
+Thực hiện **Quy trình tạo FM chuẩn** ở trên (**đăng nhập bằng DEV-237**) với:
+
+- **Function Module:** `Z_BUG_UPLOAD_ATTACHMENT`
+- **Short text:** `Upload Attachment Path for Bug`
 
 **Import Parameters**
 
@@ -2239,6 +2391,11 @@ Click **Save** → **Activate**
 
 > **Lý do (extra-requirements #3):** Developer có thể từ chối Bug và yêu cầu Manager re-assign, hoặc Manager có thể chủ động re-assign cho Dev khác.
 
+Thực hiện **Quy trình tạo FM chuẩn** ở trên với:
+
+- **Function Module:** `Z_BUG_REASSIGN`
+- **Short text:** `Re-assign Bug to Another Developer`
+
 **Import Parameters**
 
 | Parameter       | Typing | Associated Type | Pass | Description                    |
@@ -2286,9 +2443,9 @@ FUNCTION z_bug_reassign.
 
   " Cập nhật Dev mới
   UPDATE zbug_tracker
-    SET dev_id = iv_new_dev_id,
+    SET dev_id = @iv_new_dev_id,
         status = '2'
-    WHERE bug_id = iv_bug_id.
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc <> 0.
     ROLLBACK WORK.
@@ -2300,12 +2457,12 @@ FUNCTION z_bug_reassign.
   " Trả Dev cũ về Available
   UPDATE zbug_users
     SET available_status = 'A'
-    WHERE user_id = lv_old_dev_id.
+    WHERE user_id = @lv_old_dev_id.
 
   " Đặt Dev mới thành Working
   UPDATE zbug_users
     SET available_status = 'W'
-    WHERE user_id = iv_new_dev_id.
+    WHERE user_id = @iv_new_dev_id.
 
   COMMIT WORK.
 

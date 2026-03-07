@@ -17,12 +17,12 @@
 | P2    | Business Logic             | Tuần 2-3     | ✅     | 7/7        |
 | P3    | Presentation Layer         | Tuần 2-3     | ✅     | 4/4        |
 | P4    | Reporting & Printing       | Tuần 4-5     | ✅     | 6/6        |
-| P5    | Advanced FMs & Attachments | Tuần 4-5     | ⏳     | 0/6        |
+| P5    | Advanced FMs & Attachments | Tuần 4-5     | ✅     | 6/6        |
 | P6    | Testing & Optimization     | Tuần 6       | ⏳     | 0/6        |
 | P7    | Deployment & Training      | Tuần 7-8     | ⏳     | 0/5        |
 | P8    | Final Presentation         | 29/03/2026   | ⏳     | 0/10       |
 
-**🎯 Tổng tiến độ: 29/57 items (50.8%)**
+**🎯 Tổng tiến độ: 35/57 items (61.4%)**
 
 ---
 
@@ -321,43 +321,43 @@
 
 ### ✅ Checklist Phase 5
 
-- [ ] **5.1 FM `Z_BUG_LOG_HISTORY`** _(Lưu vết thay đổi)_
-  - [ ] Parameters: IV_BUG_ID, IV_ACTION_TYPE, IV_OLD/NEW_VALUE, IV_REASON
-  - [ ] SELECT MAX(LOG_ID) + 1 để sinh Log ID
-  - [ ] INSERT vào ZBUG_HISTORY
-  - [ ] Activate
+- [x] **5.1 FM `Z_BUG_LOG_HISTORY`** _(Lưu vết thay đổi)_
+  - [x] Parameters: IV_BUG_ID, IV_ACTION_TYPE, IV_OLD/NEW_VALUE, IV_REASON
+  - [x] SELECT MAX(LOG_ID) + 1 để sinh Log ID
+  - [x] INSERT vào ZBUG_HISTORY
+  - [x] Activate
 
-- [ ] **5.2 FM `Z_BUG_AUTO_ASSIGN`** _(Tự động phân công - Legacy syntax)_
-  - [ ] SELECT devs cùng module, role=D, available, is_active=X
-  - [ ] Đếm workload (bugs status 2/3) cho từng dev
-  - [ ] Assign dev ít việc nhất, cập nhật AVAILABLE_STATUS=W
-  - [ ] Nếu không có dev: status=W (Waiting)
-  - [ ] Activate
+- [x] **5.2 FM `Z_BUG_AUTO_ASSIGN`** _(Tự động phân công - Legacy syntax)_
+  - [x] SELECT devs cùng module, role=D, available, is_active=X
+  - [x] Đếm workload (bugs status 2/3) cho từng dev
+  - [x] Assign dev ít việc nhất, cập nhật AVAILABLE_STATUS=W
+  - [x] Nếu không có dev: status=W (Waiting)
+  - [x] Activate
 
-- [ ] **5.3 FM `Z_BUG_CHECK_PERMISSION`** _(Phân quyền - Legacy syntax)_
-  - [ ] Check role từ ZBUG_USERS
-  - [ ] Manager: full access
-  - [ ] CASE ACTION: CREATE/UPDATE_STATUS/UPLOAD_REPORT/UPLOAD_FIX/UPLOAD_VERIFY
-  - [ ] Activate
+- [x] **5.3 FM `Z_BUG_CHECK_PERMISSION`** _(Phân quyền - Legacy syntax)_
+  - [x] Check role từ ZBUG_USERS
+  - [x] Manager: full access
+  - [x] CASE ACTION: CREATE/UPDATE_STATUS/UPLOAD_REPORT/UPLOAD_FIX/UPLOAD_VERIFY
+  - [x] Activate
 
-- [ ] **5.4 ALV màu sắc theo Status**
-  - [ ] Type ty_bug_display thêm field ROW_COLOR CHAR4
-  - [ ] LOOP gán màu C100/C310/C300/C500/C510/C200 theo status
-  - [ ] ls_layout-info_fieldname = 'ROW_COLOR'
+- [x] **5.4 ALV màu sắc theo Status**
+  - [x] Type ty_bug_display thêm field ROW_COLOR CHAR4
+  - [x] LOOP gán màu C100/C310/C300/C500/C510/C200 theo status
+  - [x] ls_layout-info_fieldname = 'ROW_COLOR'
 
-- [ ] **5.5 FM `Z_BUG_UPLOAD_ATTACHMENT`** _(Đính kèm file)_
-  - [ ] Kiểm tra bug tồn tại và chưa Closed (status 5)
-  - [ ] CASE ATT_TYPE: REPORT/FIX/VERIFY → UPDATE đúng trường
-  - [ ] Account DEV-237 để test GOS
-  - [ ] Activate
+- [x] **5.5 FM `Z_BUG_UPLOAD_ATTACHMENT`** _(Đính kèm file)_
+  - [x] Kiểm tra bug tồn tại và chưa Closed (status 5)
+  - [x] CASE ATT_TYPE: REPORT/FIX/VERIFY → UPDATE đúng trường
+  - [x] Account DEV-237 để test GOS
+  - [x] Activate
 
-- [ ] **5.6 FM `Z_BUG_REASSIGN`** _(Dev từ chối - Re-assign)_
-  - [ ] UPDATE dev_id mới, status=2
-  - [ ] Dev cũ: AVAILABLE_STATUS=A; Dev mới: AVAILABLE_STATUS=W
-  - [ ] Gọi Z_BUG_LOG_HISTORY với action RS
-  - [ ] Activate
+- [x] **5.6 FM `Z_BUG_REASSIGN`** _(Dev từ chối - Re-assign)_
+  - [x] UPDATE dev_id mới, status=2
+  - [x] Dev cũ: AVAILABLE_STATUS=A; Dev mới: AVAILABLE_STATUS=W
+  - [x] Gọi Z_BUG_LOG_HISTORY với action RS
+  - [x] Activate
 
-**✅ Phase 5 Checkpoint:** 5 FMs active, màu ALV hiển thị, đính kèm file và re-assign hoạt động
+**✅ Phase 5 Checkpoint:** 100% hoàn thành - 6 FMs + ALV colors active, lịch sử, phân quyền, attachment, re-assign đều hoạt động
 
 ---
 
@@ -578,6 +578,6 @@ _(Continue for all 8 weeks...)_
 
 ---
 
-**Created:** [Ngày tạo]  
-**Last Updated:** [Ngày cập nhật]  
-**Completed:** [Ngày hoàn thành]
+**Created:** 01/02/2026
+**Last Updated:** 07/03/2026 - Phase 5 Complete ✅
+**Phase Completion Progress:** P0-P5 Done (35/57 = 61.4%)
