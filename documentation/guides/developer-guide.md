@@ -1167,6 +1167,8 @@ ENDFUNCTION.
 1. Vào T-code `SE38`
 2. Program: `Z_BUG_REPORT_ALV`
 3. Click **Create**
+   > [!TIP]
+   > Bạn chỉ cần nhập tên Program và nhấn nút **Create**. Các lựa chọn trong phần *Subobjects* (như Source Code, Variants...) mặc định là *Source Code* và chỉ dùng khi bạn muốn Display/Change một chương trình đã tồn tại.
 4. Điền các thuộc tính (Attributes):
    - **Title:** `Bug Tracking ALV Report`
    - **Type:** `Executable program`
@@ -1183,17 +1185,20 @@ ENDFUNCTION.
 *&---------------------------------------------------------------------*
 REPORT z_bug_report_alv.
 
-TABLES: zbug_tracker.
+" Helper variables for Selection Screen (ZBUG_TRACKER is a deep structure, cannot use TABLES)
+DATA: lv_bugid  TYPE zde_bug_id,
+      lv_status TYPE zde_bug_status,
+      lv_module TYPE zde_sap_module,
+      lv_prior  TYPE zde_priority.
 
 " Selection Screen
-SELECT-OPTIONS: s_bugid FOR zbug_tracker-bug_id,
-                s_status FOR zbug_tracker-status,
-                s_module FOR zbug_tracker-sap_module,
-                s_prior  FOR zbug_tracker-priority.
+SELECT-OPTIONS: s_bugid  FOR lv_bugid,
+                s_status FOR lv_status,
+                s_module FOR lv_module,
+                s_prior  FOR lv_prior.
 
 " Internal table
-DATA: lt_bugs     TYPE TABLE OF zbug_tracker,
-      ls_bug      TYPE zbug_tracker.
+DATA: lt_bugs     TYPE TABLE OF zbug_tracker.
 
 " ALV
 DATA: lt_fieldcat TYPE slis_t_fieldcat_alv,
@@ -1204,10 +1209,10 @@ START-OF-SELECTION.
 
   " Fetch data
   SELECT * FROM zbug_tracker INTO TABLE @lt_bugs
-    WHERE bug_id  IN @s_bugid
-      AND status  IN @s_status
+    WHERE bug_id     IN @s_bugid
+      AND status     IN @s_status
       AND sap_module IN @s_module
-      AND priority IN @s_prior
+      AND priority   IN @s_prior
     ORDER BY created_at DESCENDING.
 
   IF lt_bugs IS INITIAL.
@@ -1285,10 +1290,16 @@ ENDFORM.
 ### Bước 4.2: Tạo T-code ZBUG_REPORT
 
 1. Vào T-code `SE93`
-2. Transaction: `ZBUG_REPORT`
+2. Transaction: `ZBUG_REPORT` -> Click **Create**.
 3. Short Description: `Bug Tracking Report`
-4. Program: `Z_BUG_REPORT_ALV`
-5. Click **Save**
+4. Chọn **Program and selection screen (report transaction)**.
+   > [!IMPORTANT]
+   > Đây là **dòng thứ 2 từ trên xuống**. Đừng chọn dòng đầu tiên (Program and dynpro) vì nó dành cho Module Pool.
+5. Điền:
+   - **Program:** `Z_BUG_REPORT_ALV`
+   - **Selection screen:** `1000`
+   - **GUI support:** Tích chọn cả 3 ô (HTML, Java, Windows).
+6. Click **Save** -> Gán Package `ZBUGTRACK`.
 
 **✅ Checkpoint:** Gõ T-code `ZBUG_REPORT` → ALV Grid hiển thị danh sách Bug
 
@@ -1296,55 +1307,59 @@ ENDFORM.
 
 ### Bước 4.3: Nâng cấp ALV - Thêm nút tương tác (Interactive ALV)
 
-> **Lý do (extra-requirements #6):** User cần cập nhật Status/Assign ngay trên ALV thay vì chuyển sang màn hình khác cho các thao tác đơn giản. Thêm 2 nút: **"Update Status"** và **"Assign Dev"** vào Toolbar của ALV.
+> [!NOTE]
+> **Mục tiêu:** Thêm 2 nút "Update" và "Auto Assign" vào thanh công cụ của báo cáo để xử lý nhanh.
 
-Thêm đoạn code sau vào `Z_BUG_REPORT_ALV`, bổ sung vào phần `DATA` và xây dựng thêm:
+#### Phần 1: Cập nhật Code (T-code SE38)
 
-```abap
-" Khai báo thêm vào phần DATA
-DATA: lt_excl     TYPE slis_t_extab,
-      ls_excl     TYPE slis_extab.
-
-" --- FORM hiển thị Toolbar tùy chỉnh ---
-FORM user_command USING lv_ucomm TYPE syucomm
-                        ls_selfield TYPE slis_selfield.
-
-  DATA: lv_bugid   TYPE zde_bug_id,
-        lv_success TYPE char1,
-        lv_message TYPE string.
-
-  " Lấy Bug ID tại dòng được click
-  READ TABLE lt_bugs INDEX ls_selfield-tabindex INTO DATA(ls_sel).
-  lv_bugid = ls_sel-bug_id.
-
-  CASE lv_ucomm.
-    WHEN 'ZUPD'.  " Nút Update - Mở Z_BUG_UPDATE_SCREEN
-      SET PARAMETER ID 'ZBG' FIELD lv_bugid.
-      CALL TRANSACTION 'ZBUG_UPDATE' AND SKIP FIRST SCREEN.
-
-    WHEN 'ZASGN'. " Nút Assign - Tự động assign
-      CALL FUNCTION 'Z_BUG_AUTO_ASSIGN'
-        EXPORTING
-          iv_bug_id  = lv_bugid
-          iv_module  = ls_sel-sap_module
-        IMPORTING
-          ev_message = lv_message.
-      MESSAGE lv_message TYPE 'S'.
-  ENDCASE.
-
-  ls_selfield-refresh = 'X'.
-
-ENDFORM.
-
-" --- FORM thêm nút vào Toolbar ---
-FORM pf_status_set USING lv_extab TYPE slis_t_extab.
-  SET PF-STATUS 'ZBUG_STATUS'.
-ENDFORM.
-```
-
-Sau đó trong `CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'`, thêm 2 tham số Callback:
+Mở Program `Z_BUG_REPORT_ALV` trong **SE38**, xóa toàn bộ code cũ và dán đoạn code đầy đủ đã được nâng cấp dưới đây:
 
 ```abap
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_REPORT_ALV
+*&---------------------------------------------------------------------*
+REPORT z_bug_report_alv.
+
+" Helper variables for Selection Screen (ZBUG_TRACKER is a deep structure, cannot use TABLES)
+DATA: lv_bugid  TYPE zde_bug_id,
+      lv_status TYPE zde_bug_status,
+      lv_module TYPE zde_sap_module,
+      lv_prior  TYPE zde_priority.
+
+" Selection Screen
+SELECT-OPTIONS: s_bugid  FOR lv_bugid,
+                s_status FOR lv_status,
+                s_module FOR lv_module,
+                s_prior  FOR lv_prior.
+
+" Internal table
+DATA: lt_bugs     TYPE TABLE OF zbug_tracker.
+
+" ALV Data
+DATA: lt_fieldcat TYPE slis_t_fieldcat_alv,
+      ls_fieldcat TYPE slis_fieldcat_alv,
+      ls_layout   TYPE slis_layout_alv,
+      lt_excl     TYPE slis_t_extab.
+
+START-OF-SELECTION.
+
+  " 1. Fetch data
+  SELECT * FROM zbug_tracker INTO TABLE @lt_bugs
+    WHERE bug_id     IN @s_bugid
+      AND status     IN @s_status
+      AND sap_module IN @s_module
+      AND priority   IN @s_prior
+    ORDER BY created_at DESCENDING.
+
+  IF lt_bugs IS INITIAL.
+    MESSAGE 'No bugs found' TYPE 'S'.
+    RETURN.
+  ENDIF.
+
+  " 2. Build field catalog
+  PERFORM build_fieldcat.
+
+  " 3. Display ALV
   CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
     EXPORTING
       i_callback_program       = sy-repid
@@ -1357,54 +1372,298 @@ Sau đó trong `CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'`, thêm 2 tham số Callb
     EXCEPTIONS
       program_error            = 1
       OTHERS                   = 2.
+
+*&---------------------------------------------------------------------*
+*& Form build_fieldcat
+*&---------------------------------------------------------------------*
+FORM build_fieldcat.
+  ls_layout-zebra = 'X'.
+  ls_layout-colwidth_optimize = 'X'.
+
+  DEFINE m_fieldcat.
+    clear ls_fieldcat.
+    ls_fieldcat-fieldname = &1.
+    ls_fieldcat-seltext_m = &2.
+    ls_fieldcat-col_pos   = &3.
+    append ls_fieldcat to lt_fieldcat.
+  END-OF-DEFINITION.
+
+  m_fieldcat 'BUG_ID'     'Bug ID'    1.
+  m_fieldcat 'TITLE'      'Title'     2.
+  m_fieldcat 'SAP_MODULE' 'Module'    3.
+  m_fieldcat 'PRIORITY'   'Priority'  4.
+  m_fieldcat 'STATUS'     'Status'    5.
+  m_fieldcat 'TESTER_ID'  'Reporter'  6.
+  m_fieldcat 'CREATED_AT' 'Created'   7.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form pf_status_set
+*&---------------------------------------------------------------------*
+FORM pf_status_set USING lv_extab TYPE slis_t_extab.
+  SET PF-STATUS 'ZBUG_STATUS'.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form user_command
+*&---------------------------------------------------------------------*
+FORM user_command USING lv_ucomm TYPE syucomm
+                        ls_selfield TYPE slis_selfield.
+  DATA: lv_bugid   TYPE zde_bug_id,
+        lv_message TYPE string.
+
+  READ TABLE lt_bugs INDEX ls_selfield-tabindex INTO DATA(ls_sel).
+  lv_bugid = ls_sel-bug_id.
+
+  CASE lv_ucomm.
+    WHEN 'ZUPD'.  " Nút Update
+      SET PARAMETER ID 'ZBG' FIELD lv_bugid.
+      CALL TRANSACTION 'ZBUG_UPDATE' AND SKIP FIRST SCREEN.
+
+    WHEN 'ZASGN'. " Nút Auto Assign
+      CALL FUNCTION 'Z_BUG_AUTO_ASSIGN'
+        EXPORTING iv_bug_id = lv_bugid
+                  iv_module = ls_sel-sap_module
+        IMPORTING ev_message = lv_message.
+      MESSAGE lv_message TYPE 'S'.
+  ENDCASE.
+
+  ls_selfield-refresh = 'X'.
+ENDFORM.
 ```
+
+#### Phần 2: Tạo Giao diện Nút (T-code SE80)
+
+1. Vào T-code **SE80**.
+2. Chọn **Program** và nhập `Z_BUG_REPORT_ALV`.
+3. Chuột phải vào tên Program -> **Create** -> **GUI Status**.
+4. **Popup "Maintain Status" hiện ra:**
+   - **Status:** Nhập `ZBUG_STATUS` (phải viết hoa, không dấu).
+   - **Short Text:** Nhập `ALV Toolbar`.
+   - Nhấn **Enter** (Tích xanh).
+
+5. **Trong màn hình GUI Status Editor:**
+
+   - **A. Thanh công cụ (Application Toolbar):**
+     - Tìm dòng **Application Toolbar**, nhấn vào mũi tên nhỏ bên cạnh để mở rộng nó ra.
+     - Ở ô trống đầu tiên (Item 1), nhập `ZUPD` rồi nhấn **Enter**.
+     - Một popup hiện ra, ở ô **Function Text**, nhập `Update Bug`. Chọn một icon (nhấn F4) như `ICON_SYSTEM_SAVE`. Nhấn **Enter**.
+     - Ở ô trống thứ hai (Item 2), nhập `ZASGN` rồi nhấn **Enter**.
+     - Popup hiện ra, nhập `Auto Assign` vào **Function Text**. Chọn icon `ICON_USER`. Nhấn **Enter**.
+
+   - **B. Các phím chức năng (Function Keys):**
+     - Mở rộng phần **Function Keys**.
+     - Tìm biểu tượng **Mũi tên xanh (Back)**: Nhập `BACK`.
+     - Tìm biểu tượng **Cửa sổ có mũi tên (Exit)**: Nhập `EXIT`.
+     - Tìm biểu tượng **Dấu X đỏ (Cancel)**: Nhập `CANC`.
+
+6. **Kích hoạt:**
+   - Nhấn **Save (Ctrl+S)**.
+   - Nhấn **Activate (Ctrl+F3)**. Nếu nó hỏi "Select objects", hãy tích chọn cả Program và GUI Status rồi nhấn Enter.
+
+**✅ Checkpoint:** Chạy `ZBUG_REPORT` -> Thấy 2 nút mới hiện trên Toolbar -> Bấm thử nút Update.
 
 > [!NOTE]
 > Tạo thêm GUI Status `ZBUG_STATUS` trong SE80 cho program `Z_BUG_REPORT_ALV` với 2 Function Code: `ZUPD` (Update Bug) và `ZASGN` (Auto Assign).
 
 ---
 
-### Bước 4.4: Tạo SmartForm ZBUG_FORM (In ấn Bug Report)
+### Bước 4.4: Manager Dashboard Z_BUG_MANAGER_DASHBOARD
+
+> **Lý do (requirements #10 + extra #7):** Manager cần dashboard tổng hợp: số Bug theo Status/Module, danh sách Bug đang Waiting, và hiệu suất Tester/Developer.
+
+1. Vào T-code **`SE38`**
+2. Program: `Z_BUG_MANAGER_DASHBOARD`
+3. Click **Create**
+4. Điền các thuộc tính (Attributes):
+   - **Title:** `Bug Manager Dashboard`
+   - **Type:** `Executable program`
+   - **Status:** `SAP Standard Production Program`
+   - **Application:** `Basis`
+   - **Fixed point arithmetic:** Tích chọn (Checked)
+
+5. Click **Save** → Chọn Package `ZBUGTRACK`.
+6. Source code (Phiên bản cải tiến - Hiển thị thống kê phía trên bảng):
+
+```abap
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_MANAGER_DASHBOARD
+*&---------------------------------------------------------------------*
+REPORT z_bug_manager_dashboard.
+
+TYPE-POOLS: slis.
+
+TYPES: BEGIN OF ty_stat,
+         status TYPE zde_bug_status,
+         cnt    TYPE i,
+       END OF ty_stat.
+
+DATA: lt_stat     TYPE TABLE OF ty_stat,
+      ls_stat     TYPE ty_stat,
+      lt_waiting  TYPE TABLE OF zbug_tracker,
+      lt_fieldcat TYPE slis_t_fieldcat_alv,
+      ls_fieldcat TYPE slis_fieldcat_alv,
+      ls_layout   TYPE slis_layout_alv,
+      lv_total    TYPE i.
+
+START-OF-SELECTION.
+
+  " 1. Lấy thống kê tổng quát
+  SELECT status, COUNT(*) AS cnt FROM zbug_tracker
+    INTO TABLE @lt_stat
+    GROUP BY status.
+
+  SELECT COUNT(*) FROM zbug_tracker INTO @lv_total.
+
+  " 2. Lấy danh sách Bug đang "Waiting" (Status = 'W')
+  " LƯU Ý: Nếu dashboard trống, có thể là do bạn không có bug nào ở trạng thái 'W'
+  SELECT * FROM zbug_tracker INTO TABLE @lt_waiting
+    WHERE status = 'W'
+    ORDER BY created_at ASCENDING.
+
+  " 3. Hiển thị ALV
+  PERFORM build_fieldcat.
+  ls_layout-zebra = 'X'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program     = sy-repid
+      i_callback_top_of_page = 'TOP_OF_PAGE'
+      is_layout              = ls_layout
+      it_fieldcat            = lt_fieldcat
+    TABLES
+      t_outtab               = lt_waiting
+    EXCEPTIONS
+      program_error          = 1
+      OTHERS                 = 2.
+
+*&---------------------------------------------------------------------*
+*& Form TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+FORM top_of_page.
+  DATA: lt_header TYPE slis_t_listheader,
+        ls_header TYPE slis_listheader,
+        lv_total_s TYPE string,
+        lv_cnt_s   TYPE string,
+        lv_status_txt TYPE string.
+
+  ls_header-typ  = 'H'.
+  ls_header-info = '=== BUG TRACKING DASHBOARD ==='.
+  APPEND ls_header TO lt_header.
+
+  lv_total_s = lv_total.
+  ls_header-typ  = 'S'.
+  CONCATENATE 'Tổng số Bug trong hệ thống: ' lv_total_s INTO ls_header-info.
+  APPEND ls_header TO lt_header.
+
+  LOOP AT lt_stat INTO ls_stat.
+    " Ánh xạ mã trạng thái sang tên tiếng Việt
+    CASE ls_stat-status.
+      WHEN '1'. lv_status_txt = 'Mới (New)'.
+      WHEN 'W'. lv_status_txt = 'Chờ gán (Waiting)'.
+      WHEN '2'. lv_status_txt = 'Đã gán (Assigned)'.
+      WHEN '3'. lv_status_txt = 'Đang sửa (In Progress)'.
+      WHEN '4'. lv_status_txt = 'Đã sửa (Fixed)'.
+      WHEN '5'. lv_status_txt = 'Đã đóng (Closed)'.
+      WHEN OTHERS. lv_status_txt = 'Khác (Other)'.
+    ENDCASE.
+
+    lv_cnt_s = ls_stat-cnt.
+    ls_header-typ = 'S'.
+    CONCATENATE lv_status_txt ': ' lv_cnt_s ' bugs' INTO ls_header-info.
+    APPEND ls_header TO lt_header.
+  ENDLOOP.
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      it_list_commentary = lt_header.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form BUILD_FIELDCAT
+*&---------------------------------------------------------------------*
+FORM build_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'BUG_ID'.    ls_fieldcat-seltext_m = 'Bug ID'.    ls_fieldcat-col_pos = 1. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'TITLE'.     ls_fieldcat-seltext_m = 'Title'.     ls_fieldcat-col_pos = 2. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'SAP_MODULE'.ls_fieldcat-seltext_m = 'Module'.    ls_fieldcat-col_pos = 3. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'PRIORITY'.  ls_fieldcat-seltext_m = 'Priority'.  ls_fieldcat-col_pos = 4. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'TESTER_ID'. ls_fieldcat-seltext_m = 'Reporter'.  ls_fieldcat-col_pos = 5. APPEND ls_fieldcat TO lt_fieldcat.
+  CLEAR ls_fieldcat.
+  ls_fieldcat-fieldname = 'CREATED_AT'.ls_fieldcat-seltext_m = 'Created'.   ls_fieldcat-col_pos = 6. APPEND ls_fieldcat TO lt_fieldcat.
+ENDFORM.
+```
+
+1. Click **Save** → **Activate**
+2. Tạo T-code **`ZBUG_MANAGER`**:
+   - Vào T-code **`SE93`**.
+   - Transaction Code: `ZBUG_MANAGER` -> Click **Create**.
+   - Short Text: `Bug Manager Dashboard`.
+   - Select: **Program and selection screen (report transaction)**.
+   - Program: `Z_BUG_MANAGER_DASHBOARD`.
+   - Tích chọn: **Inherit GUI attributes** (ở cuối trang).
+   - Click **Save** -> Chọn Package/Transport Request.
+
+**✅ Checkpoint:** Gõ `ZBUG_MANAGER` → Thấy thống kê tổng Bug + bảng Waiting Bugs
+
+---
+
+### Bước 4.5: Tạo SmartForm ZBUG_FORM (In ấn Bug Report)
 
 > **Lý do (requirements #3B):** In biên bản bàn giao lỗi dạng văn bản chính thức (PDF/Print).
 
 1. Vào T-code **`SMARTFORMS`**
 2. Form Name: `ZBUG_FORM`
-3. Click **Create**
-4. Thiết kế layout theo cấu trúc sau:
+3. Click **Create**.
+4. **Khai báo Interface (Dữ liệu đầu vào):**
+   - Mở cây thư mục bên trái: **Global Settings** -> Click đúp vào **Form Interface**.
+   - Ở màn hình bên phải, chọn tab **Import**.
+   - Thêm một dòng mới:
+     - **Parameter Name:** `IS_BUG`
+     - **Type Assignment:** `TYPE`
+     - **Associated Type:** `ZBUG_TRACKER`
+     - **Pass Value:** Bắt buộc phải TICK chọn ô này.
+   - Bấm **Save** (Ctrl+S).
 
-```
-Page: FIRST
-  Window: HEADER
-    - Logo + Tên công ty (BMPFILE nếu có)
-    - Tiêu đề: "BUG TRACKING REPORT"
-    - Số Bug ID, Ngày in: &DATE& &TIME&
+5. **Thiết kế giao diện bằng Graphical Form Painter:**
+   - Ở cây thư mục bên trái, mở rộng: **Pages and Windows** -> **%PAGE1 New Page**.
+   - Mặc định đã có sẵn 1 ô là **MAIN Main Window**.
+   - **Tạo HEADER:** Nhấn chuột phải vào `%PAGE1 New Page` -> **Create** -> **Window**. Đặt tên cửa sổ mới là `HEADER` và điền Description là `Tieu de bao cao`.
+   - **Tạo FOOTER:** Nhấn chuột phải vào `%PAGE1 New Page` -> **Create** -> **Window**. Đặt tên cửa sổ mới là `FOOTER` và điền Description là `Chu ky`.
 
-  Window: MAIN
-    Text node:
-    - Bug ID:     &BUG_ID&
-    - Title:      &TITLE&
-    - Module:     &SAP_MODULE&
-    - Priority:   &PRIORITY&
-    - Status:     &STATUS&
-    - Reporter:   &TESTER_ID&
-    - Developer:  &DEV_ID&
-    - Created:    &CREATED_AT&
-    - Closed:     &CLOSED_AT&
-    - Description: &DESC_TEXT&
-    - Reasons:    &REASONS&
+   - **Kéo thả Layout:** Nhìn sang khung lưới đồ họa (Form Painter) bên phải. Bấm chuột vào viền của các ô vuông để di chuyển và kéo giãn. Sắp xếp lại sao cho:
+     - Ô `HEADER` nằm trên cùng.
+     - Ô `MAIN` nằm ở giữa (kéo to ra để chứa nội dung).
+     - Ô `FOOTER` nằm ở dưới cùng.
 
-  Window: FOOTER
-    - Chữ ký Tester / Developer / Manager
-```
+6. **Điền nội dung (Thêm Text Nodes):**
+   - **Tắt MS Word Editor (Quan trọng):** Mở 1 cửa sổ mới (gõ `/oSE38`) -> Chạy Program `RSCPSETEDITOR` -> Bỏ tích ô MS Word ở phần Smart Forms -> Kích hoạt (Activate) và quay lại màn hình SMARTFORMS.
+   - **Cho HEADER:** Chuột phải vào chữ `HEADER` trên cây bên trái -> **Create** -> **Text**.
+     - Sửa tên thành `TXT_TITLE`.
+     - Click vào nút `Text Editor` (biểu tượng tờ giấy và cây bút ở góc trái thẻ General Attributes).
+     - Gõ nội dung (Lưu ý gõ dấu `*` ở cột lề trái nhỏ xíu): `* BUG TRACKING REPORT`. Bấm Back (`<`) màn hình màu xanh lá và Save.
+   - **Cho MAIN:** Chuột phải vào chữ `MAIN Main Window` trên cây bên trái -> **Create** -> **Text**.
+     - Sửa tên thành `TXT_DETAILS`.
+     - Vào `Text Editor`, nhập danh sách các thông tin sau (chú ý dùng dấu `*` ở cột lề trái cho TẤT CẢ các dòng để text tự động xuống hàng):
 
-1. Tab **Form Interface** → Khai báo Parameters vào Import:
+       ```text
+       * Bug ID:      &IS_BUG-BUG_ID&
+       * Title:       &IS_BUG-TITLE&
+       * Sap Module:  &IS_BUG-SAP_MODULE&
+       * Priority:    &IS_BUG-PRIORITY&
+       * Status:      &IS_BUG-STATUS&
+       * Reporter:    &IS_BUG-TESTER_ID&
+       * Created on:  &IS_BUG-CREATED_AT&
+       ```
 
-| Parameter | Type   | Associated Type |
-| --------- | ------ | --------------- |
-| IS_BUG    | Import | ZBUG_TRACKER    |
+     - Bấm Back (`<`) và Save.
 
-1. Click **Check** → **Activate**
+7. **Kiểm tra và Kích hoạt:**
+   - Nhấn nút **Check (F8)** để kiểm tra lỗi cú pháp. Nhấn **Activate (Ctrl+F3)** để kích hoạt Form (Bắt buộc phải Activate thì Form mới nhận thay đổi).
 
 #### Tạo Driver Program cho SmartForm: Z_BUG_PRINT
 
@@ -1420,6 +1679,8 @@ Page: FIRST
 
 5. Click **Save** → Chọn Package `ZBUGTRACK`.
 6. Source code:
+
+```abap
 REPORT z_bug_print.
 
 PARAMETERS: p_bugid TYPE zde_bug_id OBLIGATORY.
@@ -1470,139 +1731,34 @@ START-OF-SELECTION.
   IF sy-subrc <> 0.
     MESSAGE 'SmartForm print failed' TYPE 'E'.
   ENDIF.
-
 ```
 
-Tạo T-code `ZBUG_PRINT` → Program `Z_BUG_PRINT`.
+#### Tạo T-code cho chương trình in ấn (SE93)
 
-**✅ Checkpoint:** Gõ `ZBUG_PRINT`, nhập Bug ID → Form in ấn preview hiển thị
+1. Mở một tab dòng lệnh mới bằng cách gõ `/oSE93` rồi Enter.
+2. Tại ô **Transaction Code**, nhập: **`ZBUG_PRINT`** -> Bấm **Create**.
+3. **Short text:** Gõ `In an Bug Tracking Report`
+4. Chọn radio button **Program and selection screen (report transaction)** -> Bấm **Enter**.
+5. Trong màn hình tiếp theo:
+   - **Program:** Gõ **`Z_BUG_PRINT`** (Lưu ý: Chỗ này là TÊN PROGRAM mà ta vừa tạo ở trên, CÓ dấu gạch dưới `_`).
+   - Phía dưới, tích chọn 3 ô:
+     - [x] SAP GUI for HTML
+     - [x] SAP GUI for Java
+     - [x] SAP GUI for Windows
+6. Bấm **Save** -> Lưu vào Package `ZBUGTRACK`.
 
----
-
-### Bước 4.5: Tạo Manager Dashboard Z_BUG_MANAGER_DASHBOARD
-
-> **Lý do (requirements #10 + extra #7):** Manager cần dashboard tổng hợp: số Bug theo Status/Module, danh sách Bug đang Waiting, và hiệu suất Tester/Developer.
-
-1. Vào T-code `SE38`
-2. Program: `Z_BUG_MANAGER_DASHBOARD`
-3. Click **Create**
-4. Điền các thuộc tính (Attributes):
-   - **Title:** `Bug Manager Dashboard`
-   - **Type:** `Executable program`
-   - **Status:** `SAP Standard Production Program`
-   - **Application:** `Basis`
-   - **Fixed point arithmetic:** Tích chọn (Checked)
-
-5. Click **Save** → Chọn Package `ZBUGTRACK`.
-6. Source code:
-
-```abap
-*&---------------------------------------------------------------------*
-*& Report Z_BUG_MANAGER_DASHBOARD
-*&---------------------------------------------------------------------*
-REPORT z_bug_manager_dashboard.
-
-TYPES: BEGIN OF ty_stat,
-         status   TYPE zde_bug_status,
-         cnt      TYPE i,
-       END OF ty_stat.
-
-TYPES: BEGIN OF ty_module_stat,
-         sap_module TYPE zde_sap_module,
-         cnt        TYPE i,
-       END OF ty_module_stat.
-
-DATA: lt_stat        TYPE TABLE OF ty_stat,
-      ls_stat        TYPE ty_stat,
-      lt_mod_stat    TYPE TABLE OF ty_module_stat,
-      ls_mod_stat    TYPE ty_module_stat,
-      lt_waiting     TYPE TABLE OF zbug_tracker,
-      lt_fieldcat    TYPE slis_t_fieldcat_alv,
-      ls_fieldcat    TYPE slis_fieldcat_alv,
-      ls_layout      TYPE slis_layout_alv,
-      lv_total       TYPE i.
-
-START-OF-SELECTION.
-
-  " --- Thống kê theo Status ---
-  SELECT status COUNT(*) AS cnt FROM zbug_tracker
-    INTO TABLE @lt_stat
-    GROUP BY status.
-
-  SELECT COUNT(*) FROM zbug_tracker INTO @lv_total.
-
-  WRITE: / '=== BUG TRACKING DASHBOARD ==='.
-  WRITE: / 'Total bugs:', lv_total.
-  SKIP.
-  WRITE: / '-- By Status --'.
-
-  LOOP AT lt_stat INTO ls_stat.
-    WRITE: / ls_stat-status, ':', ls_stat-cnt.
-  ENDLOOP.
-
-  " --- Thống kê theo Module ---
-  SELECT sap_module COUNT(*) AS cnt FROM zbug_tracker
-    INTO TABLE @lt_mod_stat
-    GROUP BY sap_module
-    ORDER BY cnt DESCENDING.
-
-  SKIP.
-  WRITE: / '-- By Module --'.
-  LOOP AT lt_mod_stat INTO ls_mod_stat.
-    WRITE: / ls_mod_stat-sap_module, ':', ls_mod_stat-cnt.
-  ENDLOOP.
-
-  " --- Danh sách Bug đang Waiting (cần Manager assign thủ công) ---
-  SELECT * FROM zbug_tracker INTO TABLE @lt_waiting
-    WHERE status = 'W'
-    ORDER BY created_at ASCENDING.
-
-  SKIP.
-  WRITE: / '-- Waiting Bugs (Manual Assign Required) --'.
-
-  " Build fieldcat cho Waiting ALV
-  CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'BUG_ID'.    ls_fieldcat-seltext_m = 'Bug ID'.    ls_fieldcat-col_pos = 1. APPEND ls_fieldcat TO lt_fieldcat.
-  CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'TITLE'.     ls_fieldcat-seltext_m = 'Title'.     ls_fieldcat-col_pos = 2. APPEND ls_fieldcat TO lt_fieldcat.
-  CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'SAP_MODULE'.ls_fieldcat-seltext_m = 'Module'.    ls_fieldcat-col_pos = 3. APPEND ls_fieldcat TO lt_fieldcat.
-  CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'PRIORITY'.  ls_fieldcat-seltext_m = 'Priority'.  ls_fieldcat-col_pos = 4. APPEND ls_fieldcat TO lt_fieldcat.
-  CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'TESTER_ID'. ls_fieldcat-seltext_m = 'Reporter'.  ls_fieldcat-col_pos = 5. APPEND ls_fieldcat TO lt_fieldcat.
-  CLEAR ls_fieldcat.
-  ls_fieldcat-fieldname = 'CREATED_AT'.ls_fieldcat-seltext_m = 'Created'.   ls_fieldcat-col_pos = 6. APPEND ls_fieldcat TO lt_fieldcat.
-
-  ls_layout-zebra = 'X'.
-
-  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
-    EXPORTING
-      i_callback_program = sy-repid
-      is_layout          = ls_layout
-      it_fieldcat        = lt_fieldcat
-    TABLES
-      t_outtab           = lt_waiting
-    EXCEPTIONS
-      program_error      = 1
-      OTHERS             = 2.
-```
-
-1. Click **Save** → **Activate**
-2. Tạo T-code `ZBUG_MANAGER` → Program `Z_BUG_MANAGER_DASHBOARD` (SE93)
-
-**✅ Checkpoint:** Gõ `ZBUG_MANAGER` → Thấy thống kê tổng Bug + bảng Waiting Bugs
+**✅ Checkpoint:** Gõ lệnh `ZBUG_PRINT` (ra ngoài màn hình chính), nhập một số Bug ID bất kỳ (VD: 1, 2) → Bấm Execute (F8) → Form in ấn SmartForms dạng cửa sổ phụ họa sẽ bật lên!
 
 ---
 
 ### Bước 4.6: Tạo Program Z_BUG_USER_MANAGEMENT (Quản lý tài khoản)
 
-> **Lý do (requirements #6 + #10):** Manager cần màn hình để xem và quản lý danh sách Users, đặc biệt là chỉnh `AVAILABLE_STATUS` của Developer.
+> **Lý do (requirements #6 + #10):** Manager cần màn hình để xem và quản lý danh sách Users, đặc biệt là xem `AVAILABLE_STATUS` của Developer.
 
 > [!TIP]
-> **Tài khoản sử dụng:** **DEV-118** (Pass: `Qwer123@`) — Full system access.
+> **Tài khoản sử dụng:** **DEV-118** (Pass: `Qwer123@`) — Cần dùng user này hoặc những user có Role `M` (Manager) để test quyền (phân quyền sẽ làm ở Phase 5).
 
-1. Vào T-code `SE38`
+1. Mở tab dòng lệnh mới: `/oSE38`
 2. Program: `Z_BUG_USER_MANAGEMENT`
 3. Click **Create**
 4. Điền các thuộc tính (Attributes):
@@ -1613,14 +1769,20 @@ START-OF-SELECTION.
    - **Fixed point arithmetic:** Tích chọn (Checked)
 
 5. Click **Save** → Chọn Package `ZBUGTRACK`.
-6. Xóa phần gán `TEXT-001` (nếu có) và nhấn **Save**.
-7. **Định nghĩa Text Symbol:**
-   - Lên menu: **Goto** -> **Text Elements** -> **Text Symbols**.
-   - Dòng `001`: Nhập `Filter by Role (T=Tester D=Developer M=Manager)`.
-   - Nhấn **Save** và **Activate**.
-8. Quay lại code và nhấn **Activate** (Ctrl+F3).
+6. Xóa đoạn Text mặc định (nếu có chữ `TEXT-001...`) và dán toàn bộ Source Code ở mục dưới vào. Nhấn **Save**.
+7. **Định nghĩa Text Symbol (Tạo Text cho Selection Screen):**
+   - Lên thanh menu trên cùng: Chọn **Goto** -> **Text Elements** -> **Text Symbols**.
+   - Ở dòng mã `001`: Nhập chữ `Filter by Role (T=Tester D=Developer M=Manager)` vào cột Text.
+   - Chuyển sang thẻ bên cạnh là **Selection Texts**. Tích vào ô vuông cột *Dictionary* của dòng `P_ROLE` (sẽ tự động lấy tên bảng, hoặc tự gõ vào ô Text chữ `User Role`).
+   - Nhấn **Save** và **Activate** màn hình Text. Bấm Back (F3) ngoài cùng bên trái để quay lại.
+8. Ở màn hình code hiện tại, nhấn **Activate** (Ctrl+F3) một lần nữa.
 
-**Source code:**
+> [!CAUTION] 
+> **Thêm dữ liệu ảo (Dummy Data) cho bảng ZBUG_USERS:**
+> Do bảng User của chúng ta hiện tại đang... trống trơn (Chưa có ai trong hệ thống), nên ALV in ra sẽ không có gì.
+> Bạn cần mở 1 tab lệnh mới (`/oSE16N`) -> Điền bảng `ZBUG_USERS` -> Bấm Execute (F8) -> Thêm vài User mẫu (Ví dụ: `USER_ID` = `DEV-001`, `ROLE` = `D`, `IS_ACTIVE` = `X`). Bấm Save. Làm tương tự cho 2-3 người nữa với ROLE khác nhau.
+
+**Source code (Copy & Paste):**
 
 ```abap
 *&---------------------------------------------------------------------*
@@ -1690,15 +1852,18 @@ START-OF-SELECTION.
 
 ---
 
-### Bước 4.7: Tạo T-code ZBUG_USERS
+### Bước 4.7: Tạo T-code cho User Management (T-code ZBUG_USERS)
 
-1. Vào T-code `SE93`
-2. Transaction: `ZBUG_USERS`
-3. Short Description: `User Management`
-4. Program: `Z_BUG_USER_MANAGEMENT`
-5. Click **Save**
+1. Mở một tab lệnh mới: `/oSE93`
+2. Tại ô **Transaction Code**, nhập: **`ZBUG_USERS`** -> Bấm **Create**.
+3. **Short text:** Gõ `User Management`
+4. Chọn lựa chọn đầu tiên: **Program and selection screen (report transaction)** -> Bấm **Enter**.
+5. Màn hình tiếp theo điền thông tin:
+   - **Program:** Điền tên mã nguồn **`Z_BUG_USER_MANAGEMENT`**.
+   - Đảm bảo đã check đủ 3 ô SAP GUI (HTML, Java, Windows).
+6. Click **Save** -> Lưu vào `ZBUGTRACK`.
 
-**✅ Checkpoint:** Gõ `ZBUG_USERS` → ALV hiển thị danh sách Users, lọc được theo Role (T/D/M)
+**✅ Checkpoint:** Gõ lệnh `/nZBUG_USERS` (trở ra màn hình gọi app) → ALV hiển thị danh sách toàn bộ Users trong hệ thống, có cái khung viền "Filter by Role..." bao quanh ô nhập Role. Thử gõ `D` vào ô Role, bấm F8 xem list có filter chỉ hiện Developer không!
 
 ---
 

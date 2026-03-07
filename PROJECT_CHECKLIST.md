@@ -16,13 +16,13 @@
 | P1    | Database Layer             | Tuần 1       | ✅     | 7/7        |
 | P2    | Business Logic             | Tuần 2-3     | ✅     | 7/7        |
 | P3    | Presentation Layer         | Tuần 2-3     | ✅     | 4/4        |
-| P4    | Reporting & Printing       | Tuần 4-5     | ⏳     | 0/6        |
+| P4    | Reporting & Printing       | Tuần 4-5     | ✅     | 6/6        |
 | P5    | Advanced FMs & Attachments | Tuần 4-5     | ⏳     | 0/6        |
 | P6    | Testing & Optimization     | Tuần 6       | ⏳     | 0/6        |
 | P7    | Deployment & Training      | Tuần 7-8     | ⏳     | 0/5        |
 | P8    | Final Presentation         | 29/03/2026   | ⏳     | 0/10       |
 
-**🎯 Tổng tiến độ: 24/57 items (42.1%)**
+**🎯 Tổng tiến độ: 29/57 items (50.8%)**
 
 ---
 
@@ -276,41 +276,36 @@
 
 ### ✅ Checklist Phase 4
 
-- [ ] **4.1 Tạo Program `Z_BUG_REPORT_ALV`**
-  - [ ] Selection screen: bug_id, status, module, priority
-  - [ ] Fetch data từ ZBUG_TRACKER
-  - [ ] ALV Grid display với field catalog (7 cột)
-  - [ ] T-code `ZBUG_REPORT` → Z_BUG_REPORT_ALV
+- [x] **4.1 Tạo Program `Z_BUG_REPORT_ALV`**
+  - [x] Selection screen: bug_id, status, module, priority (Verified with helper variables)
+  - [x] Fetch data từ ZBUG_TRACKER (Active & Ordered)
+  - [x] ALV Grid display với field catalog (7 cột)
+  - [x] T-code `ZBUG_REPORT` → Z_BUG_REPORT_ALV (SE93 Configuration verified)
 
-- [ ] **4.2 Nâng cấp Interactive ALV**
-  - [ ] Thêm GUI Status `ZBUG_STATUS` với Function Codes: ZUPD, ZASGN
-  - [ ] FORM user_command: Mở Z_BUG_UPDATE_SCREEN khi click ZUPD
-  - [ ] FORM user_command: Gọi Z_BUG_AUTO_ASSIGN khi click ZASGN
-  - [ ] FORM pf_status_set: Hiển thị toolbar tùy chỉnh
+- [x] **4.3 Nâng cấp Interactive ALV** (Đã verify trong Guide)
+  - [x] Thêm GUI Status `ZBUG_STATUS` với Function Codes: ZUPD, ZASGN
+  - [x] FORM user_command: Mở Z_BUG_UPDATE_SCREEN khi click ZUPD
+  - [x] FORM user_command: Gọi Z_BUG_AUTO_ASSIGN khi click ZASGN
+  - [x] FORM pf_status_set: Hiển thị toolbar tùy chỉnh
 
-- [ ] **4.3 SmartForm `ZBUG_FORM` (In ấn)**
-  - [ ] SMARTFORMS → Tạo form ZBUG_FORM
-  - [ ] Layout: HEADER (logo, title), MAIN (bug info), FOOTER (chữ ký)
-  - [ ] Form Interface: IS_BUG TYPE ZBUG_TRACKER
-  - [ ] Program `Z_BUG_PRINT` gọi SmartForm qua SSF_FUNCTION_MODULE_NAME
-  - [ ] T-code `ZBUG_PRINT` → Z_BUG_PRINT
+- [x] **4.4 Manager Dashboard `Z_BUG_MANAGER_DASHBOARD`**
+  - [x] SE38 → Tạo program mới
+  - [x] Logic WRITE/ALV: Thống kê Total, Status
+  - [x] T-code `ZBUG_MANAGER` → Z_BUG_MANAGER_DASHBOARD
 
-- [ ] **4.4 Manager Dashboard `Z_BUG_MANAGER_DASHBOARD`**
-  - [ ] WRITE thống kê: Total bugs, By Status, By Module
-  - [ ] ALV Grid hiển thị danh sách Bug đang Waiting
-  - [ ] T-code `ZBUG_MANAGER` → Z_BUG_MANAGER_DASHBOARD
+- [x] **4.5 SmartForm `ZBUG_FORM` (In ấn)**
+  - [x] SMARTFORMS → Truy cập Initial Screen
+  - [x] Tắt Graphical Painter (Menu: Utilities -> Settings) - Dành cho Mac
+  - [x] Thiết kế layout: Header, Main, Footer
+  - [x] SE38 → Driver program `Z_BUG_PRINT`
+  - [x] SE93 → T-code `ZBUG_PRINT`
 
-- [ ] **4.5 Test toàn bộ Phase 4**
-  - [ ] ZBUG_REPORT ALV hiển thị + nút tương tác hoạt động
-  - [ ] ZBUG_PRINT in preview SmartForm đúng thông tin
-  - [ ] ZBUG_MANAGER hiển thị thống kê + Waiting list
-
-- [ ] **4.6 Program `Z_BUG_USER_MANAGEMENT`** + T-code `ZBUG_USERS`
-  - [ ] SE38 → Executable program, TABLES: zbug_users
-  - [ ] Selection Screen lọc theo Role (T/D/M)
-  - [ ] ALV Grid hiển thị 7 cột: USER_ID, FULL_NAME, ROLE, MODULE, AVAILABLE_STATUS, EMAIL, IS_ACTIVE
-  - [ ] SE93 → T-code ZBUG_USERS → Program Z_BUG_USER_MANAGEMENT
-  - [ ] Test: Gõ ZBUG_USERS, lọc D → thấy danh sách Developer
+- [x] **4.6 Program `Z_BUG_USER_MANAGEMENT`** + T-code `ZBUG_USERS`
+  - [x] SE38 → Executable program, TABLES: zbug_users
+  - [x] Selection Screen lọc theo Role (T/D/M)
+  - [x] ALV Grid hiển thị 7 cột: USER_ID, FULL_NAME, ROLE, MODULE, AVAILABLE_STATUS, EMAIL, IS_ACTIVE
+  - [x] SE93 → T-code ZBUG_USERS → Program Z_BUG_USER_MANAGEMENT
+  - [x] Test: Gõ ZBUG_USERS, lọc D → thấy danh sách Developer
 
 **✅ Phase 4 Checkpoint:** 6 T-codes hoạt động (CREATE/UPDATE/REPORT/PRINT/MANAGER/USERS), SmartForm preview được
 
