@@ -1,9 +1,9 @@
 # HƯỚNG DẪN TRIỂN KHAI CHO DEVELOPER
 
-**Dự án:** SAP Bug Tracking Management System  
-**Đối tượng:** Developer chưa có kinh nghiệm SAP hoặc chưa setup môi trường  
-**Ngày cập nhật:** 03/03/2026  
-**Phiên bản:** 2.0
+**Dự án:** SAP Bug Tracking Management System
+**Đối tượng:** Developer chưa có kinh nghiệm SAP hoặc chưa setup môi trường
+**Ngày cập nhật:** 07/03/2026
+**Phiên bản:** 3.0 (Phase 6/7/8 Detailed Expansion)
 
 ---
 
@@ -16,7 +16,9 @@
 - [Phase 3: Presentation Layer](#phase-3-presentation-layer-tuần-2-3) ⏳ Đang thực hiện
 - [Phase 4: ALV Report](#phase-4-alv-report-tuần-4-5)
 - [Phase 5: Advanced Function Modules](#phase-5-advanced-function-modules-nâng-cao)
-- [Phase 6: Testing & Deployment](#phase-6-testing--deployment-tuần-6-8)
+- [Phase 6: Testing & Optimization](#phase-6-testing--optimization-tuần-6)
+- [Phase 7: Deployment & Training](#phase-7-deployment--training-tuần-7-8)
+- [Phase 8: Final Presentation](#phase-8-final-presentation-295-2026)
 
 ---
 
@@ -33,7 +35,9 @@ Vì hệ thống S40 phân tách quyền hạn theo chức năng (Role-based), b
 | **Phase 4** | **Reporting** | **DEV-061** | Design Forms & ALV Reports |
 | **Phase 5** | **Integration** | **DEV-237** | Đính kèm file (GOS) |
 | **Phase 5** | **Email** | **DEV-242** | Cấu hình Email (SCOT) |
-| **Phase 6** | **Management** | **DEV-118** | Thống kê & Kiểm tra cuối cùng |
+| **Phase 6** | **Testing** | **DEV-118** | Code Inspector, Unit Testing, Performance Testing |
+| **Phase 7** | **Deployment** | **DEV-118** | Transport Request, Deployment Checklist |
+| **Phase 8** | **Presentation** | **DEV-118** | Final Testing, Project Summary, Handover |
 
 > [!IMPORTANT]
 > Tất cả tài khoản `DEV-*` đều đã được cấp **Developer Key**. Nếu hệ thống yêu cầu Key khi tạo Object mới, hãy kiểm tra lại xem bạn có đang đăng nhập đúng tài khoản được phân công hay không.
@@ -2485,45 +2489,930 @@ Click **Save** → **Activate**
 
 ---
 
-## PHASE 6: TESTING & DEPLOYMENT (Tuần 6-8)
+## PHASE 6: TESTING & OPTIMIZATION (Tuần 6)
 
 > [!TIP]
 > **Tài khoản sử dụng:**
 >
-> - Code Inspector: **DEV-118** (Pass: `Qwer123@`)
-> - Đính kèm file (GOS): **DEV-237** (Pass: `toiyeufpt`)
-> - Cấu hình Email/Verify: **DEV-242** → **DEV-118**
+> - Code Inspector & Testing: **DEV-118** (Pass: `Qwer123@`)
+> - File Attachment Testing: **DEV-237** (Pass: `toiyeufpt`)
 
-### Bước 6.1: Code Inspector (SCI)
+### Bước 6.1: Unit Testing - Toàn Bộ Edge Cases
 
-1. Vào T-code `SCI`
-2. Create inspection với variant `DEFAULT`
-3. Add programs: `Z_BUG_*`
-4. Execute → Fix all errors/warnings
+**Mục đích:** Test từng Function Module riêng lẻ với các tình huống biên (edge cases).
 
-### Bước 6.2: Transport Request (SE09)
+#### 6.1.1 Unit Test: Z_BUG_CREATE
 
-1. Vào T-code `SE09`
-2. Create Transport Request
-3. Add all objects từ package `ZBUGTRACK`
-4. Release Transport
+| # | Test Case | Input | Expected | Edge Case |
+| :--- | :--- | :--- | :--- | :--- |
+| U-1.1 | Create Bug Normal | Title="Network Error", Desc="API Down", Priority="1" | BUG_ID sinh (001), Status='1' | ✅ |
+| U-1.2 | Create with Empty Title | Title="" | Error Message: "Title required" | ❌ Validation Error |
+| U-1.3 | Create with Max Length | Title=500 chars, Desc=4000 chars | Accepted, truncate if needed | Edge: Boundary Test |
+| U-1.4 | Create with Special Chars | Title="<Bug & Test>' ", Desc includes SQL | Escaped properly, no SQL Injection | Security: XSS/SQLi Prevention |
+| U-1.5 | Create with Duplicate | Same Bug created twice | Second create = different BUG_ID | Unique ID Generation |
+| U-1.6 | Create with High Priority | Priority=5 (max) | Status='2' (auto-assign), email sent | Auto-assignment Trigger |
 
-### Bước 6.3: UAT Checklist (Đầy đủ)
+**Test Steps for U-1.1:**
+1. T-code: `ZBUG_CREATE`
+2. Nhập: Title="Network Error", Priority="1", Module="FI"
+3. Click Submit
+4. **Expected:** Pop-up "Bug #001 created successfully"
+5. **Verify:** SE11 → ZBUG_TRACKER → Check new record
 
-| # | Test Case | T-code / Object | Expected |
-| :-- | :--- | :--- | :--- |
-| 1 | Tạo Bug mới | `ZBUG_CREATE` | Bug ID sinh tự động, email gửi cho Dev |
-| 2 | Xem & Cập nhật Bug | `ZBUG_UPDATE` | Nhập Bug ID → thấy thông tin, đổi Status thành công |
-| 3 | Danh sách Bug có màu | `ZBUG_REPORT` | ALV hiển thị Bug với màu theo Status |
-| 4 | Nút tương tác trên ALV | `ZBUG_REPORT` | Click row → Nút Update/Assign xuất hiện, hoạt động |
-| 5 | In biên bản | `ZBUG_PRINT` | Preview PDF SmartForm hiện đúng thông tin Bug |
-| 6 | Manager Dashboard | `ZBUG_MANAGER` | Thống kê Bug + danh sách Waiting hiển thị |
-| 7 | Auto Assign | FM `Z_BUG_AUTO_ASSIGN` | Dev ít việc nhất nhận Bug, AVAILABLE_STATUS = W |
-| 8 | Re-assign | FM `Z_BUG_REASSIGN` | Dev cũ trở về A, Dev mới nhận Bug, log ghi vào ZBUG_HISTORY |
-| 9 | Upload attachment | FM `Z_BUG_UPLOAD_ATTACHMENT` | File path ghi vào ATT_REPORT/FIX/VERIFY tương ứng |
-| 10 | Phân quyền | FM `Z_BUG_CHECK_PERMISSION` | Dev không tạo được Bug, Tester không sửa Bug đã assign |
-| 11 | History Log | FM `Z_BUG_LOG_HISTORY` | Mọi thay đổi được ghi vào ZBUG_HISTORY |
-| 12 | Performance | Tất cả T-code | Response time < 3 giây |
+**Edge Case Handling:**
+- **Concurrency:** Create 2 bugs simultaneously → Both get unique IDs (check ZBUG_TRACKER primary key)
+- **Rollback:** If email fails, bug still created? (Expected: YES, email is non-blocking)
+- **Data Integrity:** After create, ZBUG_HISTORY should have entry with ACTION='C' (Create)
+
+---
+
+#### 6.1.2 Unit Test: Z_BUG_UPDATE_STATUS
+
+| # | Test Case | Current Status | New Status | Expected | Edge Case |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| U-2.1 | Update Normal | '1' (New) | '2' (Assigned) | Status updated, CHANGED_AT recorded | ✅ |
+| U-2.2 | Invalid Status | '1' | '9' (not exists) | Error: "Invalid Status Code" | Input Validation |
+| U-2.3 | No Change | '2' | '2' | Warning: "No change", no history log | Idempotent Behavior |
+| U-2.4 | Invalid Transition | '5' (Closed) | '1' (New) | Error: "Cannot reopen closed bug" | State Machine Logic |
+| U-2.5 | Update with Reason | '3' (InProgress) | '4' (Fixed) | Reason saved to REASON field, log created | Audit Trail |
+| U-2.6 | Update by Unauthorized | Dev updates bug NOT assigned to them | Error: "Permission Denied" | Authorization Check |
+
+**Test Steps for U-2.1:**
+1. T-code: `ZBUG_UPDATE`
+2. Nhập BUG_ID (e.g., "001")
+3. Change Status dropdown: '1' → '2' (Assigned)
+4. Enter Reason: "Assigned to John"
+5. Click Submit
+6. **Verify:** Check ZBUG_TRACKER.STATUS='2', check ZBUG_HISTORY for new log entry
+
+**Edge Case Handling:**
+- **Locking:** Multiple users update same bug simultaneously → Only one succeeds, other gets lock error
+- **Timestamp:** CHANGED_AT must be exactly current datetime (check SY-DATUM + SY-UZEIT)
+- **Cascade:** If Dev is updated, auto-notify manager? (Check email table SCOT)
+
+---
+
+#### 6.1.3 Unit Test: Z_BUG_AUTO_ASSIGN
+
+| # | Test Case | Scenario | Expected | Edge Case |
+| :--- | :--- | :--- | :--- | :--- |
+| U-3.1 | Assign Normal | Bug Priority=1, 3 Devs available (workload: 0,1,2) | Assign to Dev with 0 workload | ✅ Load Balancing |
+| U-3.2 | All Devs Busy | All Devs have AVAILABLE_STATUS='W' | Status='W' (Waiting), no assign | Queue Waiting |
+| U-3.3 | Wrong Module | Bug Module='FI', no Dev for 'FI' | Status='W', wait for PM action | No Dev Available |
+| U-3.4 | Assign by Priority | 5 High-priority bugs, 2 Devs | Distribute alternately: Dev1, Dev2, Dev1... | Round-robin Distribution |
+| U-3.5 | Assign Inactive Dev | Available Dev is INACTIVE (is_active ≠ 'X') | Skip, find next active | Data Quality Check |
+
+**Test Steps for U-3.1:**
+1. Create 3 Devs: D001 (0 bugs), D002 (1 bug), D003 (2 bugs) - verify in ZBUG_USERS + ZBUG_TRACKER
+2. T-code: `ZBUG_REPORT` → Click bug → Click **Auto Assign**
+3. **Expected:** Bug.DEV_ID = D001 (minimum workload)
+4. **Verify:** ZBUG_TRACKER.DEV_ID='D001', ZBUG_USERS.D001.AVAILABLE_STATUS='W'
+
+**Edge Case: All Devs Busy**
+- Set all 3 Devs: AVAILABLE_STATUS='W', is_active='X'
+- Try Auto Assign
+- **Expected:** Bug stays Status='W', DEV_ID is NULL, system shows "No developer available"
+
+---
+
+#### 6.1.4 Unit Test: Z_BUG_CHECK_PERMISSION
+
+| # | Test Case | User Role | Action | Bug Status | Expected | Edge Case |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| U-4.1 | Manager Full Access | M (Manager) | CREATE | - | Allowed | ✅ |
+| U-4.2 | Tester Create | T (Tester) | CREATE | - | Allowed | ✅ |
+| U-4.3 | Dev Create (denied) | D (Developer) | CREATE | - | Denied | ❌ Role Check |
+| U-4.4 | Dev Update Own Bug | D | UPDATE_STATUS | Bug.DEV_ID=Dev | Allowed | ✅ Ownership Check |
+| U-4.5 | Dev Update Others' Bug | D | UPDATE_STATUS | Bug.DEV_ID≠Dev | Denied | ❌ Unauthorized |
+| U-4.6 | Tester Upload Fix (denied) | T | UPLOAD_FIX | - | Denied | ❌ Role Check |
+| U-4.7 | Manager Override | M | Any action | Any | Allowed | ✅ Admin Override |
+
+**Test Steps for U-4.4:**
+1. Login as Developer 'D001'
+2. Bug #001: DEV_ID='D001', Status='2'
+3. Try: UPDATE_STATUS '2'→'3'
+4. **Expected:** Allowed, status updated to '3'
+
+**Test Steps for U-4.5:**
+1. Login as Developer 'D001'
+2. Bug #002: DEV_ID='D002' (different dev)
+3. Try: UPDATE_STATUS '2'→'3'
+4. **Expected:** Error message: "You can only update bugs assigned to you"
+
+---
+
+### Bước 6.2: Performance Testing
+
+**Mục đích:** Verify hệ thống xử lý được lượng dữ liệu lớn với performance tốt.
+
+#### 6.2.1 Load Test
+
+**Setup Data:**
+- Insert 1,000 bugs vào ZBUG_TRACKER
+- Insert 50 users (Managers: 5, Testers: 20, Developers: 25)
+- Insert 2,000+ history logs vào ZBUG_HISTORY
+
+**Benchmark Targets:**
+
+| T-code | Operation | Target Response Time |
+| :--- | :--- | :--- |
+| `ZBUG_REPORT` | Display all 1000 bugs | < 3 seconds |
+| `ZBUG_REPORT` | Filter by module (200 results) | < 1.5 seconds |
+| `ZBUG_UPDATE` | Load bug detail (with history) | < 2 seconds |
+| `ZBUG_MANAGER` | Dashboard summary | < 2 seconds |
+| `Z_BUG_AUTO_ASSIGN` | Auto-assign (3 devs, 10 available bugs) | < 1 second |
+| `ZBUG_PRINT` | Generate SmartForm preview | < 5 seconds |
+
+**Test Steps:**
+
+1. **Use SE38 → Utility Program to bulk insert test data**
+   ```abap
+   REPORT Z_TEST_DATA_LOAD.
+
+   LOOP AT i_bugs INTO wa_bug.
+     INSERT INTO zbug_tracker VALUES wa_bug.
+   ENDLOOP.
+   COMMIT WORK.
+   ```
+
+2. **Run T-code with timer**
+   - Activate SAP profiling (ST05 trace)
+   - Execute T-code (e.g., ZBUG_REPORT with no filters)
+   - Check: Response time in status bar
+   - If > target: Check database indexes, optimize SELECT statements
+
+3. **Verify Database Indexes**
+   - SE11 → ZBUG_TRACKER → Indexes tab
+   - Expected indexes:
+     - Primary: BUG_ID
+     - Secondary: DEV_ID (for workload query)
+     - Secondary: STATUS (for status filter)
+
+---
+
+### Bước 6.3: Integration Testing
+
+**Mục đích:** Test cross-system workflows & FM interactions.
+
+#### 6.3.1 End-to-End Workflow: Create → Assign → Update → Close
+
+**Scenario:** Complete bug lifecycle
+
+| Step | Action | Verification | Expected Result |
+| :--- | :--- | :--- | :--- |
+| 1 | Create bug via `ZBUG_CREATE` | Check ZBUG_TRACKER | Bug#001 created, Status='1' (New) |
+| 2 | Auto-assign via `Z_BUG_AUTO_ASSIGN` | Check DEV_ID, AVAILABLE_STATUS | Bug assigned to D001, D001.AVAILABLE_STATUS='W' |
+| 3 | Dev updates status `ZBUG_UPDATE` | Check ZBUG_HISTORY | New log entry: ACTION='U', DEV_ID='D001' |
+| 4 | Upload fix attachment `Z_BUG_UPLOAD_ATTACHMENT` | Check ZBUG_TRACKER.ATT_FIX | Path stored correctly |
+| 5 | Manager verifies & closes | Check Status, CLOSED_AT | Status='5', CLOSED_AT=SY-DATUM |
+
+**Test Execution:**
+1. Execute step 1-5 in sequence
+2. After each step, verify database state via SE16N (table display)
+3. Check ZBUG_HISTORY for all changes logged
+4. Check emails sent (SCOT table) for notifications
+
+#### 6.3.2 Integration: Concurrent Operations
+
+**Scenario:** Multiple users acting simultaneously
+
+1. **User A** (Tester): Create Bug#001, Status='1'
+2. **User B** (Manager): Simultaneously runs Auto-Assign
+3. **User C** (Dev): Simultaneously tries to Update Bug#001
+
+**Expected Behavior:**
+- User A: Creates successfully
+- User B: Auto-assign waits for create to finish, then assigns
+- User C: Gets lock error (bug is locked by create/assign), retry succeeds after lock release
+
+**Verify:**
+- No data corruption
+- No deadlock
+- All operations eventually succeed
+
+---
+
+### Bước 6.4: UAT Checklist - 12 Test Cases (Chi Tiết)
+
+> **Hướng dẫn:** Mỗi test case dưới đây có:
+> - **Purpose:** Mục đích test
+> - **Preconditions:** Điều kiện ban đầu
+> - **Steps:** Các bước thực hiện
+> - **Expected Results:** Kết quả kỳ vọng
+> - **Edge Cases:** Tình huống biên
+> - **Screenshot Location:** Nơi lưu evidence
+
+---
+
+#### TC-P6-01: Tạo Bug Mới (Create Bug)
+
+**Purpose:** Xác minh người dùng có thể tạo bug mới với đầy đủ thông tin
+
+**Preconditions:**
+- DEV-061 đã login vào SAP (Role: Tester)
+- T-code ZBUG_CREATE available
+
+**Steps:**
+1. T-code: **ZBUG_CREATE**
+2. Fill form:
+   - Title: "Login button not working"
+   - Description: "Click login button, page hangs"
+   - Priority: "2" (Medium)
+   - Module: "FI"
+3. Click **Submit** button
+
+**Expected Results:**
+- ✅ Dialog appears: "Bug #0001 created successfully"
+- ✅ New record created in ZBUG_TRACKER
+- ✅ Status = '1' (New)
+- ✅ CREATED_BY = DEV-061
+- ✅ CREATED_AT = Current Date
+- ✅ Email sent to assigned developer (check SCOT table)
+
+**Edge Cases:**
+- **Empty Title:** Expected error "Title is required"
+- **Long Title (> 200 chars):** System truncates to 200 chars
+- **Special Characters:** "<>&\"'" should be escaped in ABAP
+- **Concurrent Create:** 2 users create simultaneously → Different BUG_IDs (check sequence/NRIV)
+
+**Verification Image:** `verification_phase6_tc1_create_bug.png`
+
+---
+
+#### TC-P6-02: Xem & Cập nhật Bug (Update Bug)
+
+**Purpose:** Verify người dùng có thể xem chi tiết bug và update status
+
+**Preconditions:**
+- Bug #0001 exists (from TC-P6-01)
+- DEV-061 login as Tester
+
+**Steps:**
+1. T-code: **ZBUG_UPDATE**
+2. Enter BUG_ID: **0001**
+3. Click **Display** button
+4. Observe: Bug details displayed
+5. Change Status: '1' (New) → '2' (Assigned)
+6. Enter Reason: "Assigned to John for investigation"
+7. Click **Update**
+
+**Expected Results:**
+- ✅ Bug details loaded with all fields
+- ✅ Status field editable (dropdown)
+- ✅ Update successful message shown
+- ✅ ZBUG_TRACKER.STATUS = '2'
+- ✅ ZBUG_HISTORY new entry created: ACTION='U', CHANGED_BY='DEV-061'
+
+**Edge Cases:**
+- **Non-existent BUG_ID:** Error "Bug not found"
+- **Closed Bug (Status='5'):** Try to change → Error "Cannot update closed bug"
+- **No Change:** Status stays '2' → Warning "No changes detected"
+- **Authorization:** Dev tries to update bug NOT assigned to them → Error "Permission denied"
+
+**Verification Image:** `verification_phase6_tc2_update_bug.png`
+
+---
+
+#### TC-P6-03: Danh sách Bug với Màu Sắc (ALV Report)
+
+**Purpose:** Verify ALV Grid displays bugs with correct colors by status
+
+**Preconditions:**
+- Multiple bugs with different statuses exist:
+  - Bug #001: Status='1' (New)
+  - Bug #002: Status='2' (Assigned)
+  - Bug #003: Status='3' (InProgress)
+  - Bug #004: Status='4' (Fixed)
+  - Bug #005: Status='5' (Closed)
+
+**Steps:**
+1. T-code: **ZBUG_REPORT**
+2. Leave all filters blank
+3. Click **Execute** (F8)
+4. Observe ALV Grid colors
+
+**Expected Results:**
+- ✅ ALV Grid displays all 5 bugs
+- ✅ Status '1' rows = **Blue (C100)**
+- ✅ Status '2' rows = **Orange (C300)**
+- ✅ Status '3' rows = **Purple (C500)**
+- ✅ Status '4' rows = **Green (C510)**
+- ✅ Status '5' rows = **Grey (C200)**
+- ✅ Column headers visible: BUG_ID, TITLE, STATUS, DEV_ID, PRIORITY, MODULE
+
+**Edge Cases:**
+- **Empty result:** No bugs in database → ALV shows "No data" message
+- **Filter by Status:** Select only Status='2' → Show only orange rows
+- **Filter by Module:** Select Module='FI' → Show only FI bugs with correct colors
+- **Waiting Status (W):** If any bug has Status='W' → Yellow (C310)
+
+**Verification Image:** `verification_phase6_tc3_alv_colors.png`
+
+---
+
+#### TC-P6-04: Interactive ALV - Update Navigation
+
+**Purpose:** Verify ALV toolbar buttons work correctly
+
+**Preconditions:**
+- ALV report open with bugs displayed
+- At least 1 bug in ALV grid
+
+**Steps:**
+1. From TC-P6-03, ALV Grid visible
+2. Click on one row (Bug #002)
+3. Click **Update Bug** button in toolbar
+4. Observe: Transaction changes to ZBUG_UPDATE
+
+**Expected Results:**
+- ✅ Row selected (highlighted)
+- ✅ Toolbar buttons active (not greyed out)
+- ✅ Click "Update Bug" → T-code switches to ZBUG_UPDATE
+- ✅ Bug ID (002) pre-filled in ZBUG_UPDATE screen
+- ✅ No dump, session continues
+
+**Edge Cases:**
+- **No row selected:** Click "Update Bug" → Error "Please select a row"
+- **Multiple rows selected:** Click "Update Bug" → Error "Select only one row" or updates first row
+- **Invalid bug:** Click "Update Bug" → ZBUG_UPDATE tries to load, shows error "Bug not found"
+
+**Verification Image:** `verification_phase6_tc4_alv_update_nav.png`
+
+---
+
+#### TC-P6-05: In Biên Bản (Print SmartForm)
+
+**Purpose:** Verify SmartForm printing works and displays correct information
+
+**Preconditions:**
+- Bug #001 exists with complete information
+- SmartForm ZBUG_FORM activated
+
+**Steps:**
+1. T-code: **ZBUG_PRINT**
+2. Enter BUG_ID: **0001**
+3. Click **Print Preview** button
+4. Observe form output
+
+**Expected Results:**
+- ✅ SmartForm opens in preview (no "Architecture not supported" error)
+- ✅ Header shows: Bug ID, Title, Priority
+- ✅ Main table shows: Description, Status, Module, DEV_ID
+- ✅ Footer shows: Created date, Last modified date
+- ✅ No text overlap or formatting issues
+- ✅ Multiple pages if content is long
+
+**Edge Cases:**
+- **Very long description (4000 chars):** Form handles wrap/truncate properly
+- **Special characters in title:** <>&\"' displayed correctly
+- **Missing developer:** If DEV_ID is NULL → Shows "Not yet assigned"
+- **PDF export:** Click Export to PDF → File generated successfully
+
+**Verification Image:** `verification_phase6_tc5_smartform_print.png`
+
+---
+
+#### TC-P6-06: Manager Dashboard
+
+**Purpose:** Verify Manager dashboard shows statistics and status mapping
+
+**Preconditions:**
+- Multiple bugs with different statuses
+- DEV-118 login as Manager
+
+**Steps:**
+1. T-code: **ZBUG_MANAGER**
+2. Click **Execute** (F8)
+3. Observe statistics table
+
+**Expected Results:**
+- ✅ Dashboard displays summary statistics
+- ✅ Status codes mapped to text:
+  - '1' → "New" (or "Mới" in Vietnamese)
+  - '2' → "Assigned" (or "Đã phân công")
+  - '3' → "InProgress" (or "Đang xử lý")
+  - '4' → "Fixed" (or "Đã sửa")
+  - '5' → "Closed" (or "Đóng")
+  - 'W' → "Waiting" (or "Chờ xử lý")
+- ✅ Count of bugs per status displayed correctly
+- ✅ Total bugs = sum of all statuses
+
+**Edge Cases:**
+- **No bugs in "New" status:** Status '1' shows count=0
+- **All bugs in "Closed" status:** Only '5' row shown with high count
+- **Non-existent status:** Should not appear in report
+
+**Verification Image:** `verification_phase6_tc6_manager_dashboard.png`
+
+---
+
+#### TC-P6-07: Auto Assign Developer
+
+**Purpose:** Verify auto-assign function assigns bug to developer with minimum workload
+
+**Preconditions:**
+- 3 developers exist: D001 (0 bugs), D002 (1 bug), D003 (2 bugs)
+- All developers have AVAILABLE_STATUS='A'
+- Bug #010 created with Status='1' (New), DEV_ID=NULL
+
+**Steps:**
+1. T-code: **ZBUG_REPORT**
+2. Select Bug #010
+3. Click **Auto Assign** button
+4. Observe result
+
+**Expected Results:**
+- ✅ Bug #010.DEV_ID assigned to **D001** (minimum workload)
+- ✅ Bug #010.STATUS changed to '2' (Assigned)
+- ✅ D001.AVAILABLE_STATUS changed to 'W' (Working)
+- ✅ ZBUG_HISTORY new entry: ACTION='A' (Auto-assign)
+- ✅ Success message shown
+
+**Edge Cases:**
+- **All devs busy:** Set all AVAILABLE_STATUS='W' → Bug stays Status='W', DEV_ID=NULL
+- **No dev for module:** Bug module='XX', no dev available → Status='W'
+- **Inactive dev:** D001.is_active='' (not 'X') → Skip, assign to D002
+- **Equal workload:** D001 & D002 both have 1 bug → Assign to first available (D001)
+
+**Verification Image:** `verification_phase6_tc7_auto_assign.png`
+
+---
+
+#### TC-P6-08: Re-assign Developer
+
+**Purpose:** Verify manager can reassign bug from one developer to another
+
+**Preconditions:**
+- Bug #010 assigned to D001
+- D002 available with lower workload
+- Manager (DEV-118) logged in
+
+**Steps:**
+1. T-code: **ZBUG_UPDATE**
+2. Enter BUG_ID: **010**
+3. Change field: **Dev Assignment** from D001 → D002
+4. Enter Reason: "Reassigning to John for expertise"
+5. Click **Re-assign** button
+
+**Expected Results:**
+- ✅ Bug #010.DEV_ID changed to D002
+- ✅ D001.AVAILABLE_STATUS = 'A' (Available again)
+- ✅ D002.AVAILABLE_STATUS = 'W' (Working)
+- ✅ ZBUG_HISTORY new entry: ACTION='RS' (Reassign), OLD_VALUE='D001', NEW_VALUE='D002'
+- ✅ Email notification sent to D002
+
+**Edge Cases:**
+- **Reassign to same dev:** D001 → D001 → Warning "No change"
+- **Reassign closed bug:** Status='5' → Error "Cannot reassign closed bug"
+- **Dev not found:** Enter DEV_ID='D999' (not exists) → Error "Developer not found"
+- **Concurrent reassign:** 2 managers reassign simultaneously → Last one wins (update lock)
+
+**Verification Image:** `verification_phase6_tc8_reassign.png`
+
+---
+
+#### TC-P6-09: Upload File Attachment
+
+**Purpose:** Verify file attachment upload and storage
+
+**Preconditions:**
+- Bug #010 exists, Status ≠ '5' (not closed)
+- Test file ready: "bug_report.pdf" (< 10MB)
+
+**Steps:**
+1. T-code: **ZBUG_UPDATE**
+2. Enter BUG_ID: **010**
+3. In **Attachments** section, click **Upload Report**
+4. Browse & select file: `bug_report.pdf`
+5. Click **Submit**
+
+**Expected Results:**
+- ✅ File uploaded successfully
+- ✅ ZBUG_TRACKER.ATT_REPORT = "/path/to/bug_report.pdf"
+- ✅ Success message shown
+- ✅ File can be re-downloaded from same screen
+
+**Edge Cases:**
+- **File too large (> 10MB):** Error "File size exceeds limit"
+- **Invalid file type:** Upload `.exe` → Error "Only PDF/DOC allowed"
+- **Closed bug:** Status='5' → Error "Cannot upload to closed bug"
+- **Multiple uploads:** Upload 3 different files (REPORT, FIX, VERIFY) → All paths stored separately
+- **Re-upload same type:** Upload new REPORT when one exists → Old one overwritten
+
+**Verification Image:** `verification_phase6_tc9_upload_attachment.png`
+
+---
+
+#### TC-P6-10: Permission Check - Role-based Access
+
+**Purpose:** Verify role-based permissions are enforced correctly
+
+**Preconditions:**
+- Users exist: Tester(T), Developer(D), Manager(M)
+- Bugs in various statuses
+
+**Steps & Expected Results:**
+
+**Test 10a: Tester trying to UPDATE bug status**
+1. Login as Tester (DEV-061)
+2. T-code: ZBUG_UPDATE
+3. Try to change bug status
+4. **Expected:** ❌ Error "Testers cannot update bug status" OR role allows limited statuses
+
+**Test 10b: Developer creating new bug**
+1. Login as Developer (DEV-089)
+2. T-code: ZBUG_CREATE
+3. Try to create bug
+4. **Expected:** ❌ Error "Only Testers/Managers can create bugs"
+
+**Test 10c: Developer updating own bug**
+1. Login as Developer (DEV-089)
+2. Bug assigned to DEV-089
+3. T-code: ZBUG_UPDATE
+4. Change status '2' → '3'
+5. **Expected:** ✅ Allowed
+
+**Test 10d: Developer updating others' bug**
+1. Login as Developer (DEV-089)
+2. Bug assigned to DEV-099 (different dev)
+3. Try to update
+4. **Expected:** ❌ Error "You can only update bugs assigned to you"
+
+**Test 10e: Manager doing any action**
+1. Login as Manager (DEV-118)
+2. Try: Create, Update (any bug), Delete, Upload
+3. **Expected:** ✅ All allowed
+
+**Edge Cases:**
+- **Permission cache:** Change role in ZBUG_USERS, old role still active → Clear SAP cache (Ctrl+Shift+F3)
+- **Missing role:** User has NULL role → Deny all access
+
+**Verification Image:** `verification_phase6_tc10_permissions.png`
+
+---
+
+#### TC-P6-11: History Logging (Audit Trail)
+
+**Purpose:** Verify all changes are logged in ZBUG_HISTORY
+
+**Preconditions:**
+- Bug #011 exists
+- ZBUG_HISTORY table empty for this bug
+
+**Steps:**
+1. Create Bug #011 (TC-P6-01)
+   - ZBUG_HISTORY entry: ACTION='C'
+2. Update Status '1'→'2'
+   - ZBUG_HISTORY entry: ACTION='U'
+3. Re-assign from D001 to D002
+   - ZBUG_HISTORY entry: ACTION='RS'
+4. Upload attachment
+   - ZBUG_HISTORY entry: ACTION='ATT'
+5. T-code: SE16N → ZBUG_HISTORY → Filter BUG_ID=011 → Display all records
+
+**Expected Results:**
+- ✅ Total 4 history entries created
+- ✅ Each entry has:
+  - LOG_ID (unique)
+  - BUG_ID = 011
+  - ACTION ('C', 'U', 'RS', 'ATT')
+  - CHANGED_BY (correct user)
+  - CHANGED_AT (correct datetime)
+  - REASON (if provided)
+  - OLD_VALUE / NEW_VALUE (for relevant changes)
+
+**Edge Cases:**
+- **Concurrent changes:** 2 users update same bug → Both changes logged separately
+- **Failed update:** If validation fails, is history created? **Expected:** NO
+- **Manual DB update:** Update ZBUG_TRACKER directly (via SE16) → History NOT created (no FM call)
+
+**Verification Image:** `verification_phase6_tc11_history_log.png`
+
+---
+
+#### TC-P6-12: Performance & System Stability
+
+**Purpose:** Verify system handles load and responds within acceptable time
+
+**Preconditions:**
+- 1000 bugs in ZBUG_TRACKER
+- 50 users in ZBUG_USERS
+- 2000+ history entries in ZBUG_HISTORY
+
+**Steps:**
+1. **Test 12a: ALV Report with 1000 bugs**
+   - T-code: ZBUG_REPORT, no filter
+   - Measure response time
+   - **Expected:** < 3 seconds
+
+2. **Test 12b: Filter ALV by Module**
+   - T-code: ZBUG_REPORT, filter Module='FI'
+   - Measure response time
+   - **Expected:** < 1.5 seconds (indexed search)
+
+3. **Test 12c: Load Bug Detail**
+   - T-code: ZBUG_UPDATE, load bug with 100+ history entries
+   - Measure response time
+   - **Expected:** < 2 seconds
+
+4. **Test 12d: Auto-assign 100 bugs**
+   - Create loop calling Z_BUG_AUTO_ASSIGN 100 times
+   - Measure total time
+   - **Expected:** < 5 seconds (< 50ms per call)
+
+5. **Test 12e: Concurrent 10 users**
+   - 10 terminals open simultaneously
+   - All execute ZBUG_REPORT at same time
+   - Check for deadlock/timeout
+   - **Expected:** All complete successfully
+
+**Expected Results:**
+- ✅ All response times within target
+- ✅ No timeout errors
+- ✅ No deadlock
+- ✅ CPU usage reasonable (< 50%)
+- ✅ Memory stable (no leak)
+
+**Edge Cases:**
+- **Network latency:** Simulate slow network (latency tool) → Measure impact
+- **Missing index:** Disable INDEX on DEV_ID → Performance degradation observed
+- **Max connection:** Simulate 100+ concurrent users → System should queue gracefully
+
+**Verification Image:** `verification_phase6_tc12_performance.png`
+
+---
+
+### Bước 6.5: Code Documentation & Standards
+
+**Mục đích:** Ensure tất cả code được documented đúng cách cho maintenance.
+
+#### 6.5.1 Function Module Header Documentation
+
+**Format:** Mỗi FM phải có header như sau:
+
+```abap
+*&---------------------------------------------------------------------*
+*& Function Module: Z_BUG_AUTO_ASSIGN
+*& Description: Automatically assign bug to developer with min workload
+*& Created by: DEV-089
+*& Created date: 03/03/2026
+*& Last modified: 07/03/2026 by DEV-089
+*&---------------------------------------------------------------------*
+*& Imports:
+*&   IV_BUG_ID (ZDE_BUG_ID) - Bug ID to assign
+*&   IV_MODULE (ZDE_SAP_MODULE) - SAP module code
+*&
+*& Exports:
+*&   EV_DEV_ID (ZDE_USERNAME) - Assigned developer username
+*&   EV_STATUS (ZDE_BUG_STATUS) - New bug status
+*&   EV_MESSAGE (STRING) - Success/error message
+*&
+*& Exceptions:
+*&   BUG_NOT_FOUND - Bug with given ID doesn't exist
+*&   NO_DEV_AVAILABLE - No developer available for module
+*&---------------------------------------------------------------------*
+```
+
+#### 6.5.2 Program/Screen Header Documentation
+
+**Format:**
+
+```abap
+*&---------------------------------------------------------------------*
+*& Report: Z_BUG_CREATE_SCREEN
+*& Description: Selection screen & logic for creating new bugs
+*& Created: DEV-061 (03/03/2026)
+*& Type: Interactive Report
+*&---------------------------------------------------------------------*
+*& Selection Screen Fields:
+*&   P_TITLE (CHAR100) - Bug title (mandatory)
+*&   P_DESC (CHAR4000) - Bug description (optional)
+*&   P_PRIORITY (ZDE_PRIORITY) - Priority level (mandatory)
+*&   P_MODULE (ZDE_SAP_MODULE) - SAP module (mandatory)
+*&---------------------------------------------------------------------*
+*& Key Logic:
+*&   1. Validate input fields
+*&   2. Call FM Z_BUG_CREATE to insert into DB
+*&   3. Send email to assigned developer
+*&   4. Display success/error message
+*&---------------------------------------------------------------------*
+```
+
+#### 6.5.3 Inline Code Comments
+
+**Rule:** Every non-obvious line should have comment
+
+❌ Bad:
+```abap
+SELECT MAX( log_id ) INTO lv_max_id FROM zbug_history WHERE bug_id = @iv_bug_id.
+lv_logid = lv_max_id + 1.
+```
+
+✅ Good:
+```abap
+" Get the max LOG_ID for this bug to generate next unique ID
+SELECT MAX( log_id ) INTO lv_max_id FROM zbug_history WHERE bug_id = @iv_bug_id.
+" Increment for new log entry
+lv_logid = lv_max_id + 1.
+```
+
+#### 6.5.4 Verification Checklist
+
+Before marking code as "Complete", verify:
+
+- [ ] Function header documented (module, purpose, parameters)
+- [ ] All imports/exports described
+- [ ] Exception handling documented
+- [ ] Code comments for complex logic
+- [ ] No dead code (unused variables)
+- [ ] All error messages clear & actionable
+- [ ] No hardcoded values (use constants/parameters)
+- [ ] Data validation at entry points
+- [ ] Error handling with proper error messages
+- [ ] Database COMMIT/ROLLBACK explicit
+- [ ] No SQL injection vulnerabilities
+- [ ] Performance: O(n) or better
+- [ ] Memory efficient (no large temporary arrays)
+
+---
+
+## PHASE 7: DEPLOYMENT & TRAINING (Tuần 7-8)
+
+> [!IMPORTANT]
+> **Tài khoản sử dụng:**
+>
+> - Transport & Deployment: **DEV-118** (Pass: `Qwer123@`)
+> - User Training: **DEV-118** or **System Admin**
+
+### Bước 7.1: Transport Request Management (SE09)
+
+**Mục đích:** Tạo Transport Request để deploy toàn bộ object từ Dev sang UAT/Prod.
+
+#### 1. Tạo Transport Request
+
+1. **T-code:** `SE09` (Transport Organizer)
+2. Tab: **Modifiable Objects**
+3. Click **Create Request** button
+4. Nhập:
+   - **Request Name:** `ZBUG_FINAL_DEPLOY_001`
+   - **Description:** "Phase 5 & 6 Final Deployment - Bug Tracking System"
+   - **Target System:** Để trống (sẽ chọn sau)
+
+#### 2. Thêm Objects vào Transport
+
+1. Click button **Add Objects**
+2. Chọn **Package:** `ZBUGTRACK`
+3. SAP tự động include toàn bộ objects:
+   - Bảng dữ liệu (ZBUG_TRACKER, ZBUG_USERS, ZBUG_HISTORY)
+   - Function Modules (Z_BUG_*)
+   - Programs (Z_BUG_*_SCREEN, Z_BUG_REPORT_ALV, etc.)
+   - T-codes (ZBUG_CREATE, ZBUG_UPDATE, ZBUG_REPORT, etc.)
+
+#### 3. Release Transport Request
+
+1. Click **Release Transport**
+2. System automatically:
+   - Validates all objects
+   - Creates transport file (.cofile & .data files)
+   - Generates control record
+
+**Expected Result:** ✅ Transport status = "Released"
+
+---
+
+### Bước 7.2: User Training Preparation
+
+**Mục đích:** Chuẩn bị tài liệu training cho end-users
+
+#### Training Document Checklist
+
+- [ ] **T-code Quick Reference** - One-page cheat sheet
+  - ZBUG_CREATE: Create new bug
+  - ZBUG_UPDATE: Update bug status
+  - ZBUG_REPORT: View bug list with colors
+  - ZBUG_MANAGER: Manager dashboard
+
+- [ ] **Role-based User Guide** - Separate guides per role:
+  - Tester Guide (Create, Upload Report)
+  - Developer Guide (Update Status, Upload Fix)
+  - Manager Guide (Reassign, Dashboard, Analytics)
+
+- [ ] **Screen Navigation Guide** - Step-by-step with screenshots
+
+- [ ] **FAQ Document** - Common questions & solutions
+
+- [ ] **Troubleshooting Guide** - Error messages & resolutions
+
+---
+
+### Bước 7.3: Deployment Checklist
+
+**Pre-Deployment:**
+
+- [ ] All Phase 6 UAT test cases passed (12/12)
+- [ ] Code Inspector results reviewed (0 critical errors)
+- [ ] Performance testing completed (all < 3 sec)
+- [ ] Backup of production databases created
+- [ ] Deployment team briefed
+- [ ] Rollback plan documented
+
+**Deployment Steps:**
+
+1. **Schedule downtime window** (e.g., 2-4 AM on Saturday)
+2. **Import transport request** in target system
+3. **Activate all objects** if needed
+4. **Create T-codes** if not auto-created
+5. **Verify objects active** (SE80, SE16, SE93)
+6. **Run smoke test** (create bug, update, view, print)
+7. **Notify users** - System ready
+
+**Post-Deployment:**
+
+- [ ] Monitor system logs for errors
+- [ ] Verify database integrity
+- [ ] Check email notifications working
+- [ ] Monitor performance metrics
+- [ ] Collect initial user feedback
+- [ ] Schedule follow-up training
+
+---
+
+### Bước 7.4: Rollback Plan
+
+**If deployment fails:**
+
+1. **Immediate:** Disable all Z_BUG_* T-codes (via SE93)
+2. **Restore database** from pre-deployment backup
+3. **Deactivate objects** (SE80)
+4. **Notify users** of system revert
+5. **Post-mortem:** Analyze root cause
+
+---
+
+## PHASE 8: FINAL PRESENTATION (29/03/2026)
+
+> [!IMPORTANT]
+> Finalize all documentation, conduct final testing, prepare project summary.
+
+### Bước 8.1: Final Testing & Verification
+
+**Conduct final regression testing covering:**
+
+- [ ] All 12 UAT test cases from Phase 6
+- [ ] All edge cases from Phase 6.1-6.3
+- [ ] Performance benchmarks met
+- [ ] No new bugs in ZBUG_TRACKER (system bugs)
+- [ ] All code documented properly
+- [ ] Transport request validated
+
+### Bước 8.2: Project Completion Documentation
+
+**Create final report:**
+
+1. **System Architecture Summary**
+   - Database schema overview
+   - Function Module interaction diagram
+   - Screen flow diagram
+
+2. **Deliverables Summary**
+   - All 8 phases completed
+   - 6 Function Modules deployed
+   - 6 T-codes available
+   - 2000+ lines of ABAP code
+
+3. **Key Metrics**
+   - Response time: < 3 seconds (target met)
+   - Bugs tracked: 1000+ capacity
+   - Users supported: 50+
+   - Code quality: 0 critical errors
+
+4. **Known Limitations**
+   - Current: Single system (S40)
+   - Future: Multi-system support
+   - Current: Email via SCOT (manual config)
+   - Future: Automated SMTP integration
+
+### Bước 8.3: Handover & Training Completion
+
+**Conduct final user training:**
+
+1. **Session 1:** Tester group (Creating bugs)
+2. **Session 2:** Developer group (Updating status, uploading fixes)
+3. **Session 3:** Manager group (Dashboard, reassigning, analytics)
+
+**Materials provided:**
+- T-code quick reference (printed)
+- User guide (PDF)
+- FAQ & troubleshooting guide
+- Contact list for support
+
+### Bước 8.4: Project Sign-off
+
+**Obtain approval from:**
+- [ ] Project Manager - Timeline & scope met
+- [ ] QA Lead - All tests passed
+- [ ] System Admin - Objects deployed correctly
+- [ ] Business Owner - Requirements satisfied
 
 ---
 
@@ -2538,10 +3427,12 @@ Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 | 0 | Môi trường | SAP GUI, Package ZBUGTRACK | ✅ |
 | 1 | Database Layer | ZBUG_TRACKER, ZBUG_USERS, ZBUG_HISTORY, ZNRO_BUG | ✅ |
 | 2 | Business Logic | Z_BUG_CREATE/GET/UPDATE_STATUS/DELETE/SEND_EMAIL, SCOT | ✅ |
-| 3 | Presentation | Z_BUG_CREATE_SCREEN, Z_BUG_UPDATE_SCREEN, ZBUG_CREATE, ZBUG_UPDATE | ⏳ |
-| 4 | Reporting | Z_BUG_REPORT_ALV (Interactive), ZBUG_FORM, Z_BUG_MANAGER_DASHBOARD, Z_BUG_USER_MANAGEMENT | ⏳ |
-| 5 | Advanced FMs | Z_BUG_LOG_HISTORY, Z_BUG_AUTO_ASSIGN, Z_BUG_CHECK_PERMISSION, Z_BUG_UPLOAD_ATTACHMENT, Z_BUG_REASSIGN, ALV Colors | ⏳ |
-| 6 | Testing & Deploy | SCI, Transport Request, UAT 12 test cases | ⏳ |
+| 3 | Presentation | Z_BUG_CREATE_SCREEN, Z_BUG_UPDATE_SCREEN, ZBUG_CREATE, ZBUG_UPDATE | ✅ |
+| 4 | Reporting | Z_BUG_REPORT_ALV (Interactive), ZBUG_FORM, Z_BUG_MANAGER_DASHBOARD, Z_BUG_USER_MANAGEMENT | ✅ |
+| 5 | Advanced FMs | Z_BUG_LOG_HISTORY, Z_BUG_AUTO_ASSIGN, Z_BUG_CHECK_PERMISSION, Z_BUG_UPLOAD_ATTACHMENT, Z_BUG_REASSIGN, ALV Colors | ✅ |
+| 6 | Testing & Optimization | SCI, Unit Testing (6 FMs), Performance Testing, Integration Testing, UAT 12 test cases, Code Documentation | ⏳ |
+| 7 | Deployment & Training | Transport Request (SE09), User Training Docs, Deployment Checklist, Rollback Plan | ⏳ |
+| 8 | Final Presentation | Final Testing, Project Summary, Handover Documentation, Performance Metrics | ⏳ |
 
 **T-codes tổng hợp:**
 
@@ -2556,5 +3447,5 @@ Chúc mừng! Bạn đã hoàn thành hệ thống SAP Bug Tracking Management.
 
 ---
 
-**Prepared by:** [Your Name]  
-**Last Updated:** 03/03/2026
+**Prepared by:** Development Team
+**Last Updated:** 07/03/2026 - Phase 6/7/8 Detailed Guide & 12 UAT Test Cases Added
