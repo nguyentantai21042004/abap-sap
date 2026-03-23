@@ -1,0 +1,777 @@
+*&---------------------------------------------------------------------*
+*& Include          ZPG_BUGTRACKING_MAIN_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  INIT_DATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM init_date.
+  " data default .
+
+  " TODO: variable is assigned but only used in commented-out code (ABAP cleaner)
+  DATA l_date1 LIKE sy-datum.
+  " TODO: variable is assigned but only used in commented-out code (ABAP cleaner)
+  DATA l_date2 LIKE sy-datum.
+*  DATA l_ernam LIKE sy-uname.
+
+  l_date1 = sy-datum - 7.
+  l_date2 = sy-datum.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SERCH_REQMOD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM search_proj.
+
+  TYPES: BEGIN OF lty_proj,
+           project_id   TYPE ztb_project-project_id,
+           project_name TYPE ztb_project-project_name,
+         END OF lty_proj.
+
+  DATA: lt_proj TYPE TABLE OF lty_proj.
+
+  CLEAR : it_rtntab,
+          it_rtntab[].
+
+  SELECT project_id, project_name
+    FROM ztb_project
+    WHERE is_del IS INITIAL
+    INTO TABLE @lt_proj.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'PROJECT_ID'
+      dynpprog     = sy-cprog
+      dynpnr       = sy-dynnr
+      window_title = 'Project' ##NO_TEXT
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_proj
+      return_tab   = it_rtntab.
+
+  READ TABLE it_rtntab INDEX 1.
+  IF sy-subrc = 0.
+    READ TABLE lt_proj INTO DATA(ls_proj)
+    WITH KEY project_id = it_rtntab-fieldval.
+    IF sy-subrc = 0.
+      s_prjid-low = ls_proj-project_id.
+    ENDIF.
+  ENDIF.
+ENDFORM.                    " SEARCH_REQMOD
+
+*&---------------------------------------------------------------------*
+*&      Form  SERCH_STATUSCD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM search_statuscd.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_DATA1
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_data1.
+
+  IF p_check1 = abap_true AND s_prjidb[] IS INITIAL.
+    MESSAGE s069 DISPLAY LIKE 'E'  .
+    STOP.
+  ENDIF.
+  " truong hop parameter co du lieu thi gán vào range
+  IF p_status IS NOT INITIAL.
+    APPEND VALUE #( sign = 'I'
+                    option = 'EQ'
+                    low = p_status ) TO s_status.
+  ENDIF.
+
+  SELECT
+    bug_id, project_id, tr_code,
+     start_date, deadline, abap_pic, func_pic,
+    user_request, effor_all, cncl_reason, is_del ,erdat
+    ,erzet ,ernam ,aedat ,aezet ,aenam,
+     CASE bug_type
+       WHEN '1' THEN 'Dump'                  ##NO_TEXT
+       WHEN '2' THEN 'Very High'             ##NO_TEXT
+      WHEN '3' THEN 'High'                   ##NO_TEXT
+      WHEN '4' THEN 'Normal'                 ##NO_TEXT
+      WHEN '5' THEN 'Minor'                  ##NO_TEXT
+     END AS bug_type,
+     CASE bug_status
+      WHEN '1' THEN 'Opening'                           ##NO_TEXT
+      WHEN '2' THEN 'In Process by ABAP'                ##NO_TEXT
+      WHEN '3' THEN 'In Process by Functional'          ##NO_TEXT
+      WHEN '4' THEN 'Pending by ABAP'                   ##NO_TEXT
+      WHEN '5' THEN 'Pending by Functional'             ##NO_TEXT
+      WHEN '6' THEN 'Fixed'                             ##NO_TEXT
+      WHEN '7' THEN 'Resolve'                           ##NO_TEXT
+     END AS bug_status,
+
+     CASE priority
+       WHEN '1' THEN 'High'                           ##NO_TEXT
+       WHEN '2' THEN 'Medium'                         ##NO_TEXT
+       WHEN '3' THEN 'Low'                            ##NO_TEXT
+     END AS priority
+
+     FROM ztb_buginfo
+     WHERE project_id IN @s_prjidb
+       AND bug_status IN @s_status
+       AND bug_id     IN @s_bugid
+       AND abap_pic   IN @s_dev
+       AND func_pic   IN @s_rep
+       AND deadline   IN @s_deadln
+       AND start_date IN @s_dcre
+       AND is_del IS INITIAL
+       INTO CORRESPONDING FIELDS OF TABLE @gt_buginfo.
+
+  SORT gt_buginfo BY bug_id.
+
+  SELECT SINGLE user_id                                     "#EC WARNOK
+    INTO @DATA(lv_user)
+    FROM ztb_user_project
+    WHERE user_id = @sy-uname AND project_id IN @s_prjidb.
+
+  IF lv_user IS INITIAL.
+    MESSAGE s000 WITH 'You do not have permissions for this project.' DISPLAY LIKE 'E'   ##NO_TEXT.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_DATA2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_data2.
+
+  DATA: lt_projects_raw TYPE STANDARD TABLE OF ztb_project,
+        lv_input_pm     TYPE string,
+        lv_proj_pm      TYPE string.
+  " truong hop parameter co du lieu thi gán vào range
+  IF p_psts IS NOT INITIAL.
+    APPEND VALUE #( sign = 'I'
+                    option = 'EQ'
+                    low = p_psts ) TO s_psts.
+  ENDIF.
+
+  " Bước 1: SELECT theo các điều kiện chuẩn, trừ project_manager
+  SELECT * FROM ztb_project
+    WHERE project_id     IN @s_prjid
+      AND start_date     IN @s_start
+      AND end_date       IN @s_end
+      AND project_status IN @s_psts
+      AND is_del         IS INITIAL
+    INTO TABLE @lt_projects_raw.
+
+  " Bước 2: Nếu không lọc theo project_manager → dùng luôn toàn bộ kết quả
+  IF s_mnger[] IS INITIAL.
+    gt_project = lt_projects_raw.
+  ELSE.
+    " Lọc lại với project_manager (bỏ phân biệt chữ hoa/thường)
+    LOOP AT lt_projects_raw INTO DATA(ls_proj).
+      LOOP AT s_mnger INTO DATA(ls_pm).
+        lv_input_pm = to_upper( condense( ls_pm-low ) ).
+        lv_proj_pm  = to_upper( condense( ls_proj-project_manager ) ).
+
+        IF lv_input_pm = lv_proj_pm.
+          APPEND ls_proj TO gt_project.
+          EXIT. "đã match rồi, không cần so với các giá trị khác
+        ENDIF.
+      ENDLOOP.
+    ENDLOOP.
+  ENDIF.
+
+  IF sy-subrc <> 0.
+    g_error = abap_true.
+    MESSAGE s000 WITH 'data does not exist.' DISPLAY LIKE 'E'         ##NO_TEXT.
+    LEAVE LIST-PROCESSING.
+  ELSE.
+    LOOP AT gt_project INTO DATA(ls_project).
+      " Kiểm tra và ánh xạ Project Status
+      CASE ls_project-project_status.
+        WHEN '1'.
+          ls_project-project_status =  'Opening'        ##NO_TEXT.
+        WHEN '2'.
+          ls_project-project_status = 'In process'      ##NO_TEXT.
+        WHEN  '3'.
+          ls_project-project_status = 'Done'            ##NO_TEXT.
+        WHEN '4' .
+          ls_project-project_status = 'Cancel'          ##NO_TEXT .
+        WHEN OTHERS.
+          MESSAGE 'Invalid Project Status' TYPE 'S' DISPLAY LIKE 'E'         ##NO_TEXT.
+      ENDCASE.
+      MODIFY gt_project FROM ls_project.
+    ENDLOOP.
+
+
+  ENDIF.
+  SORT gt_project BY project_id.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form make_upload_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_upload_data.
+  "---Insert
+
+  DATA ls_tab_raw_data TYPE truxs_t_text_data.
+  DATA ls_user_info    TYPE ztb_user_info.
+  DATA ls_project      TYPE ztb_project.
+  DATA ls_user_project TYPE ztb_user_project.
+
+  TYPE-POOLS truxs.
+
+*  DATA: gt_error_msgs TYPE TABLE OF ty_error_msg,
+*        gs_error_msg  TYPE ty_error_msg.
+
+*  CLEAR gt_template_data.
+*  REFRESH gt_template_data.
+
+  IF p_fname IS INITIAL.
+    MESSAGE s000 WITH 'Please choose file to upload' DISPLAY LIKE 'E' ##NO_TEXT.
+  ENDIF.
+
+
+  " Read Excel file
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+      i_line_header        = '1'
+      i_tab_raw_data       = ls_tab_raw_data
+      i_filename           = p_fname
+    TABLES
+      i_tab_converted_data = gt_ex_project
+    EXCEPTIONS ##FM_SUBRC_OK
+      conversion_failed    = 01.
+
+  LOOP AT gt_ex_project INTO FINAL(ls_group)
+       GROUP BY ( project_id = ls_group-project_id  )
+       INTO FINAL(ls_group_project).
+
+    LOOP AT GROUP ls_group_project INTO DATA(ls_project_g).
+
+      CALL FUNCTION 'CONVERT_DATE_TO_INTERNAL'
+        EXPORTING
+          date_external            = ls_project_g-start_date
+        IMPORTING
+          date_internal            = ls_project_g-start_date
+        EXCEPTIONS
+          date_external_is_invalid = 1
+          OTHERS                   = 2.
+      IF sy-subrc <> 0.
+        MESSAGE s000 WITH 'Invalid Start Date' DISPLAY LIKE 'E' ##NO_TEXT.
+        LEAVE LIST-PROCESSING.
+      ENDIF.
+
+      CALL FUNCTION 'CONVERT_DATE_TO_INTERNAL'
+        EXPORTING
+          date_external            = ls_project_g-end_date
+        IMPORTING
+          date_internal            = ls_project_g-end_date
+        EXCEPTIONS
+          date_external_is_invalid = 1
+          OTHERS                   = 2.
+      IF sy-subrc <> 0.
+        MESSAGE s000 WITH 'Invalid End Date' DISPLAY LIKE 'E' ##NO_TEXT.
+        LEAVE LIST-PROCESSING.
+      ENDIF.
+
+      MOVE-CORRESPONDING ls_project_g TO ls_user_info.
+      MOVE-CORRESPONDING ls_project_g TO ls_project.
+      MOVE-CORRESPONDING ls_project_g TO ls_user_project.
+
+      gt_user_info = VALUE #( BASE gt_user_info
+                              ( ls_user_info ) ).
+      CLEAR ls_user_info.
+
+
+      gt_use_project = VALUE #( BASE gt_use_project
+                             ( ls_user_project ) ).
+
+      CLEAR ls_user_project.
+
+    ENDLOOP.
+
+    gt_project = VALUE #( BASE gt_project
+                          ( ls_project ) ).
+
+    CLEAR ls_project.
+
+
+  ENDLOOP.
+
+  IF sy-subrc <> 0.
+    MESSAGE s007(zmsg_214) DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  "---Insert
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form check_upload
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_upload.
+  "->loi buoc nao thi return msg luon
+  " Check data da ton tai chua
+  SELECT COUNT( * )
+    FROM ztb_project
+    INTO @DATA(lv_checkprjdp)
+    FOR ALL ENTRIES IN @gt_project
+    WHERE project_id = @gt_project-project_id.
+  IF sy-subrc = 0.
+    MESSAGE s000 WITH 'This project have been added' DISPLAY LIKE 'E' ##NO_TEXT.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  LOOP AT gt_project INTO DATA(ls_project).
+
+    FINAL(lv_first_project_id) = gt_project[ 1 ]-project_id.
+    IF ls_project-project_id <> lv_first_project_id.
+      MESSAGE s000 WITH 'Upload only one project at a time'  DISPLAY LIKE 'E' ##NO_TEXT.
+      LEAVE LIST-PROCESSING.
+    ENDIF.
+
+    " Kiểm tra và ánh xạ Project Status
+    CASE ls_project-project_status.
+      WHEN 'Opening'.
+        ls_project-project_status = '1'.
+      WHEN OTHERS.
+        MESSAGE s000 WITH 'Status of project must be Opening' DISPLAY LIKE 'E'       ##NO_TEXT.
+        LEAVE LIST-PROCESSING.
+    ENDCASE.
+
+    IF ls_project-start_date IS INITIAL OR ls_project-end_date IS INITIAL.
+      MESSAGE s000 WITH 'Date fields cannot be empty'  DISPLAY LIKE 'E'                   ##NO_TEXT.
+      LEAVE LIST-PROCESSING.
+    ENDIF.
+    MODIFY gt_project FROM ls_project.
+
+*    " check input data
+    IF    ls_project-project_id      IS INITIAL
+       OR ls_project-project_status  IS INITIAL
+       OR ls_project-start_date      IS INITIAL
+       OR ls_project-end_date        IS INITIAL
+       OR ls_project-project_name    IS INITIAL
+       OR ls_project-project_manager IS INITIAL.
+      MESSAGE s000 WITH 'Mandatory fields are missing'  DISPLAY LIKE 'E'     ##NO_TEXT.
+      LEAVE LIST-PROCESSING.
+    ENDIF.
+
+*    "check start date , end date
+    IF ls_project-start_date > ls_project-end_date.
+      MESSAGE s000 WITH 'Start date cannot be after end date'  DISPLAY LIKE 'E'          ##NO_TEXT.
+      LEAVE LIST-PROCESSING.
+    ENDIF.
+  ENDLOOP.
+
+  LOOP AT gt_user_info INTO DATA(ls_user_info).
+    " Kiểm tra và ánh xạ Role
+    CASE ls_user_info-role.
+      WHEN 'Developer'.
+        ls_user_info-role = '1'.
+      WHEN 'Functional'.
+        ls_user_info-role = '2'.
+      WHEN 'Project Manager'.
+        ls_user_info-role = '3'.
+      WHEN OTHERS.
+        MESSAGE s000 WITH 'Invalid User Role'  DISPLAY LIKE 'E' ##NO_TEXT.
+        LEAVE LIST-PROCESSING.
+    ENDCASE.
+    MODIFY gt_user_info FROM ls_user_info.
+  ENDLOOP.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form save_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_data.
+  LOOP AT gt_project ASSIGNING FIELD-SYMBOL(<fs_project>).
+    <fs_project>-aedat = sy-datum.
+    <fs_project>-aenam = sy-uname.
+    <fs_project>-aezet = sy-uzeit.
+    <fs_project>-erdat = sy-datum.
+    <fs_project>-ernam = sy-uname.
+    <fs_project>-erzet = sy-uzeit.
+  ENDLOOP.
+
+  MODIFY ztb_project FROM TABLE gt_project.
+
+  LOOP AT gt_user_info ASSIGNING FIELD-SYMBOL(<fs_user_infor>).
+    <fs_user_infor>-aedat = sy-datum.
+    <fs_user_infor>-aenam = sy-uname.
+    <fs_user_infor>-aezet = sy-uzeit.
+    <fs_user_infor>-erdat = sy-datum.
+    <fs_user_infor>-ernam = sy-uname.
+    <fs_user_infor>-erzet = sy-uzeit.
+  ENDLOOP.
+
+  MODIFY ztb_user_info FROM TABLE gt_user_info.
+
+  LOOP AT gt_use_project ASSIGNING FIELD-SYMBOL(<fs_user_project>).
+    <fs_user_project>-aedat = sy-datum.
+    <fs_user_project>-aenam = sy-uname.
+    <fs_user_project>-aezet = sy-uzeit.
+    <fs_user_project>-erdat = sy-datum.
+    <fs_user_project>-ernam = sy-uname.
+    <fs_user_project>-erzet = sy-uzeit.
+
+    INSERT ztb_user_project FROM <fs_user_project>.
+  ENDLOOP.
+
+  COMMIT WORK.
+
+  MESSAGE s000 WITH 'Upload project successfully' ##NO_TEXT.
+ENDFORM.
+
+FORM call_popup_confirm USING pv_question TYPE c.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = TEXT-w01 "'Warning Message'
+*     DIAGNOSE_OBJECT       = ' '
+*     text_question         = TEXT-q01 "Are you sure you want to update this report ?
+      text_question         = pv_question
+      text_button_1         = TEXT-a01 " confirm
+      text_button_2         = TEXT-a02 " cancel
+      default_button        = '2'
+      display_cancel_button = ''
+    IMPORTING
+      answer                = gv_answer
+    EXCEPTIONS
+      text_not_found        = 1
+      OTHERS                = 2.
+  IF sy-subrc <> 0.
+    " Implement suitable error handling here
+  ENDIF.
+ENDFORM.
+
+FORM save_project.
+*  CLEAR: gv_answer, gv_question.
+*
+*  gv_question = TEXT-q01.
+*  PERFORM call_popup_confirm USING gv_question.
+*
+*  IF gv_answer = '1'.
+*    CLEAR gt_elines.
+*
+*    CALL METHOD text_editor->get_text_as_r3table
+**        EXPORTING
+**          only_when_modified     = false            " get text only when modified
+*      IMPORTING
+*        table                  = gt_elines                 " text as R/3 table
+**       is_modified            =                  " modify status of text
+*      EXCEPTIONS
+*        error_dp               = 1                " Error while retrieving text table via DataProvider control!
+*        error_cntl_call_method = 2                " Error while retrieving a property from TextEdit control
+*        error_dp_create        = 3                " Error while creating DataProvider Control
+*        potential_data_loss    = 4                " Potential data loss: use get_text_as_stream instead
+*        OTHERS                 = 5.
+*    IF sy-subrc <> 0.
+**       MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+**         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+*    ENDIF.
+*
+*    CLEAR: ls_prjidect-note.
+*    LOOP AT gt_elines INTO DATA(ls_line).
+*      CONCATENATE ls_prjidect-note ls_line INTO ls_prjidect-note.
+*      CLEAR ls_line.
+*    ENDLOOP.
+*
+*    LOOP AT gt_elines INTO gv_line.
+*      gs_line-tdformat = '*'.
+*      gs_line-tdline = gv_line.
+*      APPEND gs_line TO gt_line.
+*      CLEAR: gs_line, gv_line.
+*    ENDLOOP.
+*
+*    gv_name = ls_prjidect-project_id.
+*
+*    CALL FUNCTION 'CREATE_TEXT'
+*      EXPORTING
+*        fid       = 'ZPRJ'                " Text ID of the text to be created
+*        flanguage = sy-langu               " Language of the text to be created
+*        fname     = gv_name               " Name of the text to be created
+*        fobject   = 'ZPROJECT'               " Object of the text to be created
+**       save_direct = 'X'
+**       fformat   = '*'
+*      TABLES
+*        flines    = gt_line                " Lines of the text to be created
+*      EXCEPTIONS
+*        no_init   = 1                " Creation of text did not work
+*        no_save   = 2                " Saving of the text did not work
+*        OTHERS    = 3.
+*    IF sy-subrc <> 0.
+**       MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+**         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+*    ENDIF.
+*
+*    MODIFY ztb_project FROM ls_prjidect.
+*    MESSAGE 'Update note successfully' TYPE 'S'.
+*
+*    SET SCREEN 0.
+*    CLEAR ok_code.
+*  ELSE.
+*    MESSAGE 'Not Save' TYPE 'S' DISPLAY LIKE 'E'.
+*  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_FILEPATH
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM get_filepath USING pv_file.
+  DATA lv_def_path TYPE string.
+  DATA lt_files    TYPE filetable.
+  DATA lv_rc       TYPE i.
+  DATA ls_files    TYPE file_table.
+
+  cl_gui_frontend_services=>directory_get_current( CHANGING current_directory = lv_def_path ).
+
+  CLEAR: lt_files[],
+         lt_files,
+         lv_rc.
+  cl_gui_frontend_services=>file_open_dialog( EXPORTING default_extension = '*.xls;*.xlsx'
+                                                        initial_directory = lv_def_path "'c:\'
+                                              CHANGING  file_table        = lt_files
+                                                        rc                = lv_rc ).
+
+  READ TABLE lt_files INTO ls_files INDEX 1.
+
+  IF sy-subrc = 0.
+    pv_file = ls_files-filename.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form check_user
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_user.
+
+  IF p_check2 = 'X' AND p_up = 'X'.
+
+    SELECT COUNT( * ) UP TO 1 ROWS
+      FROM ztb_user_info
+     WHERE user_id = sy-uname
+      AND role = '3'.
+
+    IF sy-subrc <> 0.
+      g_error = abap_true.
+      MESSAGE s000 WITH 'Only project managers can upload projects.' DISPLAY LIKE 'E'  ##NO_TEXT.
+      LEAVE LIST-PROCESSING.
+    ENDIF.
+
+    SELECT COUNT( * ) UP TO 1 ROWS
+      FROM ztb_project
+     WHERE project_manager = sy-uname
+       AND project_status = '3' .
+  ENDIF.
+
+  IF sy-subrc = 0.
+    g_error = abap_true.
+    MESSAGE s000 WITH 'Close the current project to create a new one.' DISPLAY LIKE 'E'     ##NO_TEXT.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  EXCUTE_DOWNLOAD
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM excute_download.
+  DATA ls_wdata     TYPE wwwdatatab.
+  DATA lv_fname     TYPE string." VALUE 'ZTEMPLATE_PROJECT'. "<= TEMPLATE NAME
+  DATA lv_filename  TYPE string.
+  DATA lv_extension TYPE string.
+  DATA lv_size      TYPE string.
+  DATA lv_filesize  TYPE i.
+  DATA lt_wmime     LIKE w3mime OCCURS 100 WITH HEADER LINE.
+
+  DATA lv_path      TYPE string.
+  DATA lv_fullpath  TYPE string.
+
+  IF p_check2 = abap_true.
+    lv_fname     = 'ZTEMPLATE_PROJECT'.
+  ELSE.
+    IF sy-ucomm = 'FC01'.
+      lv_fname     = 'ZTEMPLATE_TESTCASE'.
+    ELSEIF sy-ucomm = 'FC02'.
+      lv_fname     = 'ZTEMPLATE_CONFIRM'.
+    ELSEIF sy-ucomm = 'FC03'.
+      lv_fname     = 'ZTEMPLATE_BUGPROOF'.
+    ENDIF.
+  ENDIF.
+  SELECT SINGLE * FROM wwwdata                              "#EC WARNOK
+    INTO CORRESPONDING FIELDS OF @ls_wdata
+    WHERE relid = 'MI'
+      AND objid = @lv_fname.
+  IF sy-subrc <> 0.
+    MESSAGE i000(swww) WITH lv_fname.
+  ELSE.
+
+*    concatenate ls_wdata-objid ls_wdata-text
+*           into lv_filename separated by space.
+    lv_filename = ls_wdata-text.
+
+    SELECT SINGLE value INTO lv_extension
+      FROM wwwparams
+      WHERE relid = ls_wdata-relid
+        AND objid = ls_wdata-objid
+        AND name  = 'fileextension'.
+    REPLACE ALL OCCURRENCES OF `.` IN lv_extension WITH ``.
+
+    SELECT SINGLE value INTO lv_size
+      FROM wwwparams
+      WHERE relid = ls_wdata-relid
+        AND objid = ls_wdata-objid
+        AND name  = 'filesize'.
+
+    lv_filesize = lv_size.
+
+    CALL FUNCTION 'WWWDATA_IMPORT'
+      EXPORTING
+        key               = ls_wdata
+      TABLES
+        mime              = lt_wmime
+      EXCEPTIONS
+        wrong_object_type = 1
+        import_error      = 2
+        OTHERS            = 3.
+    IF sy-subrc <> 0.
+      MESSAGE i000(swww) WITH lv_fname.
+      EXIT.
+    ENDIF.
+
+    cl_gui_frontend_services=>file_save_dialog( EXPORTING window_title      = 'Save as'      ##NO_TEXT
+*                                                          file_filter       = cl_gui_frontend_services=>FILETYPE_EXCEL
+                                                          default_extension = lv_extension
+                                                          default_file_name = lv_filename
+                                                CHANGING  filename          = lv_filename
+                                                          path              = lv_path
+                                                          fullpath          = lv_fullpath ).
+
+    IF lv_fullpath IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    CALL FUNCTION 'GUI_DOWNLOAD'
+      EXPORTING
+        filename     = lv_fullpath
+        filetype     = 'BIN'
+        bin_filesize = lv_filesize
+      TABLES
+        data_tab     = lt_wmime.
+
+    cl_gui_frontend_services=>execute( EXPORTING  document               = lv_fullpath
+                                       EXCEPTIONS  cntl_error             = 1   ##SUBRC_OK
+                                                  error_no_gui           = 2
+                                                  bad_parameter          = 3
+                                                  file_not_found         = 4
+                                                  path_not_found         = 5
+                                                  file_extension_unknown = 6
+                                                  error_execute_failed   = 7
+                                                  synchronous_failed     = 8
+                                                  not_supported_by_gui   = 9
+                                                  OTHERS                 = 10 ).
+    IF sy-subrc <> 0.
+
+    ENDIF.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_data1
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_data1 .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form search_projdb
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM search_projdb .
+
+  TYPES: BEGIN OF lty_proj,
+           project_id   TYPE ztb_project-project_id,
+           project_name TYPE ztb_project-project_name,
+         END OF lty_proj.
+
+  DATA: lt_proj TYPE TABLE OF lty_proj.
+
+  CLEAR : it_rtntab,
+          it_rtntab[].
+
+  SELECT project_id, project_name
+    FROM ztb_project
+    WHERE is_del IS INITIAL
+    INTO TABLE @lt_proj.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'PROJECT_ID'
+      dynpprog     = sy-cprog
+      dynpnr       = sy-dynnr
+      window_title = 'Project' ##NO_TEXT
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_proj
+      return_tab   = it_rtntab.
+
+  READ TABLE it_rtntab INDEX 1.
+  IF sy-subrc = 0.
+    READ TABLE lt_proj INTO DATA(ls_proj)
+    WITH KEY project_id = it_rtntab-fieldval.
+    IF sy-subrc = 0.
+      s_prjidb-low = ls_proj-project_id.
+    ENDIF.
+  ENDIF.
+ENDFORM.

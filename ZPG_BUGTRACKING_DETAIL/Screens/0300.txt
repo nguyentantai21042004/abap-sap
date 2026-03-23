@@ -1,0 +1,30 @@
+PROCESS BEFORE OUTPUT.
+  MODULE status_0300.
+  MODULE set_list.
+
+  MODULE modify_screen.
+  CALL SUBSCREEN sub INCLUDING sy-repid number.
+
+*"PAI
+PROCESS AFTER INPUT.
+  MODULE exit_command AT EXIT-COMMAND.
+  CHAIN.
+    FIELD :  gs_bug_row-bug_id       ,
+             gs_bug_row-start_date   MODULE check_date ON REQUEST,
+             gs_bug_row-bug_type     MODULE check_bug_type  ON REQUEST,
+             gs_bug_row-bug_status   MODULE bug_status  ON REQUEST,
+             gs_bug_row-priority     ,
+             gs_bug_row-abap_pic     MODULE check_pic_abap  ON REQUEST,
+             gs_bug_row-func_pic     MODULE check_pic_func  ON REQUEST,
+             gs_bug_row-deadline     MODULE check_date      ON REQUEST.
+*             gs_bug_row-erdat
+      MODULE modify_it ON CHAIN-REQUEST.
+  ENDCHAIN.
+
+  MODULE user_command_0300.
+
+PROCESS ON VALUE-REQUEST.
+  FIELD  gs_bug_row-deadline     MODULE f4_date.
+  FIELD  gs_bug_row-start_date   MODULE f4_startdate.
+  FIELD gs_bug_row-ABAP_PIC      MODULE f4help_dev.
+  FIELD gs_bug_row-FUNC_PIC      MODULE f4help_func.

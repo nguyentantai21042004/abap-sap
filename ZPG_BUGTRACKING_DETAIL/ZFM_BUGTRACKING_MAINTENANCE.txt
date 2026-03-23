@@ -1,0 +1,28 @@
+FUNCTION zfm_bugtracking_maintenance.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(I_IMEXI) TYPE  CHAR01 OPTIONAL
+*"     VALUE(I_DOCTY) TYPE  CHAR02 OPTIONAL
+*"     REFERENCE(I_PRJ_ID) TYPE  ZE_PROJECTID
+*"     REFERENCE(I_BUG_ID) TYPE  ZE_BUGID
+*"     VALUE(I_AMDSQ) TYPE  NUM02 OPTIONAL
+*"     REFERENCE(I_ACTION) TYPE  CHAR01 OPTIONAL
+*"----------------------------------------------------------------------
+*  CLEAR: zbctdmk.
+
+  CLEAR: ztt_evd, gv_act.
+  g_dokar = i_docty.
+
+  ztt_evd-project_id = i_prj_id.
+  ztt_evd-bug_id     = i_bug_id.
+
+  gv_act = i_action.
+
+  PERFORM get_dms_header_data.
+
+  CLEAR ok-code.
+
+  CALL SCREEN 2160 STARTING AT 01 01.
+
+ENDFUNCTION.
