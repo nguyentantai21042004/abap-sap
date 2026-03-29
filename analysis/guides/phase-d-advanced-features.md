@@ -1,9 +1,9 @@
 # HƯỚNG DẪN TRIỂN KHAI CHI TIẾT — PHASE D: EXCEL & ADVANCED FEATURES
 
-**Dự án:** SAP Bug Tracking Management System  
-**Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)  
-**Thời gian ước tính:** 2 ngày (31/03-01/04)  
-**Yêu cầu:** Hoàn thành Phase A + B + C trước  
+**Dự án:** SAP Bug Tracking Management System
+**Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
+**Thời gian ước tính:** 2 ngày (31/03-01/04)
+**Yêu cầu:** Hoàn thành Phase A + B + C trước
 
 ---
 
@@ -64,23 +64,18 @@ WHEN 'DOWNLOAD_TMPL'.
 ```abap
 FORM download_template.
   DATA: lv_objid   TYPE wwwdatatab-objid VALUE 'ZTEMPLATE_PROJECT',
-        lv_dest    TYPE rlgrap-filename,
-        lv_rc      TYPE sy-subrc.
+        lv_uaction TYPE i.
 
   " Chọn đường dẫn lưu file
-  DATA: lt_file_table TYPE filetable,
-        lv_urc        TYPE i,
-        lv_uaction    TYPE i.
-
   cl_gui_frontend_services=>file_save_dialog(
     EXPORTING
       default_extension = 'xlsx'
       default_file_name = 'ZTEMPLATE_PROJECT.xlsx'
       file_filter       = 'Excel Files (*.xlsx)|*.xlsx'
     CHANGING
-      filename   = lv_dest
-      path       = DATA(lv_path)
-      fullpath   = DATA(lv_fullpath)
+      filename    = DATA(lv_filename)
+      path        = DATA(lv_path)
+      fullpath    = DATA(lv_fullpath)
       user_action = lv_uaction
     EXCEPTIONS OTHERS = 1 ).
 
@@ -89,18 +84,49 @@ FORM download_template.
     RETURN.
   ENDIF.
 
-  " Download từ SMW0
+  " Download từ SMW0 (primary method)
+  DATA: lv_subrc TYPE sy-subrc.
   CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
     EXPORTING
       key         = VALUE wwwdatatab( relid = 'MI' objid = lv_objid )
       destination = lv_fullpath
     IMPORTING
-      rc          = lv_rc.
+      rc          = lv_subrc.
 
-  IF lv_rc = 0.
-    MESSAGE 'Template downloaded successfully' TYPE 'S'.
+  IF lv_subrc = 0.
+    MESSAGE s025(zbug_msg).  " 'Successfully saved'
   ELSE.
-    MESSAGE 'Failed to download template' TYPE 'S' DISPLAY LIKE 'E'.
+    " Fallback: SAP_OBJ_READ + GUI_DOWNLOAD (WWWDATA_IMPORT pattern)
+    DATA: lt_mime TYPE TABLE OF w3mime,
+          lv_size TYPE i.
+    CALL FUNCTION 'SAP_OBJ_READ'
+      EXPORTING
+        p_objid   = lv_objid
+        p_relid   = 'MI'
+      TABLES
+        p_content = lt_mime
+      EXCEPTIONS
+        not_found = 1
+        OTHERS    = 2.
+
+    IF sy-subrc = 0.
+      CALL FUNCTION 'GUI_DOWNLOAD'
+        EXPORTING
+          filename = lv_fullpath
+          filetype = 'BIN'
+        TABLES
+          data_tab = lt_mime
+        EXCEPTIONS
+          OTHERS   = 1.
+
+      IF sy-subrc = 0.
+        MESSAGE s025(zbug_msg).
+      ELSE.
+        MESSAGE s000(zbug_msg) WITH 'Failed to save' 'template file' DISPLAY LIKE 'E'.
+      ENDIF.
+    ELSE.
+      MESSAGE s000(zbug_msg) WITH 'Template not found' 'on server (SMW0)' DISPLAY LIKE 'E'.
+    ENDIF.
   ENDIF.
 ENDFORM.
 ```
@@ -168,14 +194,14 @@ FORM upload_project_excel.
       OTHERS              = 2.
 
   IF sy-subrc <> 0.
-    MESSAGE 'Failed to read Excel file' TYPE 'S' DISPLAY LIKE 'E'.
+    MESSAGE s000(zbug_msg) WITH 'Failed to read' 'Excel file' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   " 3. Validate + Insert
   LOOP AT lt_upload ASSIGNING FIELD-SYMBOL(<fs>).
     CLEAR ls_project.
-    
+
     " Bỏ qua Header 2 dòng đầu (nếu i_line_header chưa clear hết)
     IF <fs>-project_id CS 'PROJECT_ID' OR <fs>-project_id CS '(Char'.
       CONTINUE.
@@ -195,7 +221,36 @@ FORM upload_project_excel.
       CONTINUE.
     ENDIF.
 
-    " ... [Validate Project Manager + Mapping Data] ...
+    " Validate Project Manager exists + is Manager role + active
+    SELECT COUNT(*) FROM zbug_users
+      WHERE user_id = @<fs>-project_manager AND role = 'M' AND is_del <> 'X'.
+    IF sy-dbcnt = 0.
+      ADD 1 TO lv_errors.
+      CONTINUE.
+    ENDIF.
+
+    " Map data to structure
+    ls_project-project_id      = <fs>-project_id.
+    ls_project-project_name    = <fs>-project_name.
+    ls_project-description     = <fs>-description.
+    ls_project-project_manager = <fs>-project_manager.
+    ls_project-note            = <fs>-note.
+
+    " Parse dates (DD.MM.YYYY → YYYYMMDD)
+    IF <fs>-start_date IS NOT INITIAL AND strlen( <fs>-start_date ) = 10.
+      CONCATENATE <fs>-start_date+6(4) <fs>-start_date+3(2) <fs>-start_date(2)
+        INTO ls_project-start_date.
+    ENDIF.
+    IF <fs>-end_date IS NOT INITIAL AND strlen( <fs>-end_date ) = 10.
+      CONCATENATE <fs>-end_date+6(4) <fs>-end_date+3(2) <fs>-end_date(2)
+        INTO ls_project-end_date.
+    ENDIF.
+
+    " Default values
+    ls_project-project_status = '1'.  " Opening
+    ls_project-ernam          = sy-uname.
+    ls_project-erdat          = sy-datum.
+    ls_project-erzet          = sy-uzeit.
 
     APPEND ls_project TO lt_projects.
     ADD 1 TO lv_success.
@@ -205,7 +260,9 @@ FORM upload_project_excel.
   IF lt_projects IS NOT INITIAL.
     INSERT zbug_project FROM TABLE lt_projects.
     COMMIT WORK.
-    MESSAGE |Uploaded { lv_success } project(s). { lv_errors } error(s).| TYPE 'S'.
+    MESSAGE s000(zbug_msg) WITH 'Uploaded' lv_success 'project(s).' lv_errors.
+  ELSE.
+    MESSAGE s000(zbug_msg) WITH 'No valid data' 'to upload' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 ```
@@ -215,7 +272,7 @@ ENDFORM.
 > - Row 1: Valid → Insert thành công
 > - Row 2: Duplicate `PROJECT_ID` → Skip
 > - Row 3: PM not Manager → Skip
-> - Message: "Uploaded 1 project(s). 2 error(s)."
+> - Message: "Uploaded 1 project(s). 2"
 
 ---
 
@@ -235,6 +292,16 @@ MESSAGE s009(zbug_msg).
 MESSAGE 'Cập nhật thành công!' TYPE 'S'.
 " SAU:
 MESSAGE s025(zbug_msg).
+
+" TRƯỚC (trong D2/D3):
+MESSAGE 'Failed to read Excel file' TYPE 'S' DISPLAY LIKE 'E'.
+" SAU:
+MESSAGE s000(zbug_msg) WITH 'Failed to read' 'Excel file' DISPLAY LIKE 'E'.
+
+" TRƯỚC:
+MESSAGE 'Template downloaded successfully' TYPE 'S'.
+" SAU:
+MESSAGE s025(zbug_msg).
 ```
 
 ### Quy tắc
@@ -242,6 +309,7 @@ MESSAGE s025(zbug_msg).
 1. Dùng `MESSAGE sXXX(zbug_msg)` cho popup messages (`S` = Success, `E` = Error)
 2. Dùng `MESSAGE sXXX(zbug_msg) INTO lv_msg` cho internal messages
 3. Dùng `DISPLAY LIKE 'E'` để hiện error icon dù type `S` (tránh dump màn hình)
+4. Dùng `MESSAGE s000(zbug_msg) WITH '...' '...'` cho dynamic/fallback messages khi chưa có message number riêng (s000 = `&1 &2 &3 &4` generic placeholder)
 
 > ✅ **Checkpoint:** Chạy global search (Ctrl+F in SE80) `MESSAGE '` → không còn hardcoded message strings trong ZBUG_WORKSPACE_MP.
 
@@ -271,8 +339,8 @@ Hiển thị bằng `CL_DD_DOCUMENT` trên màn hình `0100`.
 Sau khi hoàn thành Phase D, bạn phải có:
 
 - [x] Excel template `ZTEMPLATE_PROJECT` trên SMW0
-- [x] Download Template button hoạt động
-- [x] Upload Excel → validate → insert `ZBUG_PROJECT`
+- [x] Download Template button hoạt động (với fallback SAP_OBJ_READ)
+- [x] Upload Excel → validate PM role + duplicate check + date parsing → insert `ZBUG_PROJECT`
 - [x] Message Class `ZBUG_MSG` dùng xuyên suốt (không còn hardcode)
 - [ ] Dashboard (*optional — nếu đủ thời gian*)
 

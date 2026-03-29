@@ -1,21 +1,25 @@
 # HƯỚNG DẪN TRIỂN KHAI CHI TIẾT — PHASE B: BUSINESS LOGIC UPDATE
 
-**Dự án:** SAP Bug Tracking Management System  
-**Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)  
-**Thời gian ước tính:** 2 ngày (25-27/03)  
-**Yêu cầu:** Hoàn thành Phase A trước khi bắt đầu Phase B  
+**Dự án:** SAP Bug Tracking Management System
+**Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
+**Thời gian ước tính:** 2 ngày (25-27/03)
+**Yêu cầu:** Hoàn thành Phase A trước khi bắt đầu Phase B
+
+> ⚠️ **QUAN TRỌNG:** Phải chạy report `Z_BUG_MIGRATE_STATUS` (Phase A, Bước A8) trước khi activate bất kỳ FM nào trong Phase B. Nếu không, status codes cũ (4=Fixed, 5=Closed) sẽ conflict với logic mới (4=Pending, 5=Fixed).
 
 ---
 
 ## MỤC LỤC
 
-1. [Bước B1: Mở rộng Z_BUG_CHECK_PERMISSION (Project permissions)](#bước-b1-mở-rộng-z_bug_check_permission)
-2. [Bước B2: Cập nhật Z_BUG_CREATE (Project + Severity + User validation)](#bước-b2-cập-nhật-z_bug_create)
-3. [Bước B3: Chuẩn hóa Status States (9 states + transition validation)](#bước-b3-chuẩn-hóa-status-states)
+1. [Bước B1: Mở rộng Z_BUG_CHECK_PERMISSION](#bước-b1-mở-rộng-z_bug_check_permission)
+2. [Bước B2: Cập nhật Z_BUG_CREATE](#bước-b2-cập-nhật-z_bug_create)
+3. [Bước B3: Chuẩn hóa Status States — Z_BUG_UPDATE_STATUS (Full Rewrite)](#bước-b3-chuẩn-hóa-status-states)
 4. [Bước B4: GOS File Storage Integration](#bước-b4-gos-file-storage-integration)
 5. [Bước B5: SmartForm Email Template (ZBUG_EMAIL_FORM)](#bước-b5-smartform-email-template)
-6. [Bước B6: Cập nhật Z_BUG_SEND_EMAIL (SmartForm → CL_BCS)](#bước-b6-cập-nhật-z_bug_send_email)
+6. [Bước B6: Cập nhật Z_BUG_SEND_EMAIL](#bước-b6-cập-nhật-z_bug_send_email)
 7. [Bước B7: Cập nhật soft delete logic trong tất cả FMs](#bước-b7-cập-nhật-soft-delete-logic)
+8. [Bước B8: Cập nhật Z_BUG_AUTO_ASSIGN](#bước-b8-cập-nhật-z_bug_auto_assign)
+9. [Bước B9: Tạo mới Z_BUG_REASSIGN](#bước-b9-tạo-mới-z_bug_reassign)
 
 ---
 
@@ -82,7 +86,6 @@ FUNCTION z_bug_check_permission.
     SELECT COUNT(*) FROM zbug_user_project INTO @lv_count
       WHERE user_id = @iv_user AND project_id = @lv_prj.
     IF lv_count = 0.
-      " Đã check Manager ở trên, nếu ko phải Manager mà ko có trong Project -> block
       ev_allowed = 'N'.
       MESSAGE s004(zbug_msg) INTO ev_message.
       RETURN.
@@ -117,7 +120,6 @@ FUNCTION z_bug_check_permission.
       ENDIF.
 
     WHEN 'DELETE_BUG'.
-      " Chỉ Manager xóa bug, nhưng đã Allow ở trên, vào đây là chặn
       ev_allowed = 'N'.
       MESSAGE s006(zbug_msg) INTO ev_message.
 
@@ -126,18 +128,17 @@ FUNCTION z_bug_check_permission.
         ev_allowed = 'Y'.
       ELSE.
         ev_allowed = 'N'.
-        ev_message = 'Only the assigned Tester can upload report'.
+        MESSAGE s006(zbug_msg) INTO ev_message.
       ENDIF.
 
     WHEN 'UPLOAD_FIX'.
-      " Config Bug: Tester tự upload fix
       IF ls_bug-bug_type = 'F' AND ls_user-role = 'T' AND ls_bug-dev_id = iv_user.
         ev_allowed = 'Y'.
       ELSEIF ls_user-role = 'D' AND ls_bug-dev_id = iv_user.
         ev_allowed = 'Y'.
       ELSE.
         ev_allowed = 'N'.
-        ev_message = 'Only the assigned Developer can upload fix'.
+        MESSAGE s006(zbug_msg) INTO ev_message.
       ENDIF.
 
     WHEN 'UPLOAD_VERIFY'.
@@ -145,61 +146,28 @@ FUNCTION z_bug_check_permission.
         ev_allowed = 'Y'.
       ELSE.
         ev_allowed = 'N'.
-        ev_message = 'Only Tester can upload verify file'.
+        MESSAGE s006(zbug_msg) INTO ev_message.
       ENDIF.
 
     " === PROJECT ACTIONS ===
     WHEN 'CREATE_PROJECT'.
-      IF ls_user-role = 'M'.
-        ev_allowed = 'Y'.
-      ELSE.
-        ev_allowed = 'N'.
-        MESSAGE s007(zbug_msg) INTO ev_message.
-      ENDIF.
+      ev_allowed = 'N'.
+      MESSAGE s007(zbug_msg) INTO ev_message.
 
     WHEN 'CHANGE_PROJECT'.
-      " PM của project đó
-      IF ls_user-role = 'M'.
-        SELECT SINGLE * FROM zbug_project INTO @ls_project
-          WHERE project_id = @iv_project_id AND project_manager = @iv_user.
-        IF sy-subrc = 0.
-          ev_allowed = 'Y'.
-        ELSE.
-          ev_allowed = 'N'.
-          ev_message = 'Only the Project Manager of this project can modify it'.
-        ENDIF.
-      ELSE.
-        ev_allowed = 'N'.
-        MESSAGE s007(zbug_msg) INTO ev_message.
-      ENDIF.
+      ev_allowed = 'N'.
+      MESSAGE s007(zbug_msg) INTO ev_message.
 
     WHEN 'DELETE_PROJECT'.
-      IF ls_user-role <> 'M'.
-        ev_allowed = 'N'.
-        MESSAGE s007(zbug_msg) INTO ev_message.
-        RETURN.
-      ENDIF.
-      " Project phải Done hoặc Cancel
-      SELECT SINGLE project_status FROM zbug_project INTO @DATA(lv_prj_st)
-        WHERE project_id = @iv_project_id.
-      IF lv_prj_st = '3' OR lv_prj_st = '4'. " Done or Cancel
-        ev_allowed = 'Y'.
-      ELSE.
-        ev_allowed = 'N'.
-        MESSAGE s008(zbug_msg) INTO ev_message.
-      ENDIF.
+      ev_allowed = 'N'.
+      MESSAGE s007(zbug_msg) INTO ev_message.
 
     WHEN 'VIEW_PROJECT'.
-      " User phải thuộc project (đã check ở step 4)
       ev_allowed = 'Y'.
 
     WHEN 'ADD_USER_PROJECT'.
-      IF ls_user-role = 'M'.
-        ev_allowed = 'Y'.
-      ELSE.
-        ev_allowed = 'N'.
-        MESSAGE s007(zbug_msg) INTO ev_message.
-      ENDIF.
+      ev_allowed = 'N'.
+      MESSAGE s007(zbug_msg) INTO ev_message.
 
     WHEN OTHERS.
       ev_allowed = 'N'.
@@ -300,7 +268,8 @@ FUNCTION z_bug_create.
   ENDIF.
 
   " Dump/VeryHigh/High severity Code bugs → force High priority
-  IF iv_severity IN ('1', '2', '3') AND ls_bug-bug_type = 'C'.
+  IF ( iv_severity = '1' OR iv_severity = '2' OR iv_severity = '3' )
+     AND ls_bug-bug_type = 'C'.
     ls_bug-priority = 'H'.
   ELSE.
     ls_bug-priority = iv_priority.
@@ -405,13 +374,13 @@ Nhấn **Activate**.
 
 ---
 
-## Bước B3: Chuẩn hóa Status States
+## Bước B3: Chuẩn hóa Status States — `Z_BUG_UPDATE_STATUS` (Full Rewrite)
 
-**Mục tiêu:** Refactor `Z_BUG_UPDATE_STATUS` cho 9 status states mới.
+**Mục tiêu:** Refactor `Z_BUG_UPDATE_STATUS` cho 9 status states mới với full validation.
 
 Vào **SE37** → `Z_BUG_UPDATE_STATUS` → **Change**.
 
-**Bảng Transition hợp lệ (hardcode vào FM):**
+**Bảng Transition hợp lệ:**
 
 | From | → Valid To |
 | :--- | :--- |
@@ -425,80 +394,222 @@ Vào **SE37** → `Z_BUG_UPDATE_STATUS` → **Change**.
 | `7` | *(terminal — no transition)* |
 | `R` | `2` (reassign) |
 
-**Thêm logic validate transition vào FM:**
+**Source code cập nhật (thay thế toàn bộ):**
 
 ```abap
-" Trong Z_BUG_UPDATE_STATUS, sau khi đọc bug hiện tại:
+FUNCTION z_bug_update_status.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_NEW_STATUS) TYPE  CHAR1
+*"     VALUE(IV_DEV_ID) TYPE  ZDE_USERNAME OPTIONAL
+*"     VALUE(IV_REASON) TYPE  STRING OPTIONAL
+*"  EXPORTING
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
 
-" === TRANSITION VALIDATION ===
-DATA: lv_valid TYPE abap_bool VALUE abap_false.
+  DATA: ls_bug   TYPE zbug_tracker,
+        lv_valid TYPE abap_bool VALUE abap_false.
 
-CASE ls_bug-status.
-  WHEN '1'.  " New
-    IF iv_new_status = '2' OR iv_new_status = 'W'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN 'W'.  " Waiting
-    IF iv_new_status = '2'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN '2'.  " Assigned
-    IF iv_new_status = '3' OR iv_new_status = 'R'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN '3'.  " In Progress
-    IF iv_new_status = '5' OR iv_new_status = '4'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN '4'.  " Pending
-    IF iv_new_status = '3'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN '5'.  " Fixed
-    IF iv_new_status = '6' OR iv_new_status = '3'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN '6'.  " Resolved
-    IF iv_new_status = '7'.
-      lv_valid = abap_true.
-    ENDIF.
-  WHEN '7'.  " Closed — terminal
-    lv_valid = abap_false.
-  WHEN 'R'.  " Rejected
-    IF iv_new_status = '2'.
-      lv_valid = abap_true.
-    ENDIF.
-ENDCASE.
+  " ====== 1. READ CURRENT BUG ======
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id AND is_del <> 'X'.
 
-IF lv_valid = abap_false.
-  ev_success = 'N'.
-  " Dùng Message Class:
-  DATA: lv_old_text TYPE char20, lv_new_text TYPE char20.
-  PERFORM get_status_text IN PROGRAM z_bug_workspace_mp USING ls_bug-status CHANGING lv_old_text.
-  PERFORM get_status_text IN PROGRAM z_bug_workspace_mp USING iv_new_status CHANGING lv_new_text.
-  MESSAGE s018(zbug_msg) WITH lv_old_text lv_new_text INTO ev_message.
-  RETURN.
-ENDIF.
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    MESSAGE s029(zbug_msg) WITH iv_bug_id INTO ev_message.
+    RETURN.
+  ENDIF.
 
-" === AUDIT FIELDS ===
-ls_bug-aenam = sy-uname.
-ls_bug-aedat = sy-datum.
-ls_bug-aezet = sy-uzeit.
+  " ====== 2. CHECK BUG NOT CLOSED ======
+  IF ls_bug-status = '7'.
+    ev_success = 'N'.
+    MESSAGE s033(zbug_msg) INTO ev_message.
+    RETURN.
+  ENDIF.
 
-" Nếu chuyển sang Closed (7), ghi CLOSED_AT
-IF iv_new_status = '7'.
-  ls_bug-closed_at = sy-datum.
-ENDIF.
+  " ====== 3. PERMISSION CHECK ======
+  CALL FUNCTION 'Z_BUG_CHECK_PERMISSION'
+    EXPORTING
+      iv_user   = sy-uname
+      iv_bug_id = iv_bug_id
+      iv_action = 'UPDATE_STATUS'
+    IMPORTING
+      ev_allowed = DATA(lv_allowed)
+      ev_message = ev_message.
 
-" ... phần còn lại giữ nguyên (UPDATE, LOG_HISTORY, SEND_EMAIL) ...
+  IF lv_allowed <> 'Y'.
+    ev_success = 'N'.
+    RETURN.
+  ENDIF.
+
+  " ====== 4. TRANSITION VALIDATION ======
+  CASE ls_bug-status.
+    WHEN '1'.  " New
+      IF iv_new_status = '2' OR iv_new_status = 'W'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN 'W'.  " Waiting
+      IF iv_new_status = '2'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN '2'.  " Assigned
+      IF iv_new_status = '3' OR iv_new_status = 'R'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN '3'.  " In Progress
+      IF iv_new_status = '5' OR iv_new_status = '4'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN '4'.  " Pending
+      IF iv_new_status = '3'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN '5'.  " Fixed
+      IF iv_new_status = '6' OR iv_new_status = '3'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN '6'.  " Resolved
+      IF iv_new_status = '7'.
+        lv_valid = abap_true.
+      ENDIF.
+    WHEN '7'.  " Closed — terminal
+      lv_valid = abap_false.
+    WHEN 'R'.  " Rejected
+      IF iv_new_status = '2'.
+        lv_valid = abap_true.
+      ENDIF.
+  ENDCASE.
+
+  IF lv_valid = abap_false.
+    ev_success = 'N'.
+    DATA: lv_old_text TYPE char20, lv_new_text TYPE char20.
+    lv_old_text = SWITCH #( ls_bug-status
+      WHEN '1' THEN 'New'        WHEN 'W' THEN 'Waiting'
+      WHEN '2' THEN 'Assigned'   WHEN '3' THEN 'InProgress'
+      WHEN '4' THEN 'Pending'    WHEN '5' THEN 'Fixed'
+      WHEN '6' THEN 'Resolved'   WHEN '7' THEN 'Closed'
+      WHEN 'R' THEN 'Rejected' ).
+    lv_new_text = SWITCH #( iv_new_status
+      WHEN '1' THEN 'New'        WHEN 'W' THEN 'Waiting'
+      WHEN '2' THEN 'Assigned'   WHEN '3' THEN 'InProgress'
+      WHEN '4' THEN 'Pending'    WHEN '5' THEN 'Fixed'
+      WHEN '6' THEN 'Resolved'   WHEN '7' THEN 'Closed'
+      WHEN 'R' THEN 'Rejected' ).
+    MESSAGE s018(zbug_msg) WITH lv_old_text lv_new_text INTO ev_message.
+    RETURN.
+  ENDIF.
+
+  " ====== 5. EVIDENCE VALIDATION ======
+  " Chuyển sang Fixed (5): phải có TESTCASE file
+  IF iv_new_status = '5'.
+    IF ls_bug-att_fix IS INITIAL.
+      " Check GOS
+      DATA: lt_files TYPE sbdst_files.
+      CALL FUNCTION 'Z_BUG_GOS_LIST'
+        EXPORTING iv_bug_id = iv_bug_id
+        IMPORTING et_files  = lt_files.
+      " Tìm file TESTCASE trong GOS
+      DATA(lv_has_testcase) = abap_false.
+      LOOP AT lt_files TRANSPORTING NO FIELDS
+        WHERE comp_id CS 'TESTCASE' OR comp_id CS 'testcase'.
+        lv_has_testcase = abap_true. EXIT.
+      ENDLOOP.
+      IF lv_has_testcase = abap_false.
+        ev_success = 'N'.
+        MESSAGE s016(zbug_msg) INTO ev_message.
+        RETURN.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+  " Chuyển sang Resolved (6): phải có CONFIRM file
+  IF iv_new_status = '6'.
+    IF ls_bug-att_verify IS INITIAL.
+      CALL FUNCTION 'Z_BUG_GOS_LIST'
+        EXPORTING iv_bug_id = iv_bug_id
+        IMPORTING et_files  = lt_files.
+      DATA(lv_has_confirm) = abap_false.
+      LOOP AT lt_files TRANSPORTING NO FIELDS
+        WHERE comp_id CS 'CONFIRM' OR comp_id CS 'confirm'.
+        lv_has_confirm = abap_true. EXIT.
+      ENDLOOP.
+      IF lv_has_confirm = abap_false.
+        ev_success = 'N'.
+        MESSAGE s017(zbug_msg) INTO ev_message.
+        RETURN.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+  " ====== 6. SPECIAL FIELD UPDATES ======
+  DATA(lv_old_status) = ls_bug-status.
+  ls_bug-status = iv_new_status.
+
+  " →2 (Assigned): Set DEV_ID
+  IF iv_new_status = '2' AND iv_dev_id IS NOT INITIAL.
+    ls_bug-dev_id = iv_dev_id.
+  ENDIF.
+
+  " →6 (Resolved): Tester đã verify
+  IF iv_new_status = '6'.
+    ls_bug-verify_tester_id = sy-uname.
+  ENDIF.
+
+  " →7 (Closed): Manager close
+  IF iv_new_status = '7'.
+    ls_bug-closed_at   = sy-datum.
+    ls_bug-approved_by  = sy-uname.
+    ls_bug-approved_at  = sy-datum.
+  ENDIF.
+
+  " ====== 7. AUDIT FIELDS ======
+  ls_bug-aenam = sy-uname.
+  ls_bug-aedat = sy-datum.
+  ls_bug-aezet = sy-uzeit.
+
+  " ====== 8. DATABASE UPDATE ======
+  UPDATE zbug_tracker FROM ls_bug.
+
+  IF sy-subrc = 0.
+    ev_success = 'Y'.
+    MESSAGE s002(zbug_msg) WITH iv_bug_id INTO ev_message.
+
+    " Log history
+    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+      EXPORTING
+        iv_bug_id      = iv_bug_id
+        iv_action_type = 'ST'
+        iv_old_value   = lv_old_status
+        iv_new_value   = iv_new_status
+        iv_reason      = iv_reason.
+
+    " Send email
+    CALL FUNCTION 'Z_BUG_SEND_EMAIL'
+      EXPORTING
+        iv_bug_id = iv_bug_id
+        iv_event  = 'STATUS_CHANGE'.
+
+    COMMIT WORK AND WAIT.
+  ELSE.
+    ev_success = 'N'.
+    MESSAGE s010(zbug_msg) INTO ev_message.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFUNCTION.
 ```
 
 Nhấn **Activate**.
 
 > ✅ **Checkpoint:** **SE37** → `Z_BUG_UPDATE_STATUS` → Test:
 >
-> - Status `1` → `5` (Fixed) → FAIL "Invalid transition"
+> - Status `1` → `5` (Fixed) → FAIL "Invalid transition from New to Fixed"
 > - Status `1` → `2` (Assigned) → PASS
+> - Status `3` → `5` (Fixed) without TESTCASE file → FAIL "Upload TESTCASE file..."
+> - Status `6` → `7` (Closed) → PASS, CLOSED_AT + APPROVED_BY filled
 
 ---
 
@@ -541,7 +652,7 @@ FUNCTION z_bug_gos_upload.
 
   IF sy-subrc <> 0.
     ev_success = 'N'.
-    ev_message = 'Failed to read file from local path'.
+    MESSAGE s000(zbug_msg) WITH 'Failed to read' 'file from local' INTO ev_message.
     RETURN.
   ENDIF.
 
@@ -663,7 +774,7 @@ Nhấn **Save** → **Activate**.
 
 ## Bước B6: Cập nhật `Z_BUG_SEND_EMAIL`
 
-**Mục tiêu:** Sửa FM email để dùng SmartForm.
+**Mục tiêu:** Sửa FM email để dùng SmartForm + event-based recipients.
 
 ```abap
 FUNCTION z_bug_send_email.
@@ -693,47 +804,35 @@ FUNCTION z_bug_send_email.
   " 2. Xác định recipients theo event
   CASE iv_event.
     WHEN 'CREATE'.
-      " Gửi cho Manager + Dev team
       SELECT * FROM zbug_users INTO TABLE @lt_recip
         WHERE role IN ('M','D') AND is_del <> 'X'.
-    WHEN 'ASSIGN'.
-      " Gửi cho Dev được assign
+    WHEN 'ASSIGN' OR 'REASSIGN'.
       SELECT * FROM zbug_users APPENDING TABLE @lt_recip
         WHERE user_id = @ls_bug-dev_id AND is_del <> 'X'.
     WHEN 'STATUS_CHANGE'.
-      " Gửi cho Tester + Dev liên quan
       SELECT * FROM zbug_users INTO TABLE @lt_recip
         WHERE ( user_id = @ls_bug-tester_id OR user_id = @ls_bug-dev_id )
           AND is_del <> 'X'.
     WHEN 'REJECT'.
-      " Gửi cho Manager
       SELECT * FROM zbug_users INTO TABLE @lt_recip
         WHERE role = 'M' AND is_del <> 'X'.
   ENDCASE.
 
   IF lt_recip IS INITIAL. RETURN. ENDIF.
 
-  " 3. Tạo email body (HTML) qua SmartForm
-  " Gọi SmartForm ZBUG_EMAIL_FORM → generate HTML
-  " Fallback: tạo HTML đơn giản
+  " 3. Tạo email body (HTML)
   lv_subject = |[BugTracker] { iv_event }: { ls_bug-bug_id } - { ls_bug-title }|.
 
-  ls_body-line = |<html><body>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |<h2>Bug Tracking Notification</h2>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |<p><b>Event:</b> { iv_event }</p>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |<p><b>Bug ID:</b> { ls_bug-bug_id }</p>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |<p><b>Title:</b> { ls_bug-title }</p>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |<p><b>Project:</b> { ls_bug-project_id }</p>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |<p><b>Status:</b> { ls_bug-status }</p>|.
-  APPEND ls_body TO lt_body.
-  ls_body-line = |</body></html>|.
-  APPEND ls_body TO lt_body.
+  ls_body-line = |<html><body>|.                            APPEND ls_body TO lt_body.
+  ls_body-line = |<h2>Bug Tracking Notification</h2>|.     APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Event:</b> { iv_event }</p>|.      APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Bug ID:</b> { ls_bug-bug_id }</p>|. APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Title:</b> { ls_bug-title }</p>|.  APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Project:</b> { ls_bug-project_id }</p>|. APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Status:</b> { ls_bug-status }</p>|. APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Developer:</b> { ls_bug-dev_id }</p>|. APPEND ls_body TO lt_body.
+  ls_body-line = |<p><b>Tester:</b> { ls_bug-tester_id }</p>|. APPEND ls_body TO lt_body.
+  ls_body-line = |</body></html>|.                          APPEND ls_body TO lt_body.
 
   " 4. Gửi email qua CL_BCS
   TRY.
@@ -790,9 +889,7 @@ UPDATE zbug_tracker SET is_del = 'X'
   WHERE bug_id = iv_bug_id.
 ```
 
-**Các FMs cần cập nhật:**
-
-- `Z_BUG_UPDATE_STATUS`, `Z_BUG_AUTO_ASSIGN`, `Z_BUG_REASSIGN`
+**Các FMs cần cập nhật:** `Z_BUG_GET`, `Z_BUG_DELETE`, `Z_BUG_LOG_HISTORY`
 
 Nhấn **Activate** cho tất cả FMs đã sửa.
 
@@ -800,26 +897,290 @@ Nhấn **Activate** cho tất cả FMs đã sửa.
 
 ---
 
+## Bước B8: Cập nhật `Z_BUG_AUTO_ASSIGN`
+
+**Mục tiêu:** Update FM auto-assign để filter IS_DEL + chỉ assign dev trong cùng project.
+
+> ⚠️ FM `Z_BUG_AUTO_ASSIGN` đã tồn tại từ MVP nhưng cần update đáng kể.
+
+Vào **SE37** → mở FM `Z_BUG_AUTO_ASSIGN` → **Change**.
+
+**Source code cập nhật (thay thế toàn bộ):**
+
+```abap
+FUNCTION z_bug_auto_assign.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"  EXPORTING
+*"     VALUE(EV_DEV_ID) TYPE  ZDE_USERNAME
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
+
+  DATA: ls_bug   TYPE zbug_tracker,
+        lv_count TYPE i,
+        lv_min   TYPE i VALUE 99999.
+
+  " 1. Read bug
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id AND is_del <> 'X'.
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    RETURN.
+  ENDIF.
+
+  " 2. Chỉ auto-assign cho Code bugs ở status New (1)
+  IF ls_bug-status <> '1' OR ls_bug-bug_type = 'F'.
+    ev_success = 'N'.
+    ev_message = 'Not eligible for auto-assign'.
+    RETURN.
+  ENDIF.
+
+  " 3. Tìm dev ít bug nhất TRONG CÙNG PROJECT
+  " Chỉ lấy devs: active (is_del<>'X'), role='D', thuộc project của bug
+  SELECT u~user_id
+    FROM zbug_users AS u
+    INNER JOIN zbug_user_project AS up
+      ON u~user_id = up~user_id
+    INTO TABLE @DATA(lt_devs)
+    WHERE u~role = 'D'
+      AND u~is_del <> 'X'
+      AND up~project_id = @ls_bug-project_id.
+
+  IF lt_devs IS INITIAL.
+    " Không có dev nào → chuyển Waiting
+    UPDATE zbug_tracker SET status = 'W'
+                            aenam  = sy-uname
+                            aedat  = sy-datum
+                            aezet  = sy-uzeit
+      WHERE bug_id = iv_bug_id.
+    COMMIT WORK.
+
+    ev_success = 'Y'.
+    ev_dev_id = ''.
+    ev_message = 'No available developer — status set to Waiting'.
+
+    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+      EXPORTING
+        iv_bug_id      = iv_bug_id
+        iv_action_type = 'ST'
+        iv_old_value   = '1'
+        iv_new_value   = 'W'
+        iv_reason      = 'Auto-assign: no dev available'.
+    RETURN.
+  ENDIF.
+
+  " 4. Round-robin: tìm dev có ít active bugs nhất
+  DATA: lv_best_dev TYPE zde_username.
+  LOOP AT lt_devs ASSIGNING FIELD-SYMBOL(<dev>).
+    SELECT COUNT(*) FROM zbug_tracker INTO @lv_count
+      WHERE dev_id = @<dev>-user_id
+        AND is_del <> 'X'
+        AND status IN ('2','3','4').  " Chỉ đếm bugs đang active
+    IF lv_count < lv_min.
+      lv_min = lv_count.
+      lv_best_dev = <dev>-user_id.
+    ENDIF.
+  ENDLOOP.
+
+  " 5. Assign
+  UPDATE zbug_tracker SET dev_id = lv_best_dev
+                          status = '2'
+                          aenam  = sy-uname
+                          aedat  = sy-datum
+                          aezet  = sy-uzeit
+    WHERE bug_id = iv_bug_id.
+
+  IF sy-subrc = 0.
+    ev_success = 'Y'.
+    ev_dev_id = lv_best_dev.
+    ev_message = |Assigned to { lv_best_dev }|.
+    COMMIT WORK.
+
+    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+      EXPORTING
+        iv_bug_id      = iv_bug_id
+        iv_action_type = 'AS'
+        iv_old_value   = ''
+        iv_new_value   = lv_best_dev
+        iv_reason      = 'Auto-assigned'.
+
+    CALL FUNCTION 'Z_BUG_SEND_EMAIL'
+      EXPORTING
+        iv_bug_id = iv_bug_id
+        iv_event  = 'ASSIGN'.
+  ELSE.
+    ev_success = 'N'.
+    MESSAGE s010(zbug_msg) INTO ev_message.
+  ENDIF.
+
+ENDFUNCTION.
+```
+
+Nhấn **Activate**.
+
+> ✅ **Checkpoint:** **SE37** → `Z_BUG_AUTO_ASSIGN`:
+>
+> - Bug trong project có 1 dev → auto-assign, STATUS=2
+> - Bug trong project có 0 dev → STATUS='W' (Waiting)
+> - Dev đã bị soft-delete → không được assign
+
+---
+
+## Bước B9: Tạo mới `Z_BUG_REASSIGN`
+
+**Mục tiêu:** FM mới cho phép Manager chuyển bug sang dev khác.
+
+> ⚠️ FM này **KHÔNG tồn tại** trong MVP — cần tạo hoàn toàn mới trong Function Group `ZBUG_FG`.
+
+Vào **SE37** → nhập `Z_BUG_REASSIGN` → **Create** → Function Group `ZBUG_FG`.
+
+**Source code:**
+
+```abap
+FUNCTION z_bug_reassign.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_NEW_DEV_ID) TYPE  ZDE_USERNAME
+*"  EXPORTING
+*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_MESSAGE) TYPE  STRING
+*"----------------------------------------------------------------------
+
+  DATA: ls_bug     TYPE zbug_tracker,
+        ls_new_dev TYPE zbug_users,
+        lv_count   TYPE i.
+
+  " ====== 1. READ BUG ======
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id AND is_del <> 'X'.
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    MESSAGE s029(zbug_msg) WITH iv_bug_id INTO ev_message.
+    RETURN.
+  ENDIF.
+
+  " ====== 2. CHECK CALLER IS MANAGER ======
+  SELECT SINGLE role FROM zbug_users INTO @DATA(lv_role)
+    WHERE user_id = @sy-uname AND is_del <> 'X'.
+  IF lv_role <> 'M'.
+    ev_success = 'N'.
+    MESSAGE s007(zbug_msg) INTO ev_message.
+    RETURN.
+  ENDIF.
+
+  " ====== 3. VALIDATE NEW DEV ======
+  " 3a. Dev exists + active + role='D'
+  SELECT SINGLE * FROM zbug_users INTO @ls_new_dev
+    WHERE user_id = @iv_new_dev_id AND is_del <> 'X'.
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    MESSAGE s029(zbug_msg) WITH iv_new_dev_id INTO ev_message.
+    RETURN.
+  ENDIF.
+  IF ls_new_dev-role <> 'D'.
+    ev_success = 'N'.
+    ev_message = 'Target user is not a Developer'.
+    RETURN.
+  ENDIF.
+
+  " 3b. Dev belongs to same project as bug
+  IF ls_bug-project_id IS NOT INITIAL.
+    SELECT COUNT(*) FROM zbug_user_project INTO @lv_count
+      WHERE user_id = @iv_new_dev_id AND project_id = @ls_bug-project_id.
+    IF lv_count = 0.
+      ev_success = 'N'.
+      MESSAGE s032(zbug_msg) INTO ev_message.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  " ====== 4. UPDATE BUG ======
+  DATA(lv_old_dev) = ls_bug-dev_id.
+  ls_bug-dev_id = iv_new_dev_id.
+
+  " Reset status to Assigned (2) if currently InProgress (3) or Rejected (R)
+  DATA(lv_old_status) = ls_bug-status.
+  IF ls_bug-status = '3' OR ls_bug-status = 'R'.
+    ls_bug-status = '2'.
+  ENDIF.
+
+  " ====== 5. AUDIT FIELDS ======
+  ls_bug-aenam = sy-uname.
+  ls_bug-aedat = sy-datum.
+  ls_bug-aezet = sy-uzeit.
+
+  " ====== 6. DATABASE UPDATE ======
+  UPDATE zbug_tracker FROM ls_bug.
+
+  IF sy-subrc = 0.
+    ev_success = 'Y'.
+    MESSAGE s031(zbug_msg) WITH iv_bug_id iv_new_dev_id INTO ev_message.
+    COMMIT WORK AND WAIT.
+
+    " ====== 7. LOG HISTORY ======
+    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+      EXPORTING
+        iv_bug_id      = iv_bug_id
+        iv_action_type = 'RS'
+        iv_old_value   = lv_old_dev
+        iv_new_value   = iv_new_dev_id
+        iv_reason      = |Reassigned by { sy-uname }|.
+
+    " Log status change if status was reset
+    IF lv_old_status <> ls_bug-status.
+      CALL FUNCTION 'Z_BUG_LOG_HISTORY'
+        EXPORTING
+          iv_bug_id      = iv_bug_id
+          iv_action_type = 'ST'
+          iv_old_value   = lv_old_status
+          iv_new_value   = ls_bug-status
+          iv_reason      = 'Status reset due to reassignment'.
+    ENDIF.
+
+    " ====== 8. SEND EMAIL ======
+    CALL FUNCTION 'Z_BUG_SEND_EMAIL'
+      EXPORTING
+        iv_bug_id = iv_bug_id
+        iv_event  = 'REASSIGN'.
+  ELSE.
+    ev_success = 'N'.
+    MESSAGE s010(zbug_msg) INTO ev_message.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFUNCTION.
+```
+
+Nhấn **Activate**.
+
+> ✅ **Checkpoint:** **SE37** → `Z_BUG_REASSIGN`:
+>
+> - Manager reassign từ Dev1 sang Dev2 (cùng project) → Success, DEV_ID=Dev2
+> - Non-manager gọi → "Only Manager..."
+> - Dev2 không thuộc project → "New developer must belong to the same project"
+> - Bug ở status R → status reset về 2 (Assigned)
+
+---
+
 ## TỔNG KẾT PHASE B
 
 Sau khi hoàn thành Phase B, bạn phải có:
 
-- [x] `Z_BUG_CHECK_PERMISSION` — hỗ trợ 12 actions (Bug + Project)
-- [x] `Z_BUG_CREATE` — validate Project + Severity + User membership
-- [x] `Z_BUG_UPDATE_STATUS` — 9 status states + transition validation + fill CLOSED_AT/VERIFY_TESTER_ID
-- [x] `Z_BUG_GOS_UPLOAD` / `LIST` — upload file qua BDS
+- [x] `Z_BUG_CHECK_PERMISSION` — hỗ trợ 12 actions (Bug + Project) + project membership
+- [x] `Z_BUG_CREATE` — validate Project + Severity + User membership + Config bug branch
+- [x] `Z_BUG_UPDATE_STATUS` — 9 status states + transition validation + evidence check + special fields (CLOSED_AT, VERIFY_TESTER_ID, APPROVED_BY)
+- [x] `Z_BUG_GOS_UPLOAD` / `Z_BUG_GOS_LIST` — upload/list file qua BDS
 - [x] `ZBUG_EMAIL_FORM` — SmartForm template HTML
-- [x] `Z_BUG_SEND_EMAIL` — CL_BCS + HTML fallback (full source code)
+- [x] `Z_BUG_SEND_EMAIL` — CL_BCS + HTML + event-based recipients (CREATE, ASSIGN, REASSIGN, STATUS_CHANGE, REJECT)
 - [x] Soft delete logic áp dụng trong tất cả các FM
-- [x] `Z_BUG_AUTO_ASSIGN` — thêm `is_del <> 'X'` filter vào SELECT dev
-- [x] `Z_BUG_REASSIGN` — thêm `is_del <> 'X'` filter + project membership check
+- [x] `Z_BUG_AUTO_ASSIGN` — **updated**: IS_DEL filter + project membership + Waiting status fallback
+- [x] `Z_BUG_REASSIGN` — **MỚI**: Manager reassign dev + status reset + validation
 
-> ⚠️ **Lưu ý về `Z_BUG_AUTO_ASSIGN` và `Z_BUG_REASSIGN`:**
->
-> 2 FM này đã tồn tại từ MVP. Chỉ cần update:
->
-> 1. Thêm `AND is_del <> 'X'` vào tất cả SELECT
-> 2. Thêm `AND user_id IN (SELECT user_id FROM zbug_user_project WHERE project_id = ...)` để chỉ assign dev trong cùng project
-> 3. Fill `AENAM`/`AEDAT`/`AEZET` khi UPDATE
+**Tổng FM count: 9 FMs** (7 updated + 2 mới: GOS_LIST, REASSIGN)
 
 👉 **Chuyển sang Phase C: Module Pool UI**
