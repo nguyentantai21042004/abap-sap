@@ -3,6 +3,7 @@
 **Dự án:** SAP Bug Tracking Management System
 **Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
 **Thời gian ước tính:** 1 ngày (24-25/03)
+**Development Account:** `DEV-089` (Pass: `@Anhtuoi123`) — *Quyền SE11, SE80*
 
 ---
 
@@ -10,7 +11,7 @@
 
 1. [Bước A1: Tạo Domains & Data Elements mới](#bước-a1-tạo-domains--data-elements-mới)
 2. [Bước A2: Tạo bảng ZBUG_PROJECT](#bước-a2-tạo-bảng-zbug_project)
-3. [Bước A3: Tạo bảng ZBUG_USER_PROJECT](#bước-a3-tạo-bảng-zbug_user_project)
+3. [Bước A3: Tạo bảng ZBUG_USER_PROJEC](#bước-a3-tạo-bảng-zbug_user_projec)
 4. [Bước A4: Cập nhật bảng ZBUG_TRACKER (thêm PROJECT_ID, SEVERITY, Audit, IS_DEL)](#bước-a4-cập-nhật-bảng-zbug_tracker)
 5. [Bước A5: Cập nhật bảng ZBUG_USERS (thêm Audit, IS_DEL, Email OBLIGATORY)](#bước-a5-cập-nhật-bảng-zbug_users)
 6. [Bước A6: Tạo Message Class ZBUG_MSG](#bước-a6-tạo-message-class-zbug_msg)
@@ -121,11 +122,11 @@ Nhấn **Save** → **Activate**.
 
 ---
 
-## Bước A3: Tạo bảng ZBUG_USER_PROJECT
+## Bước A3: Tạo bảng ZBUG_USER_PROJEC
 
 **Mục tiêu:** Bảng liên kết Many-to-Many giữa User và Project.
 
-Vào **SE11** → nhập `ZBUG_USER_PROJECT` → **Create** → **Transparent Table**.
+Vào **SE11** → nhập `ZBUG_USER_PROJEC` → **Create** → **Transparent Table**.
 
 ### Tab Fields
 
@@ -148,7 +149,7 @@ Vào **SE11** → nhập `ZBUG_USER_PROJECT` → **Create** → **Transparent Ta
 
 Nhấn **Save** → **Activate**.
 
-> ✅ **Checkpoint:** **SE16** → `ZBUG_USER_PROJECT` → hiển thị bảng rỗng, 3 key fields.
+> ✅ **Checkpoint:** **SE16** → `ZBUG_USER_PROJEC` → hiển thị bảng rỗng, 3 key fields.
 
 ---
 
@@ -425,14 +426,17 @@ SELECT COUNT(*) FROM zbug_tracker INTO @lv_cnt_4 WHERE status = '4'.
 SELECT COUNT(*) FROM zbug_tracker INTO @lv_cnt_5 WHERE status = '5'.
 SELECT COUNT(*) FROM zbug_tracker INTO @lv_cnt_6 WHERE status = '6'.
 
+DATA: lv_total TYPE i.
+lv_total = lv_cnt_4 + lv_cnt_5 + lv_cnt_6.
+
 WRITE: / '=== STATUS MIGRATION PRE-CHECK ==='.
 WRITE: / 'Status 4 (Old Fixed → New 5 Fixed):', lv_cnt_4, 'records'.
 WRITE: / 'Status 5 (Old Closed → New 7 Closed):', lv_cnt_5, 'records'.
 WRITE: / 'Status 6 (Old Deleted → IS_DEL=X):', lv_cnt_6, 'records'.
-WRITE: / 'Total records to migrate:', lv_cnt_4 + lv_cnt_5 + lv_cnt_6.
+WRITE: / 'Total records to migrate:', lv_total.
 SKIP.
 
-IF lv_cnt_4 + lv_cnt_5 + lv_cnt_6 = 0.
+IF lv_total = 0.
   WRITE: / 'Không có records nào cần migrate. Kết thúc.'.
   RETURN.
 ENDIF.
@@ -441,7 +445,7 @@ ENDIF.
 CALL FUNCTION 'POPUP_TO_CONFIRM'
   EXPORTING
     titlebar      = 'Status Migration'
-    text_question = |Migrate { lv_cnt_4 + lv_cnt_5 + lv_cnt_6 } records? This cannot be undone.|
+    text_question = |Migrate { lv_total } records? This cannot be undone.|
     text_button_1 = 'Yes, Migrate'
     text_button_2 = 'Cancel'
   IMPORTING
@@ -457,30 +461,30 @@ ENDIF.
 " Nếu làm ngược (4→5 trước), thì khi remap 5→7 sẽ bắt cả records vừa đổi!
 
 " Step 1a: Old 5 (Closed) → New 7 (Closed)
-UPDATE zbug_tracker SET status = '7'
-                        aenam  = sy-uname
-                        aedat  = sy-datum
-                        aezet  = sy-uzeit
+UPDATE zbug_tracker SET status = '7',
+                        aenam  = @sy-uname,
+                        aedat  = @sy-datum,
+                        aezet  = @sy-uzeit
   WHERE status = '5'.
 DATA(lv_migrated_5) = sy-dbcnt.
 WRITE: / 'Step 1a: Status 5→7 (Closed):', lv_migrated_5, 'records updated'.
 
 " Step 1b: Old 4 (Fixed) → New 5 (Fixed)
-UPDATE zbug_tracker SET status = '5'
-                        aenam  = sy-uname
-                        aedat  = sy-datum
-                        aezet  = sy-uzeit
+UPDATE zbug_tracker SET status = '5',
+                        aenam  = @sy-uname,
+                        aedat  = @sy-datum,
+                        aezet  = @sy-uzeit
   WHERE status = '4'.
 DATA(lv_migrated_4) = sy-dbcnt.
 WRITE: / 'Step 1b: Status 4→5 (Fixed):', lv_migrated_4, 'records updated'.
 
 " ====== STEP 2: Convert old Deleted (status=6) → IS_DEL='X' ======
 " Set status to '7' (Closed) vì bug đã bị xóa = effectively closed
-UPDATE zbug_tracker SET is_del = 'X'
-                        status = '7'
-                        aenam  = sy-uname
-                        aedat  = sy-datum
-                        aezet  = sy-uzeit
+UPDATE zbug_tracker SET is_del = 'X',
+                        status = '7',
+                        aenam  = @sy-uname,
+                        aedat  = @sy-datum,
+                        aezet  = @sy-uzeit
   WHERE status = '6'.
 DATA(lv_migrated_6) = sy-dbcnt.
 WRITE: / 'Step 2: Status 6→IS_DEL=X:', lv_migrated_6, 'records soft-deleted'.
@@ -497,7 +501,8 @@ WRITE: / 'Step 3: ZBUG_HISTORY old/new values remapped'.
 COMMIT WORK AND WAIT.
 WRITE: / ''.
 WRITE: / '=== MIGRATION COMPLETE ==='.
-WRITE: / 'Total migrated:', lv_migrated_4 + lv_migrated_5 + lv_migrated_6, 'records'.
+lv_total = lv_migrated_4 + lv_migrated_5 + lv_migrated_6.
+WRITE: / 'Total migrated:', lv_total, 'records'.
 
 " ====== POST-CHECK ======
 SKIP.
@@ -532,7 +537,7 @@ Sau khi hoàn thành Phase A, bạn phải có:
 
 - [x] **4 Domains mới:** `ZDOM_PROJECT_ID`, `ZDOM_PRJ_STATUS`, `ZDOM_SEVERITY`, `ZDOM_IS_DEL`
 - [x] **6 Data Elements mới:** `ZDE_PROJECT_ID`, `ZDE_PRJ_NAME`, `ZDE_PRJ_DESC`, `ZDE_PRJ_STATUS`, `ZDE_SEVERITY`, `ZDE_IS_DEL`
-- [x] **2 Bảng mới:** `ZBUG_PROJECT` (16 fields), `ZBUG_USER_PROJECT` (9 fields)
+- [x] **2 Bảng mới:** `ZBUG_PROJECT` (16 fields), `ZBUG_USER_PROJEC` (9 fields)
 - [x] **2 Bảng cập nhật:** `ZBUG_TRACKER` (+13 fields: PROJECT_ID, SEVERITY, VERIFY_TESTER_ID, APPROVED_BY/AT, CLOSED_AT, ERNAM/DAT/ZET, AENAM/DAT/ZET, IS_DEL), `ZBUG_USERS` (+4 fields)
 - [x] **1 Message Class:** `ZBUG_MSG` (33+ messages, EN + VI)
 - [x] **1 Text Object:** `ZBUG` (3 Text IDs: `Z001`, `Z002`, `Z003`)
@@ -541,7 +546,7 @@ Sau khi hoàn thành Phase A, bạn phải có:
 **Kiểm tra cuối cùng:**
 
 1. SE11 → `ZBUG_PROJECT` → Active
-2. SE11 → `ZBUG_USER_PROJECT` → Active
+2. SE11 → `ZBUG_USER_PROJEC` → Active
 3. SE11 → `ZBUG_TRACKER` → có `PROJECT_ID`, `SEVERITY`, `ERNAM`, `ERDAT`, `ERZET`, `IS_DEL`
 4. SE11 → `ZBUG_USERS` → có `AENAM`, `IS_DEL`, `EMAIL` obligatory
 5. SE91 → `ZBUG_MSG` → 33+ messages

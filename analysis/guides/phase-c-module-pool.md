@@ -5,6 +5,11 @@
 **Thời gian ước tính:** 4 ngày (27-31/03)
 **Yêu cầu:** Hoàn thành Phase A + B trước khi bắt đầu Phase C
 
+**Development Account:**
+
+- `DEV-089` (Pass: `@Anhtuoi123`) — *Screens & Screens*
+- `DEV-061` (Pass: `@57Dt766`) — *ALV Grid & Tab Strip*
+
 ---
 
 ## MỤC LỤC
@@ -87,6 +92,7 @@ DATA: gv_ok_code   TYPE sy-ucomm,
       gv_save_ok   TYPE sy-ucomm,
       gv_mode      TYPE char1,           " D/C/X
       gv_role      TYPE zbug_users-role,  " T/D/M
+      gv_uname     TYPE sy-uname,        " Strict Mode helper
       gv_current_bug_id     TYPE zde_bug_id,
       gv_current_project_id TYPE zde_project_id.
 
@@ -204,8 +210,11 @@ MODULE status_0100 OUTPUT.
 ENDMODULE.
 
 MODULE init_user_role OUTPUT.
+  gv_uname = sy-uname. " Gán vào biến phụ trước khi dùng trong SQL @
+
   SELECT SINGLE role FROM zbug_users INTO @gv_role
-    WHERE user_id = @sy-uname AND is_del <> 'X'.
+    WHERE user_id = @gv_uname AND is_del <> 'X'.
+
   IF sy-subrc <> 0.
     MESSAGE s003(zbug_msg) DISPLAY LIKE 'E'.
     LEAVE PROGRAM.
@@ -298,15 +307,17 @@ ENDMODULE.
 FORM select_bug_data.
   CLEAR gt_bugs.
 
+  gv_uname = sy-uname.
+
   CASE gv_role.
     WHEN 'T'.  " Tester: own bugs only
       SELECT * FROM zbug_tracker
         INTO CORRESPONDING FIELDS OF TABLE @gt_bugs
-        WHERE tester_id = @sy-uname AND is_del <> 'X'.
+        WHERE tester_id = @gv_uname AND is_del <> 'X'.
     WHEN 'D'.  " Developer: assigned bugs
       SELECT * FROM zbug_tracker
         INTO CORRESPONDING FIELDS OF TABLE @gt_bugs
-        WHERE dev_id = @sy-uname AND is_del <> 'X'.
+        WHERE dev_id = @gv_uname AND is_del <> 'X'.
     WHEN 'M'.  " Manager: all bugs
       SELECT * FROM zbug_tracker
         INTO CORRESPONDING FIELDS OF TABLE @gt_bugs
@@ -514,7 +525,7 @@ FORM select_project_data.
     SELECT p~project_id p~project_name p~description
            p~start_date p~end_date p~project_manager p~project_status
       FROM zbug_project AS p
-      INNER JOIN zbug_user_project AS up
+      INNER JOIN zbug_user_projec AS up
         ON p~project_id = up~project_id
       INTO CORRESPONDING FIELDS OF TABLE @gt_projects
       WHERE up~user_id = @sy-uname
@@ -562,29 +573,97 @@ Tạo Screen **0500**, chứa các fields:
 | Dropdown | `GS_PROJECT-PROJECT_STATUS` | CHAR 1 |
 | Table Control | `TC_USERS` | User-Project list |
 
-**FORM `save_project_detail` (trong `Z_BUG_WS_F01`):**
+**Cách tạo bảng TC_USERS trong Layout:**
+
+1. Vẽ Table Control, đặt tên `TC_USERS`.
+2. Dùng Dict/Program Fields → nhập bảng `ZBUG_USER_PROJEC` → chọn `USER_ID`, `PROJECT_ID`.
+3. Thả vào bên trong khung bảng. Xong Save & Activate.
+
+---
+
+**Flow Logic của Screen 0500 (Tab Flow Logic):**
+
+```abap
+PROCESS BEFORE OUTPUT.
+  MODULE status_0500.
+  MODULE init_project_detail.
+  LOOP AT gt_user_project INTO gs_user_project WITH CONTROL tc_users.
+  ENDLOOP.
+
+PROCESS AFTER INPUT.
+  LOOP AT gt_user_project.
+    MODULE tc_users_modify ON CHAIN-REQUEST.
+  ENDLOOP.
+  MODULE user_command_0500.
+```
+
+---
+
+**Trong `Z_BUG_WS_PBO` (dán xuống cuối file):**
+
+```abap
+MODULE status_0500 OUTPUT.
+  SET PF-STATUS 'STATUS_0500'.
+  SET TITLEBAR 'TITLE_PRJDET' WITH 'Project Detail'.
+ENDMODULE.
+
+MODULE init_project_detail OUTPUT.
+  IF gv_mode <> gc_mode_create AND gs_project-project_id IS NOT INITIAL.
+    SELECT * FROM zbug_user_projec
+      INTO TABLE @gt_user_project
+      WHERE project_id = @gs_project-project_id.
+  ENDIF.
+ENDMODULE.
+```
+
+---
+
+**Trong `Z_BUG_WS_PAI` (dán xuống cuối file):**
+
+```abap
+MODULE user_command_0500 INPUT.
+  gv_save_ok = gv_ok_code.
+  CLEAR gv_ok_code.
+  CASE gv_save_ok.
+    WHEN 'BACK' OR 'CANC'.
+      LEAVE TO SCREEN 0400.
+    WHEN 'SAVE'.
+      PERFORM save_project_detail.
+  ENDCASE.
+ENDMODULE.
+
+MODULE tc_users_modify INPUT.
+  MODIFY gt_user_project FROM gs_user_project
+    INDEX tc_users-current_line.
+ENDMODULE.
+```
+
+**FORM `save_project_detail` (trong `Z_BUG_WS_F01`) — Strict Mode:**
 
 ```abap
 FORM save_project_detail.
+  DATA: lv_uname TYPE sy-uname.
+  lv_uname = sy-uname. " Biến phụ cho Strict Mode
+
   IF gv_mode = gc_mode_create.
-    gs_project-ernam = sy-uname.
+    gs_project-ernam = lv_uname.
     gs_project-erdat = sy-datum.
     gs_project-erzet = sy-uzeit.
     gs_project-project_status = '1'. " Opening
-    INSERT zbug_project FROM gs_project.
+    INSERT zbug_project FROM @gs_project.
   ELSE.
-    gs_project-aenam = sy-uname.
+    gs_project-aenam = lv_uname.
     gs_project-aedat = sy-datum.
     gs_project-aezet = sy-uzeit.
-    UPDATE zbug_project FROM gs_project.
+    UPDATE zbug_project FROM @gs_project.
   ENDIF.
 
   IF sy-subrc = 0.
-    MESSAGE s012(zbug_msg) WITH gs_project-project_id.
     COMMIT WORK.
+    MESSAGE 'Project saved successfully' TYPE 'S'.
   ELSE.
-    MESSAGE s010(zbug_msg) DISPLAY LIKE 'E'.
     ROLLBACK WORK.
+    MESSAGE 'Error saving project' TYPE 'E'.
   ENDIF.
 ENDFORM.
 ```
@@ -593,37 +672,531 @@ ENDFORM.
 
 ## Bước C8: GUI Status Creation (SE41)
 
-**Mục tiêu:** Tạo 5 GUI Statuses cho 5 screens.
-
-Vào **SE41** → nhập program `Z_BUG_WORKSPACE_MP` → **Create**.
-
-| Status Name | Screen | Buttons |
-| :--- | :--- | :--- |
-| `STATUS_0100` | 0100 (Hub) | BUG_LIST, PROJECT_LIST, BACK/EXIT/CANC |
-| `STATUS_0200` | 0200 (Bug List) | CREATE, CHANGE, DISPLAY, DELETE, REFRESH, PRINT, BACK |
-| `STATUS_0300` | 0300 (Bug Detail) | SAVE, STATUS_CHG, UPLOAD_FILE, UPLOAD_REPORT, UPLOAD_FIX, BACK |
-| `STATUS_0400` | 0400 (Project List) | CREATE_PRO, CHANGE_PRO, DELETE_PRO, DISPLAY_PRO, UPLOAD, DOWNLOAD_TMPL, REFRESH, BACK |
-| `STATUS_0500` | 0500 (Project Detail) | SAVE, ADD_USER, REMOVE_USER, BACK |
-
-**Role-based excluding (trong PBO):**
-
-```abap
-" Ẩn nút theo role — ví dụ cho Screen 0200
-DATA: lt_excl TYPE TABLE OF sy-ucomm.
-IF gv_role <> 'M'.
-  APPEND 'DELETE' TO lt_excl.
-ENDIF.
-IF gv_role = 'D'.
-  APPEND 'CREATE' TO lt_excl.
-ENDIF.
-SET PF-STATUS 'STATUS_0200' EXCLUDING lt_excl.
-```
-
-> ✅ **Checkpoint:** Mỗi screen có GUI Status riêng, role-based buttons ẩn/hiện đúng.
+**Mục tiêu:** Tạo 5 GUI Statuses (thanh nút bấm) cho 5 màn hình.
 
 ---
 
-## Bước C9: F4 Search Help + History Tab
+### 🛠️ Cách vào SE41
+
+1. Ở màn hình SAP chính, gõ **`SE41`** vào ô lệnh → Enter.
+2. Ô **Program**: Nhập `Z_BUG_WORKSPACE_MP`.
+3. Ô **Status**: Nhập tên status cần tạo (ví dụ `STATUS_0100`).
+4. Nhấn nút **Create (F5)**.
+5. Điền **Short Description** → Nhấn **Enter**.
+6. Màn hình vẽ nút bấm hiện ra. Ní làm theo hướng dẫn từng status bên dưới.
+
+---
+
+### 📌 Cách thêm nút bấm trong SE41
+
+- Nhìn vào tab **Function Keys** (Phím chức năng) hoặc **Application Toolbar** (Thanh công cụ ứng dụng).
+- Click vào ô trống trong **Application Toolbar**.
+- Điền: **Function Code** (FCode) và **Icon/Text** → Nhấn **Enter**.
+- Click **Attributes** để thêm Text hiển thị và chọn Icon.
+- Lặp lại cho từng nút.
+
+---
+
+### STATUS_0100 — Main Hub
+
+**Short Description:** `Bug Tracking Hub`
+
+**Application Toolbar buttons:**
+
+| STT | Function Code | Text hiển thị | Phím tắt |
+| :--- | :--- | :--- | :--- |
+| 1 | `BUG_LIST` | Bug List | F5 |
+| 2 | `PROJ_LIST` | Project List | F6 |
+
+**Standard Toolbar (tích vào các ô này):**
+
+| Function Code | Mô tả |
+| :--- | :--- |
+| `BACK` | Back |
+| `EXIT` | Exit |
+| `CANC` | Cancel |
+
+Nhấn **Save (Ctrl+S)** → **Activate**.
+
+---
+
+### STATUS_0200 — Bug List
+
+**Short Description:** `Bug List Screen`
+
+**Application Toolbar buttons:**
+
+| STT | Function Code | Text | Icon gợi ý |
+| :--- | :--- | :--- | :--- |
+| 1 | `CREATE` | Create Bug | `@01@` |
+| 2 | `CHANGE` | Change | `@02@` |
+| 3 | `DISPLAY` | Display | `@03@` |
+| 4 | `DELETE` | Delete | `@14@` |
+| 5 | *(separator)* | | |
+| 6 | `REFRESH` | Refresh | `@5B@` |
+| 7 | `PRINT` | Print | `@SF@` |
+
+**Standard Toolbar:** Tích `BACK`.
+
+**PBO code cho status_0200 (sửa lại trong `Z_BUG_WS_PBO`):**
+
+```abap
+MODULE status_0200 OUTPUT.
+  DATA: lt_excl TYPE TABLE OF sy-ucomm.
+  " Developer không được tạo bug
+  IF gv_role = 'D'.
+    APPEND 'CREATE' TO lt_excl.
+    APPEND 'DELETE' TO lt_excl.
+  ENDIF.
+  " Tester không được xóa
+  IF gv_role = 'T'.
+    APPEND 'DELETE' TO lt_excl.
+  ENDIF.
+  SET PF-STATUS 'STATUS_0200' EXCLUDING lt_excl.
+  SET TITLEBAR 'TITLE_BUGLIST' WITH 'Bug List'.
+ENDMODULE.
+```
+
+---
+
+### STATUS_0300 — Bug Detail
+
+**Short Description:** `Bug Detail Screen`
+
+**Application Toolbar buttons:**
+
+| STT | Function Code | Text |
+| :--- | :--- | :--- |
+| 1 | `SAVE` | Save |
+| 2 | `STATUS_CHG` | Change Status |
+| 3 | *(separator)* | |
+| 4 | `UP_FILE` | Upload Evidence |
+| 5 | `UP_REP` | Upload Report |
+| 6 | `UP_FIX` | Upload Fix |
+
+**Standard Toolbar:** Tích `BACK`.
+
+> ✅ Nút ẩn/hiện theo Role đã có trong `MODULE status_0300 OUTPUT` ở `Z_BUG_WS_PBO`.
+
+---
+
+### STATUS_0400 — Project List
+
+**Short Description:** `Project List Screen`
+
+**Application Toolbar buttons:**
+
+| STT | Function Code | Text |
+| :--- | :--- | :--- |
+| 1 | `CREA_PRJ` | Create Project |
+| 2 | `CHNG_PRJ` | Change |
+| 3 | `DISP_PRJ` | Display |
+| 4 | `DEL_PRJ` | Delete |
+| 5 | *(separator)* | |
+| 6 | `UPLOAD` | Upload Excel |
+| 7 | `DN_TMPL` | Download Template |
+| 8 | `REFRESH` | Refresh |
+
+**Standard Toolbar:** Tích `BACK`.
+
+**PBO code (thêm vào `status_0400` trong `Z_BUG_WS_PBO`):**
+
+```abap
+MODULE status_0400 OUTPUT.
+  DATA: lt_excl TYPE TABLE OF sy-ucomm.
+  " Chỉ Manager mới được Create/Change/Delete/Upload
+  IF gv_role <> 'M'.
+    APPEND 'CREA_PRJ' TO lt_excl.
+    APPEND 'CHNG_PRJ' TO lt_excl.
+    APPEND 'DEL_PRJ'  TO lt_excl.
+    APPEND 'UPLOAD'   TO lt_excl.
+    APPEND 'DN_TMPL'  TO lt_excl.
+  ENDIF.
+  SET PF-STATUS 'STATUS_0400' EXCLUDING lt_excl.
+  SET TITLEBAR 'TITLE_PROJLIST' WITH 'Project List'.
+ENDMODULE.
+```
+
+---
+
+### STATUS_0500 — Project Detail
+
+**Short Description:** `Project Detail Screen`
+
+**Application Toolbar buttons:**
+
+| STT | Function Code | Text |
+| :--- | :--- | :--- |
+| 1 | `SAVE` | Save |
+| 2 | *(separator)* | |
+| 3 | `ADD_USER` | Add User |
+| 4 | `REMOVE_USER` | Remove User |
+
+**Standard Toolbar:** Tích `BACK`.
+
+**PBO code (thêm vào `status_0500` trong `Z_BUG_WS_PBO`):**
+
+```abap
+MODULE status_0500 OUTPUT.
+  DATA: lt_excl TYPE TABLE OF sy-ucomm.
+  " Chỉ Manager mới được Save/Add/Remove user
+  IF gv_role <> 'M'.
+    APPEND 'SAVE'        TO lt_excl.
+    APPEND 'ADD_USER'    TO lt_excl.
+    APPEND 'REMOVE_USER' TO lt_excl.
+  ENDIF.
+  " Display mode → ẩn Save
+  IF gv_mode = gc_mode_display.
+    APPEND 'SAVE' TO lt_excl.
+  ENDIF.
+  SET PF-STATUS 'STATUS_0500' EXCLUDING lt_excl.
+  SET TITLEBAR 'TITLE_PRJDET' WITH 'Project Detail'.
+ENDMODULE.
+```
+
+---
+
+### 🔑 Tạo Title Bars (Cũng trong SE41)
+
+Sau khi tạo xong 5 Status, ní tạo thêm các **Title Bars** bằng cách:
+
+1. Trong SE41, chọn **Object Type: Title**.
+2. Nhập từng tên và nhấn Create:
+
+| Title Name | Text |
+| :--- | :--- |
+| `TITLE_MAIN` | `Bug Tracking Workspace` |
+| `TITLE_BUGLIST` | `Bug List` |
+| `TITLE_BUGDETAIL` | `Bug Detail` |
+| `TITLE_PROJLIST` | `Project List` |
+| `TITLE_PRJDET` | `Project Detail` |
+
+---
+
+> ✅ **Checkpoint C8:** 5 GUI Statuses + 5 Titles được tạo → Activate từng cái → Quay lại program Activate toàn bộ.
+
+---
+
+## Bước C9: Hoàn thiện Bug Detail & Business Logic
+
+> ✅ **Expected Result sau C9:**
+>
+> - Nút **Create** → Mở 0300 trống để nhập Bug mới → Bấm **Save** lưu vào DB
+> - Nút **Change** → Mở 0300 với data Bug đã chọn → Cho phép sửa → Bấm **Save**
+> - Nút **Display** → Mở 0300 với data Bug đã chọn → Chỉ đọc (không cho sửa)
+> - Nút **Delete** → Popup xác nhận → Soft delete (`is_del = 'X'`)
+> - Nút **Change Status** → Popup chọn status mới → Lưu + ghi History
+
+---
+
+### C9.1: Lấy dòng được chọn trong ALV (Bug List)
+
+**Vấn đề:** Khi bấm Change/Display, SAP không biết đang chọn Bug nào.
+**Fix:** Dùng method `get_selected_rows` của ALV Grid.
+
+**Thêm vào `user_command_0200` (Z_BUG_WS_PAI):**
+
+```abap
+MODULE user_command_0200 INPUT.
+  gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
+  CASE gv_save_ok.
+    WHEN 'BACK' OR 'CANC'. LEAVE TO SCREEN 0100.
+    WHEN 'CREATE'.
+      CLEAR: gv_current_bug_id, gs_bug_detail.
+      gv_mode = gc_mode_create.
+      gv_active_subscreen = '0310'.
+      CALL SCREEN 0300.
+    WHEN 'CHANGE' OR 'DISPLAY'.
+      PERFORM get_selected_bug CHANGING gv_current_bug_id.
+      IF gv_current_bug_id IS INITIAL.
+        MESSAGE 'Please select a bug first' TYPE 'W'.
+      ELSE.
+        gv_mode = COND #( WHEN gv_save_ok = 'CHANGE' THEN gc_mode_change
+                          ELSE gc_mode_display ).
+        gv_active_subscreen = '0310'.
+        CALL SCREEN 0300.
+      ENDIF.
+    WHEN 'DELETE'.
+      PERFORM get_selected_bug CHANGING gv_current_bug_id.
+      IF gv_current_bug_id IS NOT INITIAL.
+        PERFORM delete_bug.
+      ENDIF.
+    WHEN 'REFRESH'. PERFORM select_bug_data.
+  ENDCASE.
+ENDMODULE.
+```
+
+**FORM `get_selected_bug` (thêm vào Z_BUG_WS_F01):**
+
+```abap
+FORM get_selected_bug CHANGING pv_bug_id TYPE zde_bug_id.
+  CLEAR pv_bug_id.
+  DATA: lt_rows TYPE lvc_t_roid.
+
+  go_alv_bug->get_selected_rows( IMPORTING et_row_no = lt_rows ).
+  IF lt_rows IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_rows INTO DATA(ls_row) INDEX 1.
+  READ TABLE gt_bugs INTO DATA(ls_bug) INDEX ls_row-row_id.
+  IF sy-subrc = 0.
+    pv_bug_id = ls_bug-bug_id.
+  ENDIF.
+ENDFORM.
+```
+
+---
+
+### C9.2: Vẽ Screen 0310 — Tab Bug Info
+
+**Vào SE51 → Z_BUG_WORKSPACE_MP → Screen 0310 → Layout Editor → Change**
+
+Vẽ các trường nhập liệu (Label + Input Field):
+
+| Label | Field Name (Dictionary Ref) | Group |
+|:---|:---|:---|
+| Bug ID | `GS_BUG_DETAIL-BUG_ID` | (input=0 khi create vì auto-gen) |
+| Title | `GS_BUG_DETAIL-TITLE` | EDT |
+| Project | `GS_BUG_DETAIL-PROJECT_ID` | EDT |
+| Status | `GS_BUG_DETAIL-STATUS` | EDT |
+| Priority | `GS_BUG_DETAIL-PRIORITY` | EDT |
+| Severity | `GS_BUG_DETAIL-SEVERITY` | EDT |
+| Tester | `GS_BUG_DETAIL-TESTER_ID` | EDT |
+| Developer | `GS_BUG_DETAIL-DEV_ID` | EDT |
+| SAP Module | `GS_BUG_DETAIL-SAP_MODULE` | EDT |
+| Description | `GS_BUG_DETAIL-DESCRIPTION` | EDT |
+
+> ⚠️ Các trường cần set **Group = EDT** để Module `modify_screen_0300` ẩn input khi Display mode.
+
+**Flow Logic Screen 0310 (Subscreen - để trống):**
+
+```abap
+PROCESS BEFORE OUTPUT.
+PROCESS AFTER INPUT.
+```
+
+---
+
+### C9.3: FORM `save_bug_detail` (Z_BUG_WS_F01)
+
+```abap
+FORM save_bug_detail.
+  DATA: lv_un TYPE sy-uname.
+  lv_un = sy-uname.
+
+  IF gv_mode = gc_mode_create.
+    " Auto-generate Bug ID
+    SELECT MAX( bug_id ) FROM zbug_tracker INTO @DATA(lv_max_id).
+    DATA(lv_num) = COND i( WHEN lv_max_id IS INITIAL THEN 1
+                           ELSE CONV i( lv_max_id+3 ) + 1 ).
+    gs_bug_detail-bug_id = |BUG{ lv_num WIDTH = 7 ALIGN = RIGHT PAD = '0' }|.
+    gs_bug_detail-ernam  = lv_un.
+    gs_bug_detail-erdat  = sy-datum.
+    gs_bug_detail-erzet  = sy-uzeit.
+    gs_bug_detail-status = '1'.  " New
+    INSERT zbug_tracker FROM @gs_bug_detail.
+  ELSE.
+    gs_bug_detail-aenam = lv_un.
+    gs_bug_detail-aedat = sy-datum.
+    gs_bug_detail-aezet = sy-uzeit.
+    UPDATE zbug_tracker FROM @gs_bug_detail.
+  ENDIF.
+
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    MESSAGE |Bug { gs_bug_detail-bug_id } saved successfully| TYPE 'S'.
+    gv_current_bug_id = gs_bug_detail-bug_id.
+    gv_mode = gc_mode_change.  " Switch to Change mode after save
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE 'Save failed. Please try again.' TYPE 'E'.
+  ENDIF.
+ENDFORM.
+```
+
+---
+
+### C9.4: FORM `delete_bug` — Soft Delete (Z_BUG_WS_F01)
+
+```abap
+FORM delete_bug.
+  DATA: lv_confirmed TYPE abap_bool.
+  PERFORM confirm_action USING |Delete Bug { gv_current_bug_id }?|
+                         CHANGING lv_confirmed.
+  IF lv_confirmed = abap_true.
+    DATA: lv_un TYPE sy-uname.
+    lv_un = sy-uname.
+    UPDATE zbug_tracker SET is_del = 'X'
+                            aenam  = @lv_un
+                            aedat  = @sy-datum
+                            aezet  = @sy-uzeit
+      WHERE bug_id = @gv_current_bug_id.
+    IF sy-subrc = 0.
+      COMMIT WORK.
+      MESSAGE |Bug { gv_current_bug_id } deleted| TYPE 'S'.
+      PERFORM select_bug_data.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+
+FORM confirm_action USING pv_text TYPE string
+                    CHANGING pv_confirmed TYPE abap_bool.
+  DATA: lv_answer TYPE char1.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = 'Confirm'
+      text_question         = pv_text
+      text_button_1         = 'Yes'
+      text_button_2         = 'No'
+      default_button        = '2'
+      display_cancel_button = ' '
+    IMPORTING
+      answer                = lv_answer.
+  pv_confirmed = COND #( WHEN lv_answer = '1' THEN abap_true ELSE abap_false ).
+ENDFORM.
+```
+
+---
+
+### C9.5: FORM `change_bug_status` (Z_BUG_WS_F01)
+
+```abap
+FORM change_bug_status.
+  " Popup chọn status mới
+  DATA: lt_opts TYPE TABLE OF ty_sel_opts,
+        ls_opt  TYPE ty_sel_opts.
+
+  " ... (Dùng POPUP_GET_VALUES hoặc custom selection screen)
+  " Tạm thời: mở popup đơn giản với CALL FUNCTION 'POPUP_GET_VALUES'
+  DATA: lt_fields TYPE TABLE OF sval,
+        ls_field  TYPE sval.
+
+  ls_field-tabname   = 'ZBUG_TRACKER'.
+  ls_field-fieldname = 'STATUS'.
+  ls_field-fieldtext = 'New Status'.
+  APPEND ls_field TO lt_fields.
+
+  DATA: lv_rc TYPE char1.
+  CALL FUNCTION 'POPUP_GET_VALUES'
+    EXPORTING
+      popup_title = 'Change Bug Status'
+      start_column = 20
+      start_row    = 5
+    IMPORTING
+      returncode   = lv_rc
+    TABLES
+      fields       = lt_fields.
+
+  IF lv_rc <> 'A'.
+    READ TABLE lt_fields INTO ls_field INDEX 1.
+    IF ls_field-value IS NOT INITIAL.
+      DATA: lv_un TYPE sy-uname.
+      lv_un = sy-uname.
+      UPDATE zbug_tracker SET status = @ls_field-value
+                              aenam  = @lv_un
+                              aedat  = @sy-datum
+                              aezet  = @sy-uzeit
+        WHERE bug_id = @gv_current_bug_id.
+      IF sy-subrc = 0.
+        COMMIT WORK.
+        gs_bug_detail-status = ls_field-value.
+        MESSAGE 'Status updated successfully' TYPE 'S'.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+```
+
+---
+
+### C9.6: F4 Search Help (Z_BUG_WS_F02)
+
+**FORM `f4_project_id`:**
+
+```abap
+FORM f4_project_id USING pv_field TYPE dynfnam.
+  DATA: lt_return TYPE TABLE OF ddshretval,
+        lt_values TYPE TABLE OF zbug_project.
+
+  SELECT project_id, project_name, project_status
+    FROM zbug_project INTO CORRESPONDING FIELDS OF TABLE @lt_values
+    WHERE is_del <> 'X'.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield    = 'PROJECT_ID'
+      dynpprog    = sy-repid
+      dynpnr      = sy-dynnr
+      dynprofield = pv_field
+      value_org   = 'S'
+    TABLES
+      value_tab   = lt_values
+      return_tab  = lt_return
+    EXCEPTIONS
+      OTHERS      = 1.
+ENDFORM.
+```
+
+**Gọi F4 từ PAI (user_command_0300):**
+
+```abap
+WHEN 'F4_PROJECT'. PERFORM f4_project_id USING 'GS_BUG_DETAIL-PROJECT_ID'.
+```
+
+---
+
+### C9.7: History Tab — Screen 0360
+
+**Vào SE51 → Screen 0360 → Layout Editor:** Vẽ 1 Custom Container tên `CC_HISTORY`.
+
+**FORM `load_history_data` (Z_BUG_WS_F01):**
+
+```abap
+FORM load_history_data.
+  CLEAR gt_history.
+  SELECT * FROM zbug_history
+    INTO CORRESPONDING FIELDS OF TABLE @gt_history
+    WHERE bug_id = @gv_current_bug_id
+    ORDER BY changed_at DESCENDING, changed_time DESCENDING.
+
+  LOOP AT gt_history ASSIGNING FIELD-SYMBOL(<h>).
+    <h>-action_text = SWITCH #( <h>-action_type
+      WHEN 'CR' THEN 'Created'     WHEN 'ST' THEN 'Status Change'
+      WHEN 'UP' THEN 'Updated'     WHEN 'AT' THEN 'Attachment'
+      WHEN 'DL' THEN 'Deleted'     WHEN 'RJ' THEN 'Rejected' ).
+  ENDLOOP.
+
+  IF go_alv_history IS INITIAL.
+    CREATE OBJECT go_cont_history EXPORTING container_name = 'CC_HISTORY'.
+    CREATE OBJECT go_alv_history  EXPORTING i_parent = go_cont_history.
+    DATA: lt_fcat TYPE lvc_t_fcat, ls_fcat TYPE lvc_s_fcat.
+    DEFINE add_hfcat.
+      CLEAR ls_fcat.
+      ls_fcat-fieldname = &1. ls_fcat-coltext = &2. ls_fcat-outputlen = &3.
+      APPEND ls_fcat TO lt_fcat.
+    END-OF-DEFINITION.
+    add_hfcat 'CHANGED_AT'   'Date'       10.
+    add_hfcat 'CHANGED_TIME' 'Time'        8.
+    add_hfcat 'CHANGED_BY'   'Changed By' 12.
+    add_hfcat 'ACTION_TEXT'  'Action'     15.
+    add_hfcat 'OLD_VALUE'    'Old Value'  20.
+    add_hfcat 'NEW_VALUE'    'New Value'  20.
+    add_hfcat 'REASON'       'Reason'     40.
+    DATA: ls_layo TYPE lvc_s_layo.
+    ls_layo-zebra = 'X'. ls_layo-cwidth_opt = 'X'.
+    go_alv_history->set_table_for_first_display(
+      EXPORTING is_layout = ls_layo
+      CHANGING it_outtab = gt_history it_fieldcatalog = lt_fcat ).
+  ELSE.
+    go_alv_history->refresh_table_display( ).
+  ENDIF.
+ENDFORM.
+```
+
+> ✅ **Checkpoint C9:** Tất cả nút Create/Change/Display/Delete hoạt động đúng, Bug Detail Form có data, History tab hiện ALV lịch sử.
+
+---
 
 ### F4 Search Help
 
@@ -792,7 +1365,7 @@ ENDFORM.
 * ============================================
 ```
 
-3. Cũng sửa cũ SE38 program `Z_BUG_WORKSPACE` (Phase 2 hub) → `[DEPRECATED]`
+1. Cũng sửa cũ SE38 program `Z_BUG_WORKSPACE` (Phase 2 hub) → `[DEPRECATED]`
 
 ### Kế hoạch xóa
 

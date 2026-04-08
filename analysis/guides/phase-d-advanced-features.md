@@ -4,6 +4,10 @@
 **Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
 **Thời gian ước tính:** 2 ngày (31/03-01/04)
 **Yêu cầu:** Hoàn thành Phase A + B + C trước
+**Development Account:**
+- `DEV-089` (Pass: `@Anhtuoi123`) — *Excel & Logic*
+- `DEV-061` (Pass: `@57Dt766`) — *SmartForms*
+- `DEV-242` (Pass: `12345678`) — *Email configuration*
 
 ---
 

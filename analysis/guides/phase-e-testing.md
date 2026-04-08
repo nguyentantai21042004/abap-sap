@@ -4,6 +4,8 @@
 **Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
 **Thời gian ước tính:** 2 ngày (02-03/04)
 **Yêu cầu:** Hoàn thành Phase A + B + C + D trước
+**Development Account:**
+- `DEV-118` (Pass: `Qwer123@`) — *Testing & Final Review*
 
 ---
 
@@ -216,7 +218,7 @@ Logout SAP, login lại Language = *VI*. Click các component, xem message pop-u
 DELETE FROM zbug_tracker WHERE bug_id LIKE 'BUG9%'.
 DELETE FROM zbug_project WHERE project_id LIKE 'TEST%'.
 DELETE FROM zbug_history WHERE bug_id LIKE 'BUG9%'.
-DELETE FROM zbug_user_project WHERE project_id LIKE 'TEST%'.
+DELETE FROM zbug_user_projec WHERE project_id LIKE 'TEST%'.
 COMMIT WORK.
 ```
 

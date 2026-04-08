@@ -868,30 +868,63 @@ ENDFUNCTION.
 
 ## Bước B7: Cập nhật Soft Delete Logic
 
-**Mục tiêu:** Tất cả SELECT phải filter `IS_DEL`, DELETE thay bằng UPDATE `IS_DEL`.
+**Mục tiêu:** Đảm bảo hệ thống không xóa thực sự dữ liệu (Hard Delete) mà chỉ đánh dấu xóa (Soft Delete) qua field `IS_DEL = 'X'`.
 
-**Nguyên tắc:**
+**Thao tác thực hiện:** Bạn cần vào **SE37**, mở lần lượt 2 FM sau đây để sửa code:
 
-1. **ALL SELECT statements:** thêm `WHERE is_del <> 'X'`
-2. **DELETE operations:** thay bằng `UPDATE ... SET is_del = 'X'`
+### 1. FM `Z_BUG_GET` (Lấy thông tin Bug)
+- **Mục tiêu:** Thêm điều kiện lọc `is_del <> 'X'`.
+- **Source code:**
+  ```abap
+  SELECT SINGLE * FROM zbug_tracker INTO @es_bug
+    WHERE bug_id = @iv_bug_id
+      AND is_del <> 'X'.
 
-**Ví dụ:**
+  IF sy-subrc = 0.
+    ev_success = 'Y'.
+  ELSE.
+    ev_success = 'N'.
+    ev_message = 'Bug not found or was deleted'.
+  ENDIF.
+  ```
 
-```abap
-" TRƯỚC (hard delete):
-DELETE FROM zbug_tracker WHERE bug_id = iv_bug_id.
+### 2. FM `Z_BUG_DELETE` (Đánh dấu xóa)
+- **Mục tiêu:** Thay vì `DELETE`, ta dùng `UPDATE` field `IS_DEL`.
+- **Source code:**
+  ```abap
+  DATA: ls_bug TYPE zbug_tracker.
 
-" SAU (soft delete):
-UPDATE zbug_tracker SET is_del = 'X'
-                        aenam  = sy-uname
-                        aedat  = sy-datum
-                        aezet  = sy-uzeit
-  WHERE bug_id = iv_bug_id.
-```
+  " 1. Kiểm tra bug tồn tại
+  SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
+    WHERE bug_id = @iv_bug_id
+      AND is_del <> 'X'.
 
-**Các FMs cần cập nhật:** `Z_BUG_GET`, `Z_BUG_DELETE`, `Z_BUG_LOG_HISTORY`
+  IF sy-subrc <> 0.
+    ev_success = 'N'.
+    ev_message = 'Bug not found or already deleted'.
+    RETURN.
+  ENDIF.
 
-Nhấn **Activate** cho tất cả FMs đã sửa.
+  " 2. Thực hiện Soft Delete (Dùng @ và dấu phẩy cho Strict Mode)
+  UPDATE zbug_tracker
+    SET is_del = 'X',
+        aenam  = @sy-uname,
+        aedat  = @sy-datum,
+        aezet  = @sy-uzeit
+    WHERE bug_id = @iv_bug_id.
+
+  IF sy-subrc = 0.
+    COMMIT WORK.
+    ev_success = 'Y'.
+    CONCATENATE 'Bug' iv_bug_id 'marked as deleted' INTO ev_message SEPARATED BY SPACE.
+  ELSE.
+    ROLLBACK WORK.
+    ev_success = 'N'.
+    ev_message = 'Failed to delete bug'.
+  ENDIF.
+  ```
+
+Nhấn **Activate** cho cả 2 FM.
 
 > ✅ **Checkpoint:** Bất kỳ query nào `SELECT FROM zbug_tracker/zbug_users` đều có `WHERE is_del <> 'X'`.
 
@@ -913,107 +946,86 @@ FUNCTION z_bug_auto_assign.
 *"*"Local Interface:
 *"  IMPORTING
 *"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
+*"     VALUE(IV_MODULE) TYPE  ZDE_SAP_MODULE
 *"  EXPORTING
 *"     VALUE(EV_DEV_ID) TYPE  ZDE_USERNAME
-*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_STATUS) TYPE  ZDE_BUG_STATUS
 *"     VALUE(EV_MESSAGE) TYPE  STRING
 *"----------------------------------------------------------------------
 
-  DATA: ls_bug   TYPE zbug_tracker,
-        lv_count TYPE i,
-        lv_min   TYPE i VALUE 99999.
+  DATA: ls_bug      TYPE zbug_tracker,
+        lt_devs     TYPE TABLE OF zbug_users,
+        ls_dev      TYPE zbug_users,
+        lv_count    TYPE i,
+        lv_min      TYPE i VALUE 99999,
+        lv_best_dev TYPE zde_username,
+        lv_uname    TYPE sy-uname.
 
-  " 1. Read bug
+  lv_uname = sy-uname.
+
+  " 1. Lấy thông tin bug
   SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
     WHERE bug_id = @iv_bug_id AND is_del <> 'X'.
   IF sy-subrc <> 0.
-    ev_success = 'N'.
+    ev_status = 'N'. 
+    ev_message = 'Bug not found'.
     RETURN.
   ENDIF.
 
-  " 2. Chỉ auto-assign cho Code bugs ở status New (1)
-  IF ls_bug-status <> '1' OR ls_bug-bug_type = 'F'.
-    ev_success = 'N'.
-    ev_message = 'Not eligible for auto-assign'.
+  " 2. Chỉ auto-assign cho bug ở trạng thái NEW (1)
+  IF ls_bug-status <> '1'.
+    ev_status = 'N'.
+    ev_message = 'Bug is not in NEW status'.
     RETURN.
   ENDIF.
 
-  " 3. Tìm dev ít bug nhất TRONG CÙNG PROJECT
-  " Chỉ lấy devs: active (is_del<>'X'), role='D', thuộc project của bug
-  SELECT u~user_id
-    FROM zbug_users AS u
-    INNER JOIN zbug_user_project AS up
-      ON u~user_id = up~user_id
-    INTO TABLE @DATA(lt_devs)
+  " 3. Tìm các Dev trong Project (ZBUG_USER_PROJEC)
+  SELECT u~user_id FROM zbug_users AS u
+    INNER JOIN zbug_user_projec AS up ON u~user_id = up~user_id
+    INTO TABLE @lt_devs
     WHERE u~role = 'D'
       AND u~is_del <> 'X'
       AND up~project_id = @ls_bug-project_id.
 
   IF lt_devs IS INITIAL.
-    " Không có dev nào → chuyển Waiting
-    UPDATE zbug_tracker SET status = 'W'
-                            aenam  = sy-uname
-                            aedat  = sy-datum
-                            aezet  = sy-uzeit
-      WHERE bug_id = iv_bug_id.
+    " Không có Dev -> Chuyển sang trạng thái Waiting (W)
+    UPDATE zbug_tracker SET status = 'W', aenam = @lv_uname
+      WHERE bug_id = @iv_bug_id.
     COMMIT WORK.
-
-    ev_success = 'Y'.
-    ev_dev_id = ''.
-    ev_message = 'No available developer — status set to Waiting'.
-
-    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
-      EXPORTING
-        iv_bug_id      = iv_bug_id
-        iv_action_type = 'ST'
-        iv_old_value   = '1'
-        iv_new_value   = 'W'
-        iv_reason      = 'Auto-assign: no dev available'.
+    ev_status = 'W'.
+    ev_message = 'No dev available - status set to Waiting'.
     RETURN.
   ENDIF.
 
-  " 4. Round-robin: tìm dev có ít active bugs nhất
-  DATA: lv_best_dev TYPE zde_username.
-  LOOP AT lt_devs ASSIGNING FIELD-SYMBOL(<dev>).
+  " 4. Tìm Dev ít việc nhất (Round-robin)
+  LOOP AT lt_devs INTO ls_dev.
     SELECT COUNT(*) FROM zbug_tracker INTO @lv_count
-      WHERE dev_id = @<dev>-user_id
+      WHERE dev_id = @ls_dev-user_id
         AND is_del <> 'X'
-        AND status IN ('2','3','4').  " Chỉ đếm bugs đang active
+        AND status IN ('2','3').
     IF lv_count < lv_min.
       lv_min = lv_count.
-      lv_best_dev = <dev>-user_id.
+      lv_best_dev = ls_dev-user_id.
     ENDIF.
   ENDLOOP.
 
-  " 5. Assign
-  UPDATE zbug_tracker SET dev_id = lv_best_dev
-                          status = '2'
-                          aenam  = sy-uname
-                          aedat  = sy-datum
-                          aezet  = sy-uzeit
-    WHERE bug_id = iv_bug_id.
+  " 5. Cập nhật Assign
+  UPDATE zbug_tracker SET dev_id = @lv_best_dev,
+                          status = '2',
+                          aenam  = @lv_uname
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc = 0.
-    ev_success = 'Y'.
-    ev_dev_id = lv_best_dev.
-    ev_message = |Assigned to { lv_best_dev }|.
     COMMIT WORK.
+    ev_status = '2'. " Assigned
+    ev_dev_id = lv_best_dev.
+    ev_message = 'Auto-assigned successfully'.
 
-    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
-      EXPORTING
-        iv_bug_id      = iv_bug_id
-        iv_action_type = 'AS'
-        iv_old_value   = ''
-        iv_new_value   = lv_best_dev
-        iv_reason      = 'Auto-assigned'.
-
+    " 6. Gửi Email thông báo
     CALL FUNCTION 'Z_BUG_SEND_EMAIL'
       EXPORTING
         iv_bug_id = iv_bug_id
         iv_event  = 'ASSIGN'.
-  ELSE.
-    ev_success = 'N'.
-    MESSAGE s010(zbug_msg) INTO ev_message.
   ENDIF.
 
 ENDFUNCTION.
@@ -1046,110 +1058,65 @@ FUNCTION z_bug_reassign.
 *"  IMPORTING
 *"     VALUE(IV_BUG_ID) TYPE  ZDE_BUG_ID
 *"     VALUE(IV_NEW_DEV_ID) TYPE  ZDE_USERNAME
+*"     VALUE(IV_REASON) TYPE  ZDE_REASONS
+*"     VALUE(IV_REQUESTED_BY) TYPE  ZDE_USERNAME
 *"  EXPORTING
-*"     VALUE(EV_SUCCESS) TYPE  CHAR1
+*"     VALUE(EV_STATUS) TYPE  ZDE_BUG_STATUS
 *"     VALUE(EV_MESSAGE) TYPE  STRING
 *"----------------------------------------------------------------------
 
-  DATA: ls_bug     TYPE zbug_tracker,
-        ls_new_dev TYPE zbug_users,
-        lv_count   TYPE i.
+  DATA: ls_bug      TYPE zbug_tracker,
+        lv_role     TYPE char1,
+        lv_count    TYPE i,
+        lv_uname    TYPE sy-uname.
 
-  " ====== 1. READ BUG ======
+  lv_uname = sy-uname.
+
+  " 1. Kiểm tra Bug tồn tại
   SELECT SINGLE * FROM zbug_tracker INTO @ls_bug
     WHERE bug_id = @iv_bug_id AND is_del <> 'X'.
   IF sy-subrc <> 0.
-    ev_success = 'N'.
-    MESSAGE s029(zbug_msg) WITH iv_bug_id INTO ev_message.
+    ev_status = 'N'.
+    ev_message = 'Bug not found'.
     RETURN.
   ENDIF.
 
-  " ====== 2. CHECK CALLER IS MANAGER ======
-  SELECT SINGLE role FROM zbug_users INTO @DATA(lv_role)
-    WHERE user_id = @sy-uname AND is_del <> 'X'.
+  " 2. Kiểm tra quyền Manager
+  SELECT SINGLE role FROM zbug_users INTO @lv_role
+    WHERE user_id = @lv_uname AND is_del <> 'X'.
   IF lv_role <> 'M'.
-    ev_success = 'N'.
-    MESSAGE s007(zbug_msg) INTO ev_message.
+    ev_status = 'N'.
+    ev_message = 'Only Manager can reassign'.
     RETURN.
   ENDIF.
 
-  " ====== 3. VALIDATE NEW DEV ======
-  " 3a. Dev exists + active + role='D'
-  SELECT SINGLE * FROM zbug_users INTO @ls_new_dev
-    WHERE user_id = @iv_new_dev_id AND is_del <> 'X'.
-  IF sy-subrc <> 0.
-    ev_success = 'N'.
-    MESSAGE s029(zbug_msg) WITH iv_new_dev_id INTO ev_message.
-    RETURN.
-  ENDIF.
-  IF ls_new_dev-role <> 'D'.
-    ev_success = 'N'.
-    ev_message = 'Target user is not a Developer'.
+  " 3. Kiểm tra Dev mới có thuộc Project không (ZBUG_USER_PROJEC)
+  SELECT COUNT(*) FROM zbug_user_projec INTO @lv_count
+    WHERE user_id = @iv_new_dev_id 
+      AND project_id = @ls_bug-project_id.
+  IF lv_count = 0.
+    ev_status = 'N'.
+    ev_message = 'New developer must belong to same project'.
     RETURN.
   ENDIF.
 
-  " 3b. Dev belongs to same project as bug
-  IF ls_bug-project_id IS NOT INITIAL.
-    SELECT COUNT(*) FROM zbug_user_project INTO @lv_count
-      WHERE user_id = @iv_new_dev_id AND project_id = @ls_bug-project_id.
-    IF lv_count = 0.
-      ev_success = 'N'.
-      MESSAGE s032(zbug_msg) INTO ev_message.
-      RETURN.
-    ENDIF.
-  ENDIF.
-
-  " ====== 4. UPDATE BUG ======
-  DATA(lv_old_dev) = ls_bug-dev_id.
-  ls_bug-dev_id = iv_new_dev_id.
-
-  " Reset status to Assigned (2) if currently InProgress (3) or Rejected (R)
-  DATA(lv_old_status) = ls_bug-status.
-  IF ls_bug-status = '3' OR ls_bug-status = 'R'.
-    ls_bug-status = '2'.
-  ENDIF.
-
-  " ====== 5. AUDIT FIELDS ======
-  ls_bug-aenam = sy-uname.
-  ls_bug-aedat = sy-datum.
-  ls_bug-aezet = sy-uzeit.
-
-  " ====== 6. DATABASE UPDATE ======
-  UPDATE zbug_tracker FROM ls_bug.
+  " 4. Cập nhật Dev mới
+  UPDATE zbug_tracker SET dev_id = @iv_new_dev_id,
+                          status = '2',
+                          aenam  = @lv_uname
+    WHERE bug_id = @iv_bug_id.
 
   IF sy-subrc = 0.
-    ev_success = 'Y'.
-    MESSAGE s031(zbug_msg) WITH iv_bug_id iv_new_dev_id INTO ev_message.
-    COMMIT WORK AND WAIT.
-
-    " ====== 7. LOG HISTORY ======
-    CALL FUNCTION 'Z_BUG_LOG_HISTORY'
-      EXPORTING
-        iv_bug_id      = iv_bug_id
-        iv_action_type = 'RS'
-        iv_old_value   = lv_old_dev
-        iv_new_value   = iv_new_dev_id
-        iv_reason      = |Reassigned by { sy-uname }|.
-
-    " Log status change if status was reset
-    IF lv_old_status <> ls_bug-status.
-      CALL FUNCTION 'Z_BUG_LOG_HISTORY'
-        EXPORTING
-          iv_bug_id      = iv_bug_id
-          iv_action_type = 'ST'
-          iv_old_value   = lv_old_status
-          iv_new_value   = ls_bug-status
-          iv_reason      = 'Status reset due to reassignment'.
-    ENDIF.
-
-    " ====== 8. SEND EMAIL ======
+    ev_status = '2'.
+    COMMIT WORK.
+    
+    " Gửi Email thông báo REASSIGN
     CALL FUNCTION 'Z_BUG_SEND_EMAIL'
       EXPORTING
         iv_bug_id = iv_bug_id
         iv_event  = 'REASSIGN'.
   ELSE.
-    ev_success = 'N'.
-    MESSAGE s010(zbug_msg) INTO ev_message.
+    ev_status = 'N'.
     ROLLBACK WORK.
   ENDIF.
 
