@@ -1,7 +1,10 @@
 # UI Guide: Screen 0300 — Bug Detail + 6 Subscreens (0310-0360)
 
-> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.0
+> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.2
 > **Screen phức tạp nhất — Tab Strip với 6 tabs, Subscreen Area, fields + editors**
+>
+> v4.2 changes:
+> - **Subscreen 0310 PBO:** Added `MODULE modify_screen_0300.` to fix Issue 1+2 (fields not disabling in Display mode, BUG_ID still editable)
 >
 > v4.0 changes:
 > - Subscreen 0310: BUG_TYPE/PRIORITY/SEVERITY → screen group FNC (Dev cannot edit)
@@ -152,10 +155,18 @@ Click **Layout** → Screen Painter mở ra.
 ## 2.2 Flow Logic
 
 > ⚠️ **v4.1 BUGFIX #5 CHANGE:** Added `PROCESS ON VALUE-REQUEST` section for F4 help dropdowns!
+>
+> ⚠️ **v4.2 BUGFIX — Issue 1+2:** Added `MODULE modify_screen_0300.` to PBO.
+> **Root cause:** `modify_screen_0300` was only called from Screen 0300 (host screen).
+> But all input fields (EDT/BID/PRJ/FNC/TST/DEV screen groups) live on **Subscreen 0310**.
+> In SAP, `LOOP AT SCREEN` on a host screen does **NOT** iterate subscreen elements.
+> So all screen group checks (Display mode disable, BUG_ID lock, etc.) were silently ignored.
+> **Fix:** Call `modify_screen_0300` from Subscreen 0310's PBO flow logic too.
 
 ```abap
 PROCESS BEFORE OUTPUT.
   MODULE init_desc_mini.
+  MODULE modify_screen_0300.
 
 PROCESS AFTER INPUT.
 
@@ -612,7 +623,7 @@ Screen này dùng **TITLE_BUGDETAIL** — text = `&1` (nhận "Create Bug" / "Ch
 | Subscreen không hiện | SS_TAB name sai hoặc nằm ngoài tab strip | Verify Subscreen Area tên `SS_TAB`, nằm **BÊN TRONG** tab strip body |
 | "Module init_long_text_desc not found" | Flow logic v3.0 nhưng code v2.0 | Re-copy CODE_PBO.md v3.0 vào Z_BUG_WS_PBO |
 | Editor không hiện trên 0320/0330/0340 | Container name sai | Verify: CC_DESC / **CC_DEVNOTE** / **CC_TSTRNOTE** (no underscore!) |
-| Fields không disable ở Display mode | Group1 chưa set | Double-click field → Attributes → Group1 = EDT/BID/PRJ/TST/DEV |
+| Fields không disable ở Display mode | **v4.2:** `modify_screen_0300` chỉ gọi từ host 0300, không iterate subscreen elements. Hoặc Group1 chưa set | **v4.2 FIX:** Thêm `MODULE modify_screen_0300.` vào PBO flow logic của **Subscreen 0310** (sau `MODULE init_desc_mini.`). Verify Group1 = EDT/BID/PRJ/TST/DEV |
 | Description mini editor trống | gs_bug_detail chưa load | Verify `load_bug_detail` chạy TRƯỚC `init_desc_mini` (đúng: nằm ở host 0300 PBO) |
 | Tab highlight sai sau switch | `ts_detail-activetab` chưa sync | v3.0 code đã fix: set `ts_detail-activetab = gv_active_tab` mỗi PBO |
 | User edits bị mất khi switch tab | PBO reload data từ DB | v3.0 code đã fix: `gv_detail_loaded` flag prevents re-read |
