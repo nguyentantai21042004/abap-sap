@@ -11,7 +11,7 @@ Hệ thống **Bug Tracking tập trung** chạy trên SAP ERP bằng ABAP thu�
 
 - **SAP System:** S40, Client 324, **ABAP 7.70** (SAP_BASIS 770 — inline declarations, SWITCH, CONV, string templates, @ host vars)
 - **Package:** `ZBUGTRACK`
-- **T-code entry point:** `ZBUG_HOME` → Screen **0400** (Project List)
+- **T-code entry point:** `ZBUG_WS` → Screen **0400** (Project List)
 
 Dự án đang ở **Phase C+D v4.0: Module Pool UI + Advanced Features** — tất cả 6 CODE files v4.0 COMPLETE, tất cả UI guides v4.0 UPDATED, sẵn sàng deploy trong SAP.
 
@@ -73,7 +73,7 @@ Program: Z_BUG_WORKSPACE_MP (Module Pool, Type M)
 ### Navigation Flow:
 
 ```
-ZBUG_HOME → Screen 0400 (Project List, initial)
+ZBUG_WS → Screen 0400 (Project List, initial)
   ├── Click Project → Screen 0200 (ALL bugs of project, gv_bug_filter_mode='P')
   │     ├── Create/Change/Display → Screen 0300
   │     ├── DN_TC/DN_CONF/DN_PROOF → Download templates (v4.0)
@@ -206,7 +206,7 @@ New(1) → Assigned(2) → InProgress(3) → Pending(4) → Fixed(5) → Resolve
 | C7 | Screen 0500 (Project Detail + TC_USERS + POV for dates) | ✅ **UI Guide v4.0** |
 | C8 | GUI Status (SE41): all 5 statuses + v4.0 new buttons | ✅ **UI Guide v4.0** |
 | C9 | Flow Logic cho từng screen (v4.0 modules + POV) | ✅ Trong UI guides |
-| C10 | SE93: Đổi ZBUG_HOME → 0400 | ✅ **UI Guide** |
+| C10 | SE93: Đổi ZBUG_WS → 0400 | ✅ **UI Guide** |
 | D1 | Excel Template (SMW0) — 4 templates | ✅ Guide in `UI_FINAL_STEPS.md` Step 9 |
 | D2 | Download Templates (DN_TMPL + DN_TC/DN_CONF/DN_PROOF) | ✅ Code in `CODE_F02.md` |
 | D3 | Upload Excel (UPLOAD) | ✅ Code in `CODE_F01.md` |
@@ -218,7 +218,7 @@ New(1) → Assigned(2) → InProgress(3) → Pending(4) → Fixed(5) → Resolve
 
 | Bước | Nội dung | Status |
 |------|---------|--------|
-| E1 | T-code `ZBUG_HOME` → Screen 0400 (SE93) | ❌ Chưa làm (guide ready) |
+| E1 | T-code `ZBUG_WS` → Screen 0400 (SE93) | ❌ Chưa làm (guide ready) |
 | E2-E6 | Unit Test, Integration Test, Permission Test | ❌ Chưa làm (checklist in `UI_FINAL_STEPS.md`) |
 
 ---

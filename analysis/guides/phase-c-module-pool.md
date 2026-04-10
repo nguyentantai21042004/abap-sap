@@ -101,16 +101,16 @@ Mở từng include trong SE80, **xóa hết nội dung cũ**, paste code mới 
 
 ## C3: SE93 — Đổi T-code Initial Screen
 
-> **Quan trọng:** T-code `ZBUG_HOME` phải trỏ tới Screen **0400** (Project List) thay vì 0100.
+> **Quan trọng:** T-code `ZBUG_WS` phải trỏ tới Screen **0400** (Project List) thay vì 0100.
 
-1. **SE93** → nhập `ZBUG_HOME` → **Change**
+1. **SE93** → nhập `ZBUG_WS` → **Change**
 2. Field "Initial Screen": đổi từ `0100` → **`0400`**
 3. Program name vẫn là `Z_BUG_WORKSPACE_MP`
 4. **Save** → Activate
 
-> Nếu T-code chưa tồn tại: SE93 → `ZBUG_HOME` → Create → Transaction with parameters (Dialog transaction) → Program = `Z_BUG_WORKSPACE_MP`, Screen = `0400`.
+> Nếu T-code chưa tồn tại: SE93 → `ZBUG_WS` → Create → Transaction with parameters (Dialog transaction) → Program = `Z_BUG_WORKSPACE_MP`, Screen = `0400`.
 
-**Checkpoint:** Gõ `ZBUG_HOME` → mở thẳng Screen 0400 (Project List).
+**Checkpoint:** Gõ `ZBUG_WS` → mở thẳng Screen 0400 (Project List).
 
 ---
 
@@ -252,7 +252,7 @@ Save + Activate.
 
 ## C6: Screen 0400 — Project List (INITIAL)
 
-> **Đây là screen đầu tiên user thấy** khi mở T-code `ZBUG_HOME`.
+> **Đây là screen đầu tiên user thấy** khi mở T-code `ZBUG_WS`.
 
 ### C6.1: Tạo Screen trong SE51
 
@@ -714,7 +714,7 @@ Sau khi Module Pool hoạt động, đánh dấu SE38 programs cũ:
 ```abap
 * ============================================
 * [DEPRECATED] — Replaced by Z_BUG_WORKSPACE_MP
-* Use T-code ZBUG_HOME instead.
+* Use T-code ZBUG_WS instead.
 * ============================================
 ```
 
@@ -734,7 +734,7 @@ Sau khi Module Pool hoạt động, đánh dấu SE38 programs cũ:
 
 ### Flow Tests:
 
-- [ ] `ZBUG_HOME` → mở Screen 0400 (Project List)
+- [ ] `ZBUG_WS` → mở Screen 0400 (Project List)
 - [ ] Click project hotspot → mở Screen 0200 (Bug List, all bugs of project)
 - [ ] "My Bugs" button → mở Screen 0200 (filtered by role)
 - [ ] Back từ Bug List → Screen 0400
@@ -822,7 +822,7 @@ Sau khi Module Pool hoạt động, đánh dấu SE38 programs cũ:
 Sau khi hoàn thành:
 
 - [x] Program `Z_BUG_WORKSPACE_MP` + 6 includes (code mới v2.0)
-- [x] T-code `ZBUG_HOME` → Screen **0400** (thay vì 0100)
+- [x] T-code `ZBUG_WS` → Screen **0400** (thay vì 0100)
 - [x] Screen 0400 — Project List (initial, ALV, My Bugs button)
 - [x] Screen 0200 — Bug List (dual mode: Project / My Bugs)
 - [x] Screen 0300 — Bug Detail (Tab Strip, 6 subscreens)

@@ -1,7 +1,7 @@
 # UI Guide: Screen 0400 — Project List (INITIAL SCREEN)
 
 > **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v3.0
-> **Đây là screen đầu tiên user thấy khi gõ ZBUG_HOME**
+> **Đây là screen đầu tiên user thấy khi gõ ZBUG_WS**
 
 ---
 
@@ -109,8 +109,8 @@ SE80 → double-click Screen 0400 → tab **Element List** → phải thấy:
 
 ### Quick Test:
 Sau khi activate, thử:
-1. SE93 → ZBUG_HOME → kiểm tra initial screen = 0400
-2. Chạy ZBUG_HOME → phải thấy Project ALV (nếu có data trong ZBUG_PROJECT)
+1. SE93 → ZBUG_WS → kiểm tra initial screen = 0400
+2. Chạy ZBUG_WS → phải thấy Project ALV (nếu có data trong ZBUG_PROJECT)
 3. Toolbar phải hiện đúng buttons theo role
 
 ---

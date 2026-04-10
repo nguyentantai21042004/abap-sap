@@ -11,7 +11,7 @@
 
 ## MỤC LỤC
 
-1. [Bước E1: Cập nhật T-Code ZBUG_HOME + Deprecate T-Codes cũ](#bước-e1-cập-nhật-t-code-zbug_home--deprecate-t-codes-cũ)
+1. [Bước E1: Cập nhật T-Code ZBUG_WS + Deprecate T-Codes cũ](#bước-e1-cập-nhật-t-code-zbug_home--deprecate-t-codes-cũ)
 2. [Bước E2: Unit Test — Function Modules (SE37)](#bước-e2-unit-test--function-modules)
 3. [Bước E3: Integration Test — Full Workflow](#bước-e3-integration-test--full-workflow)
 4. [Bước E4: Permission Matrix Test](#bước-e4-permission-matrix-test)
@@ -20,22 +20,22 @@
 
 ---
 
-## Bước E1: Cập nhật T-Code ZBUG_HOME + Deprecate T-Codes cũ
+## Bước E1: Cập nhật T-Code ZBUG_WS + Deprecate T-Codes cũ
 
-### E1.1: Chuyển T-code ZBUG_HOME sang Module Pool
+### E1.1: Chuyển T-code ZBUG_WS sang Module Pool
 
-**Mục tiêu:** Chuyển T-code `ZBUG_HOME` từ `Z_BUG_WORKSPACE` (SE38) sang `Z_BUG_WORKSPACE_MP` (Module Pool).
+**Mục tiêu:** Chuyển T-code `ZBUG_WS` từ `Z_BUG_WORKSPACE` (SE38) sang `Z_BUG_WORKSPACE_MP` (Module Pool).
 
-Vào **SE93** → nhập `ZBUG_HOME` → **Change** (hoặc Delete/Create mới).
+Vào **SE93** → nhập `ZBUG_WS` → **Change** (hoặc Delete/Create mới).
 
-1. Tạo `ZBUG_HOME`
+1. Tạo `ZBUG_WS`
 2. Chọn **Dialog transaction**
 3. **Program:** `Z_BUG_WORKSPACE_MP`
 4. **Screen number:** `0100` (main hub)
 5. Lựa chọn **GUI support** (Windows/Web GUI)
 6. **Save**
 
-> ✅ **Checkpoint:** Gõ `/nZBUG_HOME` → mở ngay cửa sổ Bug Tracking Workspace (Module Pool).
+> ✅ **Checkpoint:** Gõ `/nZBUG_WS` → mở ngay cửa sổ Bug Tracking Workspace (Module Pool).
 
 ### E1.2: Deprecate T-Codes cũ
 
@@ -45,12 +45,12 @@ Vào **SE93** → lần lượt mở từng T-code → **Change** → sửa **De
 
 | T-Code | Description mới | Program cũ |
 | :--- | :--- | :--- |
-| `ZBUG_CREATE` | `[DEPRECATED] Use ZBUG_HOME - Create Bug` | `Z_BUG_CREATE_SCREEN` |
-| `ZBUG_UPDATE` | `[DEPRECATED] Use ZBUG_HOME - Update Bug` | `Z_BUG_UPDATE_SCREEN` |
-| `ZBUG_REPORT` | `[DEPRECATED] Use ZBUG_HOME - Bug Report` | `Z_BUG_REPORT_ALV` |
-| `ZBUG_MANAGER` | `[DEPRECATED] Use ZBUG_HOME - Manager Dashboard` | `Z_BUG_MANAGER_DASHBOARD` |
-| `ZBUG_PRINT` | `[DEPRECATED] Use ZBUG_HOME - Print Bug` | `Z_BUG_PRINT` |
-| `ZBUG_USERS` | `[DEPRECATED] Use ZBUG_HOME - User Management` | `Z_BUG_USER_MANAGEMENT` |
+| `ZBUG_CREATE` | `[DEPRECATED] Use ZBUG_WS - Create Bug` | `Z_BUG_CREATE_SCREEN` |
+| `ZBUG_UPDATE` | `[DEPRECATED] Use ZBUG_WS - Update Bug` | `Z_BUG_UPDATE_SCREEN` |
+| `ZBUG_REPORT` | `[DEPRECATED] Use ZBUG_WS - Bug Report` | `Z_BUG_REPORT_ALV` |
+| `ZBUG_MANAGER` | `[DEPRECATED] Use ZBUG_WS - Manager Dashboard` | `Z_BUG_MANAGER_DASHBOARD` |
+| `ZBUG_PRINT` | `[DEPRECATED] Use ZBUG_WS - Print Bug` | `Z_BUG_PRINT` |
+| `ZBUG_USERS` | `[DEPRECATED] Use ZBUG_WS - User Management` | `Z_BUG_USER_MANAGEMENT` |
 
 > ⚠️ **Lưu ý:** KHÔNG xóa T-codes cũ. Chỉ xóa sau khi E6 testing confirm Module Pool hoạt động ổn định và go-live thành công.
 
@@ -107,7 +107,7 @@ Vào **SE93** → lần lượt mở từng T-code → **Change** → sửa **De
 
 ### Workflow 01: Code Bug (Happy Path)
 
-1. Logon Tester → **/nZBUG_HOME** → Create Code Bug (Sev=3, Prio=H).
+1. Logon Tester → **/nZBUG_WS** → Create Code Bug (Sev=3, Prio=H).
 2. STATUS=1 (New), DEV_ID = *Blank*.
 3. Auto-Assign hoặc Manager manually assign → STATUS=2 (Assigned to Dev).
 4. Logon Dev → Bug Detail → Update Status: 2 → 3 (In Progress).

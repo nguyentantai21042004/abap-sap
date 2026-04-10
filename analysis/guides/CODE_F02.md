@@ -1,5 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F02 — Helpers: F4, Long Text, Template Downloads (v4.0)
+*& Include Z_BUG_WS_F02 — Helpers: F4, Long Text, Template Downloads (v4.0 → v4.1 BUGFIX)
 *&---------------------------------------------------------------------*
 *& v4.0 changes:
 *&  - NEW: f4_date — Calendar popup for date fields (Feature #4)
@@ -8,6 +8,11 @@
 *&  - NEW: download_confirm_template   (ZTEMPLATE_CONFIRM)   (Feature #7)
 *&  - NEW: download_bugproof_template  (ZTEMPLATE_BUGPROOF)  (Feature #7)
 *&  - ENHANCED: download_project_template — refactored to use generic helper
+*&
+*& v4.1 BUGFIX changes:
+*&  - NEW: f4_project_status — F4 help for project status dropdown (Bug #1)
+*&  - load_long_text: added EXCEPTIONS to set_text_as_r3table (Bug #6)
+*&  - save_long_text: added cl_gui_cfw=>flush() + EXCEPTIONS to get_text_as_r3table (Bug #6)
 *&---------------------------------------------------------------------*
 
 *&=== F4: PROJECT ID ===*
@@ -186,6 +191,38 @@ FORM f4_severity USING pv_fn TYPE dynfnam.
 ENDFORM.
 
 *&=====================================================================*
+*& v4.1 BUGFIX #1: F4 PROJECT STATUS
+*& Dropdown for project status field on Screen 0500
+*& Called from POV module f4_prj_status → CODE_PAI.md
+*&=====================================================================*
+FORM f4_project_status USING pv_fn TYPE dynfnam.
+  TYPES: BEGIN OF ty_pst_f4,
+           code TYPE char1,
+           text TYPE char20,
+         END OF ty_pst_f4.
+  DATA: lt_ret TYPE TABLE OF ddshretval,
+        lt_val TYPE TABLE OF ty_pst_f4.
+
+  APPEND VALUE ty_pst_f4( code = '1' text = 'Opening' )   TO lt_val.
+  APPEND VALUE ty_pst_f4( code = '2' text = 'In Process' ) TO lt_val.
+  APPEND VALUE ty_pst_f4( code = '3' text = 'Done' )       TO lt_val.
+  APPEND VALUE ty_pst_f4( code = '4' text = 'Cancelled' )  TO lt_val.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'CODE'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = pv_fn
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_val
+      return_tab      = lt_ret
+    EXCEPTIONS
+      OTHERS          = 1.
+ENDFORM.
+
+*&=====================================================================*
 *& F4 DATE CALENDAR POPUP (v4.0 — Feature #4)
 *&
 *& Shows SAP calendar popup and assigns selected date to the
@@ -261,7 +298,11 @@ FORM load_long_text USING pv_text_id TYPE thead-tdid.
     LOOP AT lt_lines INTO ls_line.
       APPEND CONV char255( ls_line-tdline ) TO lt_text.
     ENDLOOP.
-    lr_editor->set_text_as_r3table( table = lt_text ).
+    lr_editor->set_text_as_r3table(
+      EXPORTING table = lt_text
+      EXCEPTIONS error_dp        = 1
+                 error_dp_create = 2
+                 OTHERS          = 3 ).
   ENDIF.
 ENDFORM.
 
@@ -284,7 +325,17 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
         lt_lines TYPE TABLE OF tline,
         ls_line  TYPE tline.
 
-  lr_editor->get_text_as_r3table( IMPORTING table = lt_text ).
+  " v4.1 BUGFIX #6: Flush GUI before reading text to prevent POTENTIAL_DATA_LOSS
+  cl_gui_cfw=>flush( ).
+
+  lr_editor->get_text_as_r3table(
+    IMPORTING table = lt_text
+    EXCEPTIONS error_dp        = 1
+               error_dp_create = 2
+               OTHERS          = 3 ).
+  IF sy-subrc <> 0.
+    RETURN.  " Cannot read text — skip save for this text ID
+  ENDIF.
 
   LOOP AT lt_text INTO DATA(lv_line).
     CLEAR ls_line.

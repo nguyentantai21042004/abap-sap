@@ -1,11 +1,15 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_PAI — User Action Logic (v4.0)
+*& Include Z_BUG_WS_PAI — User Action Logic (v4.0 → v4.1 BUGFIX)
 *&---------------------------------------------------------------------*
 *& v4.0 changes (over v3.0):
 *&  - user_command_0300: added DL_EVD (delete evidence), SENDMAIL handlers
 *&  - user_command_0300: added unsaved changes check before BACK/CANC
 *&  - user_command_0500: added unsaved changes check before BACK/CANC
 *&  - user_command_0200: added DN_TC, DN_CONF, DN_PROOF (template downloads)
+*&
+*& v4.1 BUGFIX changes:
+*&  - Added 8 POV modules for Screen 0310 F4 help (Bug #5)
+*&  - Added 2 POV modules for Screen 0500: project_status, project_manager (Bug #1)
 *&---------------------------------------------------------------------*
 
 *&--- HUB SCREEN 0100 (DEPRECATED — kept for safety) ---*
@@ -288,4 +292,54 @@ ENDMODULE.
 
 MODULE f4_prj_enddate INPUT.
   PERFORM f4_date USING 'PRJ_END_DATE'.
+ENDMODULE.
+
+*&=====================================================================*
+*& v4.1 BUGFIX #1: POV MODULES — Screen 0500 (Project Detail)
+*& F4 help for PROJECT_STATUS and PROJECT_MANAGER fields
+*&=====================================================================*
+MODULE f4_prj_status INPUT.
+  PERFORM f4_project_status USING 'GS_PROJECT-PROJECT_STATUS'.
+ENDMODULE.
+
+MODULE f4_prj_manager INPUT.
+  PERFORM f4_user_id USING 'GS_PROJECT-PROJECT_MANAGER'.
+ENDMODULE.
+
+*&=====================================================================*
+*& v4.1 BUGFIX #5: POV MODULES — Screen 0310 (Bug Info)
+*& F4 help for STATUS, PRIORITY, SEVERITY, BUG_TYPE, PROJECT_ID,
+*& TESTER_ID, DEV_ID, VERIFY_TESTER_ID fields
+*& Called from PROCESS ON VALUE-REQUEST in Screen 0310 flow logic.
+*&=====================================================================*
+MODULE f4_bug_status INPUT.
+  PERFORM f4_status USING 'GS_BUG_DETAIL-STATUS'.
+ENDMODULE.
+
+MODULE f4_bug_priority INPUT.
+  PERFORM f4_priority USING 'GS_BUG_DETAIL-PRIORITY'.
+ENDMODULE.
+
+MODULE f4_bug_severity INPUT.
+  PERFORM f4_severity USING 'GS_BUG_DETAIL-SEVERITY'.
+ENDMODULE.
+
+MODULE f4_bug_type INPUT.
+  PERFORM f4_bug_type USING 'GS_BUG_DETAIL-BUG_TYPE'.
+ENDMODULE.
+
+MODULE f4_bug_project INPUT.
+  PERFORM f4_project_id USING 'GS_BUG_DETAIL-PROJECT_ID'.
+ENDMODULE.
+
+MODULE f4_bug_tester INPUT.
+  PERFORM f4_user_id USING 'GS_BUG_DETAIL-TESTER_ID'.
+ENDMODULE.
+
+MODULE f4_bug_dev INPUT.
+  PERFORM f4_user_id USING 'GS_BUG_DETAIL-DEV_ID'.
+ENDMODULE.
+
+MODULE f4_bug_verify INPUT.
+  PERFORM f4_user_id USING 'GS_BUG_DETAIL-VERIFY_TESTER_ID'.
 ENDMODULE.

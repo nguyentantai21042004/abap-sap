@@ -1,9 +1,14 @@
 # UI Guide: Screen 0500 — Project Detail + Table Control
 
-> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.0
+> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.0 → v4.1 BUGFIX
 > **Screen quản lý Project — có Table Control TC_USERS cho user assignment**
 >
 > v4.0 changes: +POV modules for F4 Calendar popup on START_DATE, END_DATE
+> v4.1 BUGFIX changes:
+> - PROJECT_ID Group1 changed from EDT → PID (always display-only) (Bug #1/#3)
+> - TC_USERS: emphasized "With Column Headers" checkbox (Bug #1/#3)
+> - Added POV for PROJECT_STATUS and PROJECT_MANAGER (Bug #1)
+> - status_0500: exclude ADD_USER/REMO_USR in Create mode (Bug #1)
 
 ---
 
@@ -41,14 +46,23 @@ PROCESS AFTER INPUT.
   MODULE user_command_0500.
 
 PROCESS ON VALUE-REQUEST.
-  FIELD gs_project-start_date MODULE f4_prj_startdate.
-  FIELD gs_project-end_date   MODULE f4_prj_enddate.
+  FIELD gs_project-start_date      MODULE f4_prj_startdate.
+  FIELD gs_project-end_date        MODULE f4_prj_enddate.
+  FIELD gs_project-project_status  MODULE f4_prj_status.
+  FIELD gs_project-project_manager MODULE f4_prj_manager.
 ```
 
-> **v4.0 NEW — PROCESS ON VALUE-REQUEST (POV):**
-> POV block enables F4 calendar popup for date fields. When user presses F4 on START_DATE or END_DATE, SAP calls the corresponding module which shows a calendar dialog (`F4_DATE` FM) and assigns the selected date directly to the structure field.
+> **v4.0 — PROCESS ON VALUE-REQUEST (POV):**
+> POV block enables F4 help for date fields (calendar popup) and project fields (value list).
 >
-> Modules `f4_prj_startdate` / `f4_prj_enddate` are defined in `CODE_PAI.md` (v4.0). They call `PERFORM f4_date USING 'PRJ_START_DATE'` / `'PRJ_END_DATE'` → helper in `CODE_F02.md`.
+> | Field | Module | FORM called | Description |
+> |-------|--------|-------------|-------------|
+> | START_DATE | `f4_prj_startdate` | `f4_date USING 'PRJ_START_DATE'` | Calendar popup |
+> | END_DATE | `f4_prj_enddate` | `f4_date USING 'PRJ_END_DATE'` | Calendar popup |
+> | PROJECT_STATUS | `f4_prj_status` | `f4_project_status` | **v4.1 NEW** — Dropdown: Opening/In Process/Done/Cancelled |
+> | PROJECT_MANAGER | `f4_prj_manager` | `f4_user_id` | **v4.1 NEW** — User list from ZBUG_USERS |
+>
+> Modules defined in `CODE_PAI.md`. FORMs in `CODE_F02.md`.
 
 ### Giải thích modules:
 
@@ -63,6 +77,8 @@ PROCESS ON VALUE-REQUEST.
 | `user_command_0500` | PAI | Handle: SAVE, ADD_USER, REMO_USR, BACK/EXIT |
 | `f4_prj_startdate` | PAI (POV) | **v4.0** — F4 Calendar popup cho START_DATE → `PERFORM f4_date USING 'PRJ_START_DATE'` |
 | `f4_prj_enddate` | PAI (POV) | **v4.0** — F4 Calendar popup cho END_DATE → `PERFORM f4_date USING 'PRJ_END_DATE'` |
+| `f4_prj_status` | PAI (POV) | **v4.1 NEW** — F4 Dropdown cho PROJECT_STATUS → `PERFORM f4_project_status` |
+| `f4_prj_manager` | PAI (POV) | **v4.1 NEW** — F4 User list cho PROJECT_MANAGER → `PERFORM f4_user_id` |
 
 ### Table Control Flow Logic — Giải thích:
 
@@ -105,8 +121,8 @@ Click **Layout** → Screen Painter mở ra.
 
 | Field | Group1 | Purpose |
 |-------|--------|---------|
-| `GS_PROJECT-PROJECT_ID` | **`EDT`** | Disabled khi Display mode hoặc non-Manager |
-| `GS_PROJECT-PROJECT_NAME` | **`EDT`** | Same |
+| `GS_PROJECT-PROJECT_ID` | **`PID`** | **v4.1 CHANGED:** ALWAYS display-only (primary key, auto-generated) |
+| `GS_PROJECT-PROJECT_NAME` | **`EDT`** | Disabled khi Display mode hoặc non-Manager |
 | `GS_PROJECT-DESCRIPTION` | **`EDT`** | Same |
 | `GS_PROJECT-PROJECT_STATUS` | **`EDT`** | Same |
 | `GS_PROJECT-START_DATE` | **`EDT`** | Same |
@@ -115,7 +131,10 @@ Click **Layout** → Screen Painter mở ra.
 | `GS_PROJECT-NOTE` | **`EDT`** | Same |
 | `GV_PRJ_STATUS_DISP` | *(none)* | Always display-only (Input = OFF) |
 
-> Screen Group `EDT` logic (CODE_PBO.md line 462-472): Disabled khi `gv_mode = gc_mode_display` OR `gv_role <> 'M'`.
+> **v4.1 BUGFIX #1/#3:** PROJECT_ID changed from Group `EDT` to Group **`PID`**.
+> Code `modify_screen_0500` (CODE_PBO.md) handles PID group: ALWAYS `screen-input = 0`.
+> This prevents users from editing the primary key in any mode.
+> In Create mode, field shows "(Auto)" placeholder. After save, shows real PRJ0000001 ID.
 
 ### Bước 4: Vẽ Table Control
 
@@ -143,9 +162,11 @@ Click **Layout** → Screen Painter mở ra.
 ### Bước 6: Table Control Attributes
 
 Double-click `TC_USERS` → check:
-- **With Column Headers**: ✅ checked
+- **With Column Headers**: ✅ **PHẢI check** — nếu thiếu, TC_USERS sẽ hiện data mà KHÔNG có tiêu đề cột (Bug #1/#3)
 - **Resizable Columns**: ✅ checked
 - **Selection Column**: Optional (nếu muốn row selection)
+
+> ⚠️ **v4.1 BUGFIX #1/#3:** Đây là nguyên nhân chính khiến TC_USERS hiện "cái ô nhỏ trống" mà user thắc mắc. Checkbox "With Column Headers" phải được check trong SE51 Layout → Attributes của TC_USERS.
 
 ### Bước 7: Thêm Labels
 

@@ -1,5 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F01 — Main Business Logic (v4.0)
+*& Include Z_BUG_WS_F01 — Main Business Logic (v4.0 → v4.1 BUGFIX)
 *&---------------------------------------------------------------------*
 *& v4.0 changes (over v3.0):
 *&  - upload_evidence_file/report/fix: REAL implementation (binary → ZBUG_EVIDENCE)
@@ -12,6 +12,12 @@
 *&  - save_bug_detail: ENHANCED — severity/priority cross-validation
 *&  - save_project_detail: ENHANCED — completion validation
 *&  - cleanup_detail_editors: ENHANCED — evidence ALV cleanup
+*&
+*& v4.1 BUGFIX changes:
+*&  - save_project_detail: auto-generate PROJECT_ID (PRJ + 7 digits) (Bug #1)
+*&  - add_user_to_project: fix ROLE field (no DDIC ref), validate M/D/T, check project saved (Bug #2)
+*&  - upload_project_excel: move i_tab_raw_data to CHANGING block (Bug #4)
+*&  - save_desc_mini_to_workarea: add cl_gui_cfw=>flush() + EXCEPTIONS (Bug #6)
 *&---------------------------------------------------------------------*
 
 *&=== SELECT BUG DATA (dual mode: Project / My Bugs) ===*
@@ -205,7 +211,21 @@ FORM save_desc_mini_to_workarea.
   CHECK go_desc_mini_edit IS NOT INITIAL.
   DATA: lt_mini TYPE TABLE OF char255,
         lv_text TYPE string.
-  go_desc_mini_edit->get_text_as_r3table( IMPORTING table = lt_mini ).
+
+  " v4.1 BUGFIX #6: Flush GUI control data before reading
+  " Without flush, CL_GUI_TEXTEDIT raises POTENTIAL_DATA_LOSS
+  cl_gui_cfw=>flush( ).
+
+  go_desc_mini_edit->get_text_as_r3table(
+    IMPORTING table = lt_mini
+    EXCEPTIONS error_dp        = 1
+               error_dp_create = 2
+               OTHERS          = 3 ).
+  IF sy-subrc <> 0.
+    MESSAGE 'Warning: Could not read description text.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
   CLEAR lv_text.
   LOOP AT lt_mini INTO DATA(lv_line).
     IF lv_text IS NOT INITIAL.
@@ -221,6 +241,23 @@ ENDFORM.
 FORM save_project_detail.
   DATA: lv_un TYPE sy-uname.
   lv_un = sy-uname.
+
+  " v4.1 BUGFIX #1: Auto-generate PROJECT_ID in Create mode
+  " (user sees "(Auto)" placeholder — real ID generated here before validation)
+  IF gv_mode = gc_mode_create.
+    DATA: lv_max_prj TYPE zde_project_id,
+          lv_prj_num TYPE i.
+    SELECT MAX( project_id ) FROM zbug_project INTO @lv_max_prj.
+    IF lv_max_prj IS INITIAL OR lv_max_prj = '(Auto)'.
+      lv_prj_num = 1.
+    ELSE.
+      " PROJECT_ID format: PRJ0000001 (3 prefix + 7 digits)
+      DATA: lv_prj_num_str TYPE char7.
+      lv_prj_num_str = lv_max_prj+3(7).
+      lv_prj_num = CONV i( lv_prj_num_str ) + 1.
+    ENDIF.
+    gs_project-project_id = |PRJ{ lv_prj_num WIDTH = 7 ALIGN = RIGHT PAD = '0' }|.
+  ENDIF.
 
   " Validate required fields
   IF gs_project-project_id IS INITIAL.
@@ -534,6 +571,12 @@ ENDFORM.
 
 *&=== PROJECT USER MANAGEMENT: ADD ===*
 FORM add_user_to_project.
+  " v4.1 BUGFIX #1: Check project is saved before adding users
+  IF gv_current_project_id IS INITIAL.
+    MESSAGE 'Save the project first before adding users.' TYPE 'W'.
+    RETURN.
+  ENDIF.
+
   DATA: lt_fields TYPE TABLE OF sval,
         ls_field  TYPE sval.
 
@@ -542,10 +585,13 @@ FORM add_user_to_project.
   ls_field-fieldtext = 'SAP Username (USER_ID)'.
   APPEND ls_field TO lt_fields.
 
+  " v4.1 BUGFIX #2: Use empty tabname to avoid DDIC search help crash
+  " (ZBUG_USER_PROJEC-ROLE triggers internal error on F4 → use plain field)
   CLEAR ls_field.
-  ls_field-tabname   = 'ZBUG_USER_PROJEC'.
-  ls_field-fieldname = 'ROLE'.
-  ls_field-fieldtext = 'Role: M=Manager D=Dev T=Tester'.
+  ls_field-tabname   = space.
+  ls_field-fieldname = 'P_ROLE'.
+  ls_field-fieldtext = 'Role (M/D/T)'.
+  ls_field-value     = 'D'.   " Default = Developer
   APPEND ls_field TO lt_fields.
 
   DATA: lv_rc TYPE char1.
@@ -560,11 +606,18 @@ FORM add_user_to_project.
         lv_role  TYPE zde_bug_role.
   READ TABLE lt_fields INTO ls_field WITH KEY fieldname = 'USER_ID'.
   lv_uid  = ls_field-value.
-  READ TABLE lt_fields INTO ls_field WITH KEY fieldname = 'ROLE'.
+  READ TABLE lt_fields INTO ls_field WITH KEY fieldname = 'P_ROLE'.
   lv_role = ls_field-value.
 
   IF lv_uid IS INITIAL.
     MESSAGE 'User ID is required.' TYPE 'W'. RETURN.
+  ENDIF.
+
+  " v4.1 BUGFIX #2: Validate ROLE is M, D, or T
+  TRANSLATE lv_role TO UPPER CASE.
+  IF lv_role <> 'M' AND lv_role <> 'D' AND lv_role <> 'T'.
+    MESSAGE 'Role must be M (Manager), D (Developer), or T (Tester).' TYPE 'W'.
+    RETURN.
   ENDIF.
 
   " Validate user exists in ZBUG_USERS
@@ -1304,17 +1357,20 @@ FORM upload_project_excel.
          END OF ty_upload.
   DATA: lt_upload TYPE TABLE OF ty_upload.
 
+  " v4.1 BUGFIX #4: i_tab_raw_data is a CHANGING parameter (not EXPORTING)
+  " Passing it in EXPORTING block caused CALL_FUNCTION_CONFLICT_TYPE runtime error
   CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
     EXPORTING
-      i_field_seperator = 'X'
-      i_line_header     = 'X'    " Skip header row
-      i_tab_raw_data    = lt_raw
-      i_filename        = lv_file
+      i_field_seperator    = 'X'
+      i_line_header        = 'X'    " Skip header row
+      i_filename           = lv_file
     TABLES
       i_tab_converted_data = lt_upload
+    CHANGING
+      i_tab_raw_data       = lt_raw
     EXCEPTIONS
-      conversion_failed   = 1
-      OTHERS              = 2.
+      conversion_failed    = 1
+      OTHERS               = 2.
 
   IF sy-subrc <> 0.
     MESSAGE 'Failed to read Excel file.' TYPE 'S' DISPLAY LIKE 'E'.

@@ -299,19 +299,19 @@ Tạo screens theo thứ tự sau (subscreens trước, host screens sau):
 
 ## Step 5: Đổi T-code Initial Screen (SE93)
 
-1. Gõ **SE93** → nhập `ZBUG_HOME` → **Change**
+1. Gõ **SE93** → nhập `ZBUG_WS` → **Change**
 2. Field **"Screen number"**: đổi từ `0100` → **`0400`**
 3. Program name vẫn là `Z_BUG_WORKSPACE_MP`
 4. **Save**
 
 > Nếu T-code chưa tồn tại:
-> 1. SE93 → `ZBUG_HOME` → **Create**
+> 1. SE93 → `ZBUG_WS` → **Create**
 > 2. Transaction Type: **Dialog transaction** (Type T)
 > 3. Program: `Z_BUG_WORKSPACE_MP`
 > 4. Screen: `0400`
 > 5. Save → assign to package `ZBUGTRACK`
 
-**Verify:** Gõ `ZBUG_HOME` → phải mở thẳng Screen 0400 (Project List).
+**Verify:** Gõ `ZBUG_WS` → phải mở thẳng Screen 0400 (Project List).
 
 ---
 
@@ -349,7 +349,7 @@ Sau screens:
 ```
 19. GUI Statuses (SE41) — nếu chưa activate
 20. Title Bars (SE41) — nếu chưa activate
-21. T-code ZBUG_HOME (SE93)
+21. T-code ZBUG_WS (SE93)
 ```
 
 > **Tip:** Dùng **Ctrl+Shift+F3** trong SE80 để activate tất cả objects cùng lúc.
@@ -393,7 +393,7 @@ Save + Activate.
 
 | # | Test | Expected | ✓ |
 |---|------|----------|---|
-| 1 | Gõ `ZBUG_HOME` | Mở Screen 0400 (Project List) | ☐ |
+| 1 | Gõ `ZBUG_WS` | Mở Screen 0400 (Project List) | ☐ |
 | 2 | Click project hotspot (PROJECT_ID) | Mở Screen 0200 (Bug List, all bugs of project) | ☐ |
 | 3 | Click "My Bugs" button | Mở Screen 0200 (filtered by role, cross-project) | ☐ |
 | 4 | BACK từ Bug List | Quay về Screen 0400 | ☐ |
@@ -631,7 +631,7 @@ Save + Activate.
    → Subscreens 0310-0360 trước
    → Host screens 0300, 0400, 0200, 0500, 0100 sau
 6. Activate tất cả screens             (Step 6)
-7. Đổi SE93 ZBUG_HOME → Screen 0400    (Step 5)
+7. Đổi SE93 ZBUG_WS → Screen 0400    (Step 5)
 8. Test toàn bộ flow                   (Step 8)
 9. (Phase D) Upload 4 SMW0 templates   (Step 9 — 1 project + 3 bug workflow)
 10. (Phase D) Chạy orphan cleanup      (Step 10)

@@ -151,14 +151,45 @@ Click **Layout** → Screen Painter mở ra.
 
 ## 2.2 Flow Logic
 
+> ⚠️ **v4.1 BUGFIX #5 CHANGE:** Added `PROCESS ON VALUE-REQUEST` section for F4 help dropdowns!
+
 ```abap
 PROCESS BEFORE OUTPUT.
   MODULE init_desc_mini.
 
 PROCESS AFTER INPUT.
+
+PROCESS ON VALUE-REQUEST.
+  FIELD gs_bug_detail-status             MODULE f4_bug_status.
+  FIELD gs_bug_detail-priority           MODULE f4_bug_priority.
+  FIELD gs_bug_detail-severity           MODULE f4_bug_severity.
+  FIELD gs_bug_detail-bug_type           MODULE f4_bug_type.
+  FIELD gs_bug_detail-project_id         MODULE f4_bug_project.
+  FIELD gs_bug_detail-tester_id          MODULE f4_bug_tester.
+  FIELD gs_bug_detail-dev_id             MODULE f4_bug_dev.
+  FIELD gs_bug_detail-verify_tester_id   MODULE f4_bug_verify.
 ```
 
 > **v3.0:** Module `init_desc_mini` tạo mini editor lazily + chỉ load text lần đầu (preserves user edits khi switch tab).
+>
+> **v4.1 BUGFIX #5 — PROCESS ON VALUE-REQUEST (POV):**
+> POV block enables F4 dropdown help for all key fields on Bug Info tab.
+> When user presses F4 on any of these fields, SAP calls the corresponding module
+> which shows a value list popup (`F4IF_INT_TABLE_VALUE_REQUEST` FM) and assigns
+> the selected value back to the screen field.
+>
+> POV modules are defined in `CODE_PAI.md` (v4.1). They call PERFORM f4_* in `CODE_F02.md`.
+>
+> | Field | Module | FORM called |
+> |-------|--------|-------------|
+> | STATUS | `f4_bug_status` | `f4_status` |
+> | PRIORITY | `f4_bug_priority` | `f4_priority` |
+> | SEVERITY | `f4_bug_severity` | `f4_severity` |
+> | BUG_TYPE | `f4_bug_type` | `f4_bug_type` |
+> | PROJECT_ID | `f4_bug_project` | `f4_project_id` |
+> | TESTER_ID | `f4_bug_tester` | `f4_user_id` |
+> | DEV_ID | `f4_bug_dev` | `f4_user_id` |
+> | VERIFY_TESTER_ID | `f4_bug_verify` | `f4_user_id` |
 
 ## 2.3 Layout — Fields
 
@@ -207,7 +238,7 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 
 | Field | Group1 | Purpose |
 |-------|--------|---------|
-| `GS_BUG_DETAIL-BUG_ID` | **`BID`** | Display-only sau creation (chỉ editable ở Create mode) |
+| `GS_BUG_DETAIL-BUG_ID` | **`BID`** | **v4.1:** ALWAYS display-only (auto-generated, shows "(Auto)" in Create) |
 | `GS_BUG_DETAIL-PROJECT_ID` | **`PRJ`** | Locked khi tạo bug từ project context |
 | `GS_BUG_DETAIL-TITLE` | **`EDT`** | Editable (disabled khi Display mode) |
 | `GS_BUG_DETAIL-STATUS` | **`EDT`** | Editable |
@@ -229,7 +260,7 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 | Group | Behavior |
 |-------|----------|
 | `EDT` | Disabled khi `gv_mode = 'D'` (Display) hoặc `status = Closed` |
-| `BID` | Disabled khi `gv_mode <> 'X'` (chỉ editable ở Create) |
+| `BID` | **v4.1 CHANGED:** ALWAYS `screen-input = 0` (auto-generated, never editable) |
 | `PRJ` | Disabled khi Create mode + `gv_current_project_id` đã set (pre-filled, locked) |
 | `TST` | Disabled khi `gv_role = 'D'` (Dev không sửa Tester fields) |
 | `DEV` | Disabled khi `gv_role = 'T'` (Tester không sửa Dev fields) |

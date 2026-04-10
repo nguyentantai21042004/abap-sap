@@ -490,9 +490,9 @@ Z_BUG_WORKSPACE_MP (Type M - Module Pool)
 
 | T-Code | Screen | Mô tả | Target |
 |--------|--------|--------|--------|
-| ZBUG_HOME | 0100 | Main Hub / Router | Screen 0100 |
+| ZBUG_WS | 0100 | Main Hub / Router | Screen 0100 |
 
-> **Note:** Một T-code duy nhất ZBUG_HOME là entry point. Tất cả navigation qua CALL SCREEN bên trong Module Pool.
+> **Note:** Một T-code duy nhất ZBUG_WS là entry point. Tất cả navigation qua CALL SCREEN bên trong Module Pool.
 
 ### 4.3 Screen Flow
 
@@ -784,7 +784,7 @@ ENDMODULE.
 
 - Bug ID, Title, Status, Priority, Module
 - Assigned Developer, Tester
-- Link hoặc hướng dẫn mở T-code ZBUG_HOME
+- Link hoặc hướng dẫn mở T-code ZBUG_WS
 
 ---
 
@@ -886,7 +886,7 @@ Sau khi upgrade, hệ thống ZBUG_* sẽ:
 
 ### Phase E: Testing & Go-Live (02-03/04)
 
-- [ ] Update T-Code ZBUG_HOME → Z_BUG_WORKSPACE_MP Screen 0100
+- [ ] Update T-Code ZBUG_WS → Z_BUG_WORKSPACE_MP Screen 0100
 - [ ] Unit test FMs trong SE37 (permission, create, status, GOS)
 - [ ] Integration test: Create → Assign → Fix → Verify → Close
 - [ ] Test Config bug workflow (Tester self-fix)

@@ -8,6 +8,14 @@
 *&  - status_0200: added template download button exclusions (DN_TC/DN_CONF/DN_PROOF)
 *&  - init_evidence_alv: NEW module for subscreen 0350
 *&  - modify_screen_0300: added FNC screen group (Tester/Manager-only fields)
+*&
+*& v4.1 BUGFIX changes:
+*&  - load_bug_detail: Create mode sets BUG_ID = '(Auto)' placeholder (Bug #5)
+*&  - modify_screen_0300: BID group → ALWAYS display-only (Bug #5)
+*&  - init_desc_mini: added EXCEPTIONS to set_text_as_r3table (Bug #6)
+*&  - status_0500: exclude ADD_USER/REMO_USR in Create mode (Bug #1)
+*&  - init_project_detail: Create mode sets PROJECT_ID = '(Auto)' (Bug #1)
+*&  - modify_screen_0500: added PID group → always display-only (Bug #1/#3)
 *&---------------------------------------------------------------------*
 
 *&--- HUB SCREEN 0100 (DEPRECATED — kept for safety, no navigation leads here) ---*
@@ -177,6 +185,8 @@ MODULE load_bug_detail OUTPUT.
   " 5. Create mode: reset work area with defaults
   IF gv_mode = gc_mode_create.
     CLEAR gs_bug_detail.
+    " v4.1 BUGFIX #5: Show placeholder — BUG_ID will be auto-generated on save
+    gs_bug_detail-bug_id = '(Auto)'.
     " Pre-fill PROJECT_ID from project context (locked on screen)
     IF gv_current_project_id IS NOT INITIAL.
       gs_bug_detail-project_id = gv_current_project_id.
@@ -244,11 +254,10 @@ MODULE modify_screen_0300 OUTPUT.
       MODIFY SCREEN.
     ENDIF.
 
-    " BUG_ID: display-only after creation (group BID)
+    " BUG_ID: ALWAYS display-only (auto-generated on save) — v4.1 BUGFIX #5
+    " Previously was editable in Create mode which confused users
     IF screen-group1 = 'BID'.
-      IF gv_mode <> gc_mode_create.
-        screen-input = 0.  " Lock BUG_ID after creation
-      ENDIF.
+      screen-input = 0.  " Always locked — shows "(Auto)" in Create, real ID after save
       MODIFY SCREEN.
     ENDIF.
 
@@ -305,7 +314,11 @@ MODULE init_desc_mini OUTPUT.
       SPLIT gs_bug_detail-desc_text AT cl_abap_char_utilities=>cr_lf
         INTO TABLE lt_mini_text.
     ENDIF.
-    go_desc_mini_edit->set_text_as_r3table( table = lt_mini_text ).
+    go_desc_mini_edit->set_text_as_r3table(
+      EXPORTING table = lt_mini_text
+      EXCEPTIONS error_dp        = 1
+                 error_dp_create = 2
+                 OTHERS          = 3 ).
   ENDIF.
 
   " Readonly mode: set every PBO (may differ between bugs)
@@ -471,6 +484,12 @@ MODULE status_0500 OUTPUT.
     APPEND 'ADD_USER' TO gm_excl.
     APPEND 'REMO_USR' TO gm_excl.
   ENDIF.
+  " v4.1 BUGFIX #1: Create mode → hide ADD_USER/REMO_USR
+  " Project not yet saved → gv_current_project_id is empty → add user would fail
+  IF gv_mode = gc_mode_create.
+    APPEND 'ADD_USER' TO gm_excl.
+    APPEND 'REMO_USR' TO gm_excl.
+  ENDIF.
   SET PF-STATUS 'STATUS_0500' EXCLUDING gm_excl.
 
   " Title shows mode
@@ -500,6 +519,8 @@ MODULE init_project_detail OUTPUT.
 
   IF gv_mode = gc_mode_create.
     CLEAR: gs_project, gt_user_project.
+    " v4.1 BUGFIX #1: Show placeholder — PROJECT_ID will be auto-generated on save
+    gs_project-project_id      = '(Auto)'.
     gs_project-project_manager = gv_uname.  " Default manager = current user
     gs_project-project_status  = '1'.       " Opening
   ENDIF.
@@ -529,6 +550,12 @@ MODULE modify_screen_0500 OUTPUT.
       ELSE.
         screen-input = 1.
       ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+    " v4.1 BUGFIX #1/#3: PROJECT_ID ALWAYS display-only (primary key, auto-generated)
+    IF screen-group1 = 'PID'.
+      screen-input = 0.
       MODIFY SCREEN.
     ENDIF.
   ENDLOOP.
