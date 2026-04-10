@@ -1,5 +1,9 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F00 — ALV Setup & Event Classes
+*& Include Z_BUG_WS_F00 — ALV Setup & Event Classes (v4.0)
+*&---------------------------------------------------------------------*
+*& v4.0 changes (over v3.0):
+*&  - handle_double_click: NEW method for evidence ALV download on dblclick
+*&  - build_evidence_fieldcat: NEW FORM for evidence ALV columns
 *&---------------------------------------------------------------------*
 
 CLASS lcl_event_handler DEFINITION.
@@ -10,7 +14,9 @@ CLASS lcl_event_handler DEFINITION.
       handle_toolbar FOR EVENT toolbar OF cl_gui_alv_grid
         IMPORTING e_object e_interactive,
       handle_user_command FOR EVENT user_command OF cl_gui_alv_grid
-        IMPORTING e_ucomm.
+        IMPORTING e_ucomm,
+      handle_double_click FOR EVENT double_click OF cl_gui_alv_grid
+        IMPORTING e_row e_column es_row_no.            " v4.0: evidence download
 ENDCLASS.
 
 CLASS lcl_event_handler IMPLEMENTATION.
@@ -22,17 +28,15 @@ CLASS lcl_event_handler IMPLEMENTATION.
         gv_current_bug_id   = ls_bug-bug_id.
         gv_mode             = gc_mode_display.
         gv_active_subscreen = '0310'.
+        gv_active_tab       = 'TAB_INFO'.      " v3.0: sync tab highlight
+        CLEAR gv_detail_loaded.                 " v3.0: force fresh load
         CALL SCREEN 0300.
       ENDIF.
     ENDIF.
 
     " ----- PROJECT LIST: click Project ID → Bug List (project context) -----
     " NEW FLOW: Hotspot trên Project ALV → mở Bug List filtered by project
-    "           (thay vì mở Project Detail như trước)
     IF e_column_id-fieldname = 'PROJECT_ID'.
-      " Check if we are on Project List (ALV source = go_alv_project)
-      " vs Bug List (ALV source = go_alv_bug)
-      " Distinguish by checking which table the row belongs to
       READ TABLE gt_projects INTO DATA(ls_prj) INDEX e_row_id-index.
       IF sy-subrc = 0.
         " From Project List → open Bug List with project filter
@@ -41,11 +45,11 @@ CLASS lcl_event_handler IMPLEMENTATION.
         CALL SCREEN 0200.
       ELSE.
         " From Bug List → open Project Detail (display mode)
-        " (PROJECT_ID hotspot on Bug ALV still opens Project Detail)
         READ TABLE gt_bugs INTO DATA(ls_bug2) INDEX e_row_id-index.
         IF sy-subrc = 0 AND ls_bug2-project_id IS NOT INITIAL.
           gv_current_project_id = ls_bug2-project_id.
           gv_mode               = gc_mode_display.
+          CLEAR gv_prj_detail_loaded.            " v3.0: force fresh load
           CALL SCREEN 0500.
         ENDIF.
       ENDIF.
@@ -56,6 +60,16 @@ CLASS lcl_event_handler IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD handle_user_command.
+  ENDMETHOD.
+
+  " v4.0: Double-click on Evidence ALV → download selected file
+  METHOD handle_double_click.
+    " Only fires for go_alv_evidence (registered below in PBO)
+    DATA: ls_evidence TYPE ty_evidence_alv.
+    READ TABLE gt_evidence INTO ls_evidence INDEX es_row_no-row_id.
+    IF sy-subrc = 0.
+      PERFORM download_evidence_file USING ls_evidence-evd_id.
+    ENDIF.
   ENDMETHOD.
 ENDCLASS.
 
@@ -78,8 +92,8 @@ FORM build_bug_fieldcat.
   add_fcat 'PROJECT_ID'       'Project'         15.
   add_fcat 'STATUS_TEXT'      'Status'          15.
   add_fcat 'PRIORITY_TEXT'    'Priority'        10.
-  add_fcat 'SEVERITY_TEXT'    'Severity'        15.   " NEW — text instead of raw code
-  add_fcat 'BUG_TYPE_TEXT'    'Type'            18.   " NEW — text instead of raw code
+  add_fcat 'SEVERITY_TEXT'    'Severity'        15.
+  add_fcat 'BUG_TYPE_TEXT'    'Type'            18.
   add_fcat 'SAP_MODULE'       'Module'          12.
   add_fcat 'TESTER_ID'        'Tester'          12.
   add_fcat 'VERIFY_TESTER_ID' 'Verify Tester'   12.
@@ -160,4 +174,26 @@ FORM build_history_fieldcat CHANGING pt_fcat TYPE lvc_t_fcat.
   add_hfcat 'OLD_VALUE'    'Old Value'   30.
   add_hfcat 'NEW_VALUE'    'New Value'   30.
   add_hfcat 'REASON'       'Reason'      40.
+ENDFORM.
+
+*&--- v4.0: EVIDENCE FIELD CATALOG ---*
+FORM build_evidence_fieldcat.
+  DATA: ls_fcat TYPE lvc_s_fcat.
+  CLEAR gt_fcat_evidence.
+
+  DEFINE add_efcat.
+    CLEAR ls_fcat.
+    ls_fcat-tabname   = 'GT_EVIDENCE'.
+    ls_fcat-fieldname = &1.
+    ls_fcat-coltext   = &2.
+    ls_fcat-outputlen = &3.
+    APPEND ls_fcat TO gt_fcat_evidence.
+  END-OF-DEFINITION.
+
+  add_efcat 'EVD_ID'    'ID'         10.
+  add_efcat 'FILE_NAME' 'File Name'  50.
+  add_efcat 'MIME_TYPE' 'Type'       25.
+  add_efcat 'FILE_SIZE' 'Size (B)'   12.
+  add_efcat 'ERNAM'     'Uploaded By' 12.
+  add_efcat 'ERDAT'     'Date'       10.
 ENDFORM.
