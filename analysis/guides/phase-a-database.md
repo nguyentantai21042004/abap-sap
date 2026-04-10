@@ -135,12 +135,19 @@ Vào **SE11** → nhập `ZBUG_USER_PROJEC` → **Create** → **Transparent Tab
 | `MANDT` | `MANDT` | CLNT | 3 | ✓ |
 | `USER_ID` | `ZDE_USERNAME` | CHAR | 12 | ✓ |
 | `PROJECT_ID` | `ZDE_PROJECT_ID` | CHAR | 20 | ✓ |
+| `ROLE` | `ZDE_BUG_ROLE` | CHAR | 1 | |
 | `ERNAM` | `ERNAM` | CHAR | 12 | |
 | `ERDAT` | `ERDAT` | DATS | 8 | |
 | `ERZET` | `ERZET` | TIMS | 6 | |
 | `AENAM` | `AENAM` | CHAR | 12 | |
 | `AEDAT` | `AEDAT` | DATS | 8 | |
 | `AEZET` | `AEZET` | TIMS | 6 | |
+
+> ⚠️ **Lưu ý ROLE field:**
+> - Data Element `ZDE_BUG_ROLE` đã có sẵn trong bảng `ZBUG_USERS` (CHAR 1, values T=Tester, D=Developer, M=Manager)
+> - Đây là **cùng một data element** — user có thể có role khác nhau trong từng project
+> - **Không thêm ROLE vào ZBUG_USERS** (nó đã có sẵn ở đó từ đầu)
+> - Nếu SAP báo `ZDE_BUG_ROLE not found` khi tạo bảng → data element này đang được define trong domain `ZDOM_BUG_ROLE`; kiểm tra SE11 → ZBUG_USERS để xem data element thực tế đang dùng cho field ROLE
 
 ### Tab Technical Settings
 
@@ -149,7 +156,7 @@ Vào **SE11** → nhập `ZBUG_USER_PROJEC` → **Create** → **Transparent Tab
 
 Nhấn **Save** → **Activate**.
 
-> ✅ **Checkpoint:** **SE16** → `ZBUG_USER_PROJEC` → hiển thị bảng rỗng, 3 key fields.
+> ✅ **Checkpoint:** **SE16** → `ZBUG_USER_PROJEC` → hiển thị bảng rỗng, 3 key fields + field ROLE.
 
 ---
 

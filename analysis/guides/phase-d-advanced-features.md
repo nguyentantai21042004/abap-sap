@@ -1,9 +1,10 @@
 # HƯỚNG DẪN TRIỂN KHAI CHI TIẾT — PHASE D: EXCEL & ADVANCED FEATURES
 
 **Dự án:** SAP Bug Tracking Management System
-**Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
-**Thời gian ước tính:** 2 ngày (31/03-01/04)
+**Ngày:** 09/04/2026 | **Phiên bản:** 6.0 (Project-First Flow)
+**Thời gian ước tính:** 2 ngày
 **Yêu cầu:** Hoàn thành Phase A + B + C trước
+**ABAP Version:** 7.70 (SAP_BASIS 770 — inline declarations, SWITCH, CONV, string templates, @ host vars)
 **Development Account:**
 - `DEV-089` (Pass: `@Anhtuoi123`) — *Excel & Logic*
 - `DEV-061` (Pass: `@57Dt766`) — *SmartForms*
@@ -17,7 +18,7 @@
 2. [Bước D2: Download Template Button](#bước-d2-download-template-button)
 3. [Bước D3: Upload Excel Logic (TEXT_CONVERT_XLS_TO_SAP)](#bước-d3-upload-excel-logic)
 4. [Bước D4: Message Class Migration (ZBUG_MSG)](#bước-d4-message-class-migration)
-5. [Bước D5: Dashboard Statistics (Optional)](#bước-d5-dashboard-statistics-optional)
+5. [Bước D5: Orphan Bug Cleanup Script](#bước-d5-orphan-bug-cleanup-script)
 
 ---
 
@@ -48,7 +49,7 @@ Tạo file `ZTEMPLATE_PROJECT.xlsx` với các cột sau:
 5. Chọn file `ZTEMPLATE_PROJECT.xlsx` từ local
 6. **Save**
 
-> ✅ **Checkpoint:** **SMW0** → `ZTEMPLATE_PROJECT` → **Download** → mở được file Excel chuẩn format.
+> Checkpoint: **SMW0** → `ZTEMPLATE_PROJECT` → **Download** → mở được file Excel chuẩn format.
 
 ---
 
@@ -56,10 +57,14 @@ Tạo file `ZTEMPLATE_PROJECT.xlsx` với các cột sau:
 
 **Mục tiêu:** Nút trên GUI Status cho user download template.
 
-Trong `Z_BUG_WS_PAI`, thêm handler cho nút `DOWNLOAD_TMPL` trên Screen `0400`:
+**Fcode:** `DN_TMPL` trên `STATUS_0400` (Project List screen — initial screen trong flow mới).
+
+> **Lưu ý flow mới:** Screen 0400 (Project List) là initial screen. Nút `DN_TMPL` và `UPLOAD` nằm trên `STATUS_0400`, chỉ visible cho Manager (xem `CODE_PBO.md` — non-Manager users exclude `UPLOAD` và `DN_TMPL`).
+
+Trong `Z_BUG_WS_PAI`, handler đã có sẵn trong `user_command_0400`:
 
 ```abap
-WHEN 'DOWNLOAD_TMPL'.
+WHEN 'DN_TMPL'.
   PERFORM download_template.
 ```
 
@@ -135,7 +140,7 @@ FORM download_template.
 ENDFORM.
 ```
 
-> ✅ **Checkpoint:** Bấm nút `DOWNLOAD_TMPL` trên ALV → chọn folder → file `.xlsx` lưu thành công.
+> Checkpoint: Bấm nút `DN_TMPL` trên Screen 0400 toolbar → chọn folder → file `.xlsx` lưu thành công.
 
 ---
 
@@ -143,7 +148,9 @@ ENDFORM.
 
 **Mục tiêu:** Upload file Excel → validate → insert vào `ZBUG_PROJECT`.
 
-Trong `Z_BUG_WS_PAI`, thêm handler cho nút `UPLOAD` trên Screen `0400`:
+**Fcode:** `UPLOAD` trên `STATUS_0400`.
+
+Trong `Z_BUG_WS_PAI`, handler đã có sẵn trong `user_command_0400`:
 
 ```abap
 WHEN 'UPLOAD'.
@@ -265,18 +272,22 @@ FORM upload_project_excel.
     INSERT zbug_project FROM TABLE lt_projects.
     COMMIT WORK.
     MESSAGE s000(zbug_msg) WITH 'Uploaded' lv_success 'project(s).' lv_errors.
+    " Refresh project ALV after upload
+    PERFORM select_project_data.
+    PERFORM display_project_alv.
   ELSE.
     MESSAGE s000(zbug_msg) WITH 'No valid data' 'to upload' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 ```
 
-> ✅ **Checkpoint:** Upload file Excel 3 rows:
+> Checkpoint: Upload file Excel 3 rows:
 >
 > - Row 1: Valid → Insert thành công
 > - Row 2: Duplicate `PROJECT_ID` → Skip
 > - Row 3: PM not Manager → Skip
 > - Message: "Uploaded 1 project(s). 2"
+> - Project ALV refreshes automatically
 
 ---
 
@@ -315,26 +326,126 @@ MESSAGE s025(zbug_msg).
 3. Dùng `DISPLAY LIKE 'E'` để hiện error icon dù type `S` (tránh dump màn hình)
 4. Dùng `MESSAGE s000(zbug_msg) WITH '...' '...'` cho dynamic/fallback messages khi chưa có message number riêng (s000 = `&1 &2 &3 &4` generic placeholder)
 
-> ✅ **Checkpoint:** Chạy global search (Ctrl+F in SE80) `MESSAGE '` → không còn hardcoded message strings trong ZBUG_WORKSPACE_MP.
+> Checkpoint: Chạy global search (Ctrl+F in SE80) `MESSAGE '` → không còn hardcoded message strings trong ZBUG_WORKSPACE_MP.
 
 ---
 
-## Bước D5: Dashboard Statistics (Optional)
+## Bước D5: Orphan Bug Cleanup Script
 
-**Mục tiêu:** Nếu đủ thời gian, tạo dashboard cho Manager.
+**Mục tiêu:** Fix bugs cũ (tạo trước Phase A) không có `PROJECT_ID` — gán chúng vào 1 project hoặc đánh dấu.
 
-**Logic đếm:**
+> **Background:** Trong flow mới, bug bắt buộc thuộc 1 project (`PROJECT_ID` enforce khi create). Nhưng bugs tạo từ hệ thống cũ có thể có `PROJECT_ID = ''`. Cần cleanup để tránh dữ liệu orphan.
+
+### Option A: Gán vào Default Project (Recommended)
+
+Tạo report `Z_BUG_CLEANUP_ORPHAN` (SE38, Type 1 = Executable):
 
 ```abap
-" Đếm bug theo status
-SELECT status, COUNT(*) AS cnt
-  FROM zbug_tracker
-  INTO TABLE @DATA(lt_status_count)
-  WHERE is_del <> 'X'
-  GROUP BY status.
+*&---------------------------------------------------------------------*
+*& Report Z_BUG_CLEANUP_ORPHAN
+*&---------------------------------------------------------------------*
+*& Cleanup orphan bugs (no PROJECT_ID) — run ONCE after Phase A migration
+*& Creates a default project "LEGACY" and assigns all orphan bugs to it
+*&---------------------------------------------------------------------*
+REPORT z_bug_cleanup_orphan.
+
+CONSTANTS: lc_default_prj TYPE zde_project_id VALUE 'LEGACY'.
+
+" ── Step 1: Check if default project exists, create if not ──
+SELECT COUNT(*) FROM zbug_project
+  WHERE project_id = @lc_default_prj.
+
+IF sy-dbcnt = 0.
+  DATA(ls_project) = VALUE zbug_project(
+    project_id      = lc_default_prj
+    project_name    = 'Legacy Bugs (Pre-Project)'
+    description     = 'Auto-created to hold bugs from before Project entity was introduced'
+    project_status  = '1'   " Opening
+    project_manager = sy-uname
+    start_date      = sy-datum
+    ernam           = sy-uname
+    erdat           = sy-datum
+    erzet           = sy-uzeit ).
+
+  INSERT zbug_project FROM ls_project.
+  IF sy-subrc = 0.
+    WRITE: / 'Created default project:', lc_default_prj.
+  ELSE.
+    WRITE: / 'ERROR: Failed to create default project'.
+    RETURN.
+  ENDIF.
+ELSE.
+  WRITE: / 'Default project already exists:', lc_default_prj.
+ENDIF.
+
+" ── Step 2: Count orphan bugs ──
+SELECT COUNT(*) FROM zbug_tracker
+  WHERE project_id = @( CONV zde_project_id( '' ) )
+    AND is_del <> 'X'.
+DATA(lv_orphan_count) = sy-dbcnt.
+
+WRITE: / 'Orphan bugs found:', lv_orphan_count.
+
+IF lv_orphan_count = 0.
+  WRITE: / 'Nothing to do — all bugs have a project.'.
+  RETURN.
+ENDIF.
+
+" ── Step 3: Update orphan bugs ──
+UPDATE zbug_tracker
+  SET project_id = @lc_default_prj
+      aenam      = @sy-uname
+      aedat      = @sy-datum
+      aezet      = @sy-uzeit
+  WHERE project_id = @( CONV zde_project_id( '' ) )
+    AND is_del <> 'X'.
+
+IF sy-subrc = 0.
+  COMMIT WORK.
+  WRITE: / 'Successfully assigned', lv_orphan_count, 'bug(s) to project', lc_default_prj.
+ELSE.
+  ROLLBACK WORK.
+  WRITE: / 'ERROR: Update failed. Rolled back.'.
+ENDIF.
+
+" ── Step 4: Verify ──
+SELECT COUNT(*) FROM zbug_tracker
+  WHERE project_id = @( CONV zde_project_id( '' ) )
+    AND is_del <> 'X'.
+WRITE: / 'Remaining orphan bugs:', sy-dbcnt.
 ```
 
-Hiển thị bằng `CL_DD_DOCUMENT` trên màn hình `0100`.
+### Option B: List-only (Dry Run)
+
+Nếu chưa muốn gán ngay, chạy report này trước để xem danh sách orphan bugs:
+
+```abap
+REPORT z_bug_list_orphan.
+
+SELECT bug_id, title, status, tester_id, dev_id, erdat
+  FROM zbug_tracker
+  WHERE project_id = @( CONV zde_project_id( '' ) )
+    AND is_del <> 'X'
+  INTO TABLE @DATA(lt_orphans).
+
+IF lt_orphans IS INITIAL.
+  WRITE: / 'No orphan bugs found.'.
+ELSE.
+  WRITE: / 'Orphan bugs (no PROJECT_ID):', lines( lt_orphans ).
+  SKIP.
+  LOOP AT lt_orphans ASSIGNING FIELD-SYMBOL(<o>).
+    WRITE: / <o>-bug_id, <o>-title, <o>-status, <o>-tester_id, <o>-dev_id, <o>-erdat.
+  ENDLOOP.
+ENDIF.
+```
+
+### Khi nào chạy?
+
+- Chạy **1 lần duy nhất** sau khi Phase A hoàn tất (tables đã có `PROJECT_ID` field)
+- Chạy **trước** Phase C go-live (trước khi users bắt đầu dùng Project-first flow)
+- Sau khi chạy, verify: `SELECT COUNT(*) FROM zbug_tracker WHERE project_id = '' AND is_del <> 'X'` → phải = 0
+
+> Checkpoint: Chạy `Z_BUG_CLEANUP_ORPHAN` (hoặc list trước rồi cleanup) → tất cả bugs đều có `PROJECT_ID` → Project ALV → click LEGACY → thấy tất cả bugs cũ.
 
 ---
 
@@ -342,10 +453,12 @@ Hiển thị bằng `CL_DD_DOCUMENT` trên màn hình `0100`.
 
 Sau khi hoàn thành Phase D, bạn phải có:
 
-- [x] Excel template `ZTEMPLATE_PROJECT` trên SMW0
-- [x] Download Template button hoạt động (với fallback SAP_OBJ_READ)
-- [x] Upload Excel → validate PM role + duplicate check + date parsing → insert `ZBUG_PROJECT`
-- [x] Message Class `ZBUG_MSG` dùng xuyên suốt (không còn hardcode)
-- [ ] Dashboard (*optional — nếu đủ thời gian*)
+- [ ] Excel template `ZTEMPLATE_PROJECT` trên SMW0
+- [ ] Download Template button (`DN_TMPL`) hoạt động trên Screen 0400 (với fallback SAP_OBJ_READ)
+- [ ] Upload Excel (`UPLOAD`) → validate PM role + duplicate check + date parsing → insert `ZBUG_PROJECT` + auto-refresh ALV
+- [ ] Message Class `ZBUG_MSG` dùng xuyên suốt (không còn hardcode)
+- [ ] Orphan bugs cleanup — tất cả bugs có `PROJECT_ID` (no orphans)
 
-👉 **Chuyển sang Phase E: Testing & Go-Live**
+**Lưu ý:** Dashboard Statistics (D5 trong phiên bản cũ) đã **cancelled** — Screen 0100 (Homepage) deprecated trong flow mới. Nếu cần statistics sau này, có thể implement trực tiếp trên Screen 0400 toolbar hoặc popup report riêng.
+
+Chuyển sang **Phase E: Testing & Go-Live**

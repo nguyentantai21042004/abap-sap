@@ -1,254 +1,308 @@
-# HƯỚNG DẪN TRIỂN KHAI CHI TIẾT — PHASE C: MODULE POOL UI
+# HƯỚNG DẪN TRIỂN KHAI CHI TIẾT — PHASE C: MODULE POOL UI (v2.0)
 
 **Dự án:** SAP Bug Tracking Management System
-**Ngày:** 24/03/2026 | **Phiên bản:** 5.0 (Module Pool Integration)
-**Thời gian ước tính:** 4 ngày (27-31/03)
-**Yêu cầu:** Hoàn thành Phase A + B trước khi bắt đầu Phase C
+**Cập nhật:** 09/04/2026 | **Phiên bản:** 2.0 (Project-First Flow)
+**SAP:** S40 | Client 324 | **ABAP 770**
+**Package:** `ZBUGTRACK` | **Program:** `Z_BUG_WORKSPACE_MP` (Type M)
+**Yêu cầu:** Phase A (database) hoàn thành, Phase B (business logic) đã có FMs
 
-**Development Account:**
-
-- `DEV-089` (Pass: `@Anhtuoi123`) — *Screens & Screens*
-- `DEV-061` (Pass: `@57Dt766`) — *ALV Grid & Tab Strip*
+> **BREAKING CHANGES so với v1.0:**
+> - Screen 0400 (Project List) là **initial screen** — thay vì Screen 0100 (Hub)
+> - Screen 0100 (Hub) **deprecated** — code giữ nhưng không navigate tới
+> - Bug **bắt buộc thuộc 1 Project** — không cho tạo bug lỏng
+> - Project hotspot trên Project ALV → **mở Bug List** (thay vì Project Detail)
+> - Nút **My Bugs** trên Project List → xem bugs cross-project theo role
+> - Description mini editor trên Bug Info tab (subscreen 0310)
+> - Type fixes: STATUS = CHAR 20, SAP_MODULE = CHAR 20, REASON = STRING
 
 ---
 
 ## MỤC LỤC
 
-1. [Bước C1: Tạo Module Pool Program + Includes](#bước-c1-tạo-module-pool-program--includes)
-2. [Bước C2: Include TOP — Global Declarations](#bước-c2-include-top--global-declarations)
-3. [Bước C3: Screen 0100 — Main Hub (Router)](#bước-c3-screen-0100--main-hub-router)
-4. [Bước C4: Screen 0200 — Bug List (ALV Grid)](#bước-c4-screen-0200--bug-list-alv-grid)
-5. [Bước C5: Screen 0300 — Bug Detail (Tab Strip)](#bước-c5-screen-0300--bug-detail-tab-strip)
-6. [Bước C6: Screen 0400 — Project List (ALV Grid)](#bước-c6-screen-0400--project-list-alv-grid)
-7. [Bước C7: Screen 0500 — Project Detail](#bước-c7-screen-0500--project-detail)
-8. [Bước C8: GUI Status Creation (SE41)](#bước-c8-gui-status-creation)
-9. [Bước C9: F4 Search Help + History Tab](#bước-c9-f4-search-help--history-tab)
-10. [Bước C10: POPUP_TO_CONFIRM + ALV Color-Coding](#bước-c10-popup_to_confirm--alv-color-coding)
-11. [Bước C11: Deprecate Old SE38 Programs](#bước-c11-deprecate-old-se38-programs)
+1. [C1: Tạo Program + Includes](#c1-tạo-program--includes)
+2. [C2: Copy Code vào 6 Includes](#c2-copy-code-vào-6-includes)
+3. [C3: SE93 — Đổi T-code Initial Screen](#c3-se93--đổi-t-code-initial-screen)
+4. [C4: SE41 — Tạo 5 GUI Statuses](#c4-se41--tạo-5-gui-statuses)
+5. [C5: SE41 — Tạo 5 Title Bars](#c5-se41--tạo-5-title-bars)
+6. [C6: Screen 0400 — Project List (INITIAL)](#c6-screen-0400--project-list-initial)
+7. [C7: Screen 0200 — Bug List (Dual Mode)](#c7-screen-0200--bug-list-dual-mode)
+8. [C8: Screen 0300 — Bug Detail (Tab Strip Host)](#c8-screen-0300--bug-detail-tab-strip-host)
+9. [C9: Subscreens 0310-0360](#c9-subscreens-0310-0360)
+10. [C10: Screen 0500 — Project Detail + Table Control](#c10-screen-0500--project-detail--table-control)
+11. [C11: Screen 0100 — Hub (DEPRECATED)](#c11-screen-0100--hub-deprecated)
+12. [C12: Deprecate Old Programs](#c12-deprecate-old-programs)
+13. [C13: Testing Checklist](#c13-testing-checklist)
 
 ---
 
-## Bước C1: Tạo Module Pool Program + Includes
+## C1: Tạo Program + Includes
 
-**Mục tiêu:** Tạo program Type M với 6 includes.
+> **Skip nếu đã tạo** — program `Z_BUG_WORKSPACE_MP` + 6 includes đã tồn tại.
 
-Vào **SE80** → chọn "Program" → nhập `Z_BUG_WORKSPACE_MP` → **Enter**.
+### SE80 Steps:
 
-- **Chọn:** "With TOP INCL."
-- **Type:** Module Pool (M)
-- **Status:** Test Program (T)
-- **Package:** `ZBUGTRACK`
+1. **SE80** → chọn "Program" → nhập `Z_BUG_WORKSPACE_MP` → Enter
+2. "With TOP INCL." = Yes → Type = **Module Pool (M)** → Status = Test (T) → Package = `ZBUGTRACK`
+3. SAP tự tạo `Z_BUG_WS_TOP`
+4. Right-click program → Create → Include → lần lượt tạo:
+   - `Z_BUG_WS_F00`
+   - `Z_BUG_WS_PBO`
+   - `Z_BUG_WS_PAI`
+   - `Z_BUG_WS_F01`
+   - `Z_BUG_WS_F02`
 
-SAP tự tạo include `Z_BUG_WS_TOP` (TOP include).
-
-Tạo thêm 5 includes:
-
-1. Chuột phải vào program → **Create** → Include → `Z_BUG_WS_PBO`
-2. Chuột phải vào program → **Create** → Include → `Z_BUG_WS_PAI`
-3. Chuột phải vào program → **Create** → Include → `Z_BUG_WS_F00`
-4. Chuột phải vào program → **Create** → Include → `Z_BUG_WS_F01`
-5. Chuột phải vào program → **Create** → Include → `Z_BUG_WS_F02`
-
-**Trong main program `Z_BUG_WORKSPACE_MP`, thêm:**
+### Main Program Code:
 
 ```abap
 PROGRAM z_bug_workspace_mp.
-
-INCLUDE z_bug_ws_top.    " Global data declarations
-INCLUDE z_bug_ws_f00.    " ALV setup + Event handler class (BEFORE PBO/PAI vì class cần define trước)
-INCLUDE z_bug_ws_pbo.    " Process Before Output modules
-INCLUDE z_bug_ws_pai.    " Process After Input modules
-INCLUDE z_bug_ws_f01.    " Business logic FORM routines
-INCLUDE z_bug_ws_f02.    " Helper: F4, Long Text, Popup, GOS
+INCLUDE z_bug_ws_top.    " 1. Global data
+INCLUDE z_bug_ws_f00.    " 2. Event class (PHẢI trước PBO/PAI)
+INCLUDE z_bug_ws_pbo.    " 3. PBO
+INCLUDE z_bug_ws_pai.    " 4. PAI
+INCLUDE z_bug_ws_f01.    " 5. Business logic
+INCLUDE z_bug_ws_f02.    " 6. Helpers
 ```
 
-> ⚠️ **Lưu ý thứ tự include:** `Z_BUG_WS_F00` phải nằm TRƯỚC `PBO`/`PAI` vì class `LCL_EVENT_HANDLER` cần được define trước khi tham chiếu trong PBO modules.
+> **Thứ tự bắt buộc:** F00 TRƯỚC PBO/PAI vì class `lcl_event_handler` cần define trước khi reference.
 
-Nhấn **Save** + **Activate**.
+Save + Activate.
 
-> ✅ **Checkpoint:** **SE80** → `Z_BUG_WORKSPACE_MP` → thấy 6 includes trong navigation tree.
+**Checkpoint:** SE80 → thấy 6 includes trong navigation tree.
 
 ---
 
-## Bước C2: Include TOP — Global Declarations
+## C2: Copy Code vào 6 Includes
 
-**Mục tiêu:** Khai báo tất cả biến global, types, constants.
+Mở từng include trong SE80, **xóa hết nội dung cũ**, paste code mới từ các file guide:
 
-**Mở include `Z_BUG_WS_TOP`:**
+| Include | Copy từ file | Nội dung |
+|---------|-------------|----------|
+| `Z_BUG_WS_TOP` | `CODE_TOP.md` | Global vars, types, constants, ALV objects |
+| `Z_BUG_WS_F00` | `CODE_F00.md` | Event handler class + 3 field catalogs |
+| `Z_BUG_WS_PBO` | `CODE_PBO.md` | 11 PBO modules |
+| `Z_BUG_WS_PAI` | `CODE_PAI.md` | 5 PAI modules + table control sync |
+| `Z_BUG_WS_F01` | `CODE_F01.md` | 15 FORM routines (SQL, save, delete, status...) |
+| `Z_BUG_WS_F02` | `CODE_F02.md` | 8 FORM routines (F4 helps, long text load/save) |
 
-```abap
-*&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_TOP — Global Declarations
-*&---------------------------------------------------------------------*
+### Quy trình copy:
 
-" === CONSTANTS ===
-CONSTANTS:
-  gc_mode_display TYPE char1 VALUE 'D',
-  gc_mode_change  TYPE char1 VALUE 'C',
-  gc_mode_create  TYPE char1 VALUE 'X'.
+1. Mở `CODE_TOP.md` → copy toàn bộ nội dung ABAP (bỏ dòng markdown/comment đầu nếu có)
+2. SE80 → double-click `Z_BUG_WS_TOP` → **Change** → Ctrl+A → Delete → Paste
+3. **Save (Ctrl+S)**
+4. Lặp lại cho 5 includes còn lại
+5. Sau khi paste xong tất cả 6 → **Activate All** (Ctrl+Shift+F3):
+   - Chọn tất cả objects → Activate
+   - Nếu có warning (unused variables) → OK, bỏ qua
+   - Nếu có **error** → xem Section "Troubleshooting" cuối file
 
-" === GLOBAL VARIABLES ===
-DATA: gv_ok_code   TYPE sy-ucomm,
-      gv_save_ok   TYPE sy-ucomm,
-      gv_mode      TYPE char1,           " D/C/X
-      gv_role      TYPE zbug_users-role,  " T/D/M
-      gv_uname     TYPE sy-uname,        " Strict Mode helper
-      gv_current_bug_id     TYPE zde_bug_id,
-      gv_current_project_id TYPE zde_project_id.
-
-" === TAB STRIP ===
-DATA: gv_active_tab       TYPE char20 VALUE 'TAB_INFO',
-      gv_active_subscreen TYPE sy-dynnr.
-
-" === ALV OBJECTS — Bug List ===
-DATA: go_cont_bug    TYPE REF TO cl_gui_custom_container,
-      go_alv_bug     TYPE REF TO cl_gui_alv_grid.
-
-" === ALV OBJECTS — Project List ===
-DATA: go_cont_project TYPE REF TO cl_gui_custom_container,
-      go_alv_project  TYPE REF TO cl_gui_alv_grid.
-
-" === ALV OBJECTS — History ===
-DATA: go_cont_history TYPE REF TO cl_gui_custom_container,
-      go_alv_history  TYPE REF TO cl_gui_alv_grid.
-
-" === TEXT EDIT OBJECTS ===
-DATA: go_cont_dev_note  TYPE REF TO cl_gui_custom_container,
-      go_edit_dev_note  TYPE REF TO cl_gui_textedit,
-      go_cont_func_note TYPE REF TO cl_gui_custom_container,
-      go_edit_func_note TYPE REF TO cl_gui_textedit,
-      go_cont_rootcause TYPE REF TO cl_gui_custom_container,
-      go_edit_rootcause TYPE REF TO cl_gui_textedit.
-
-" === FIELD CATALOGS ===
-DATA: gt_fcat_bug     TYPE lvc_t_fcat,
-      gt_fcat_project TYPE lvc_t_fcat,
-      gt_fcat_history TYPE lvc_t_fcat.
-
-" === ALV DATA TYPES — Bug ===
-TYPES: BEGIN OF ty_bug_alv,
-         bug_id        TYPE zde_bug_id,
-         title         TYPE zde_bug_title,
-         project_id    TYPE zde_project_id,
-         status        TYPE char1,
-         status_text   TYPE char20,
-         priority      TYPE char1,
-         priority_text TYPE char10,
-         severity      TYPE char1,
-         bug_type      TYPE char1,
-         tester_id     TYPE zde_username,
-         dev_id        TYPE zde_username,
-         created_at    TYPE sydatum,
-         sap_module    TYPE char10,
-         t_color       TYPE lvc_t_scol,  " ALV row color
-       END OF ty_bug_alv.
-
-DATA: gt_bugs       TYPE TABLE OF ty_bug_alv,
-      gs_bug_detail TYPE zbug_tracker.
-
-" === ALV DATA TYPES — Project ===
-TYPES: BEGIN OF ty_project_alv,
-         project_id      TYPE zde_project_id,
-         project_name    TYPE char100,
-         description     TYPE char255,
-         start_date      TYPE sydatum,
-         end_date        TYPE sydatum,
-         project_manager TYPE zde_username,
-         project_status  TYPE char1,
-         status_text     TYPE char20,
-         t_color         TYPE lvc_t_scol,
-       END OF ty_project_alv.
-
-DATA: gt_projects TYPE TABLE OF ty_project_alv,
-      gs_project  TYPE zbug_project.
-
-" === ALV DATA TYPES — History ===
-TYPES: BEGIN OF ty_history_alv,
-         changed_at   TYPE sydatum,
-         changed_time TYPE syuzeit,
-         changed_by   TYPE char12,
-         action_type  TYPE char2,
-         action_text  TYPE char30,
-         old_value    TYPE char50,
-         new_value    TYPE char50,
-         reason       TYPE char255,
-       END OF ty_history_alv.
-
-DATA: gt_history TYPE TABLE OF ty_history_alv.
-
-" === EVENT HANDLER (forward declaration — class defined in F00) ===
-DATA: go_event_handler TYPE REF TO lcl_event_handler.
-```
-
-Nhấn **Save** + **Activate**.
+**Checkpoint:** Program activate thành công, không có syntax error.
 
 ---
 
-## Bước C3: Screen 0100 — Main Hub (Router)
+## C3: SE93 — Đổi T-code Initial Screen
 
-**Mục tiêu:** Screen đầu tiên, đọc role user và điều hướng.
+> **Quan trọng:** T-code `ZBUG_HOME` phải trỏ tới Screen **0400** (Project List) thay vì 0100.
 
-Vào **SE80** → `Z_BUG_WORKSPACE_MP` → chuột phải → **Create** → **Screen** → `0100`.
+1. **SE93** → nhập `ZBUG_HOME` → **Change**
+2. Field "Initial Screen": đổi từ `0100` → **`0400`**
+3. Program name vẫn là `Z_BUG_WORKSPACE_MP`
+4. **Save** → Activate
 
-**Flow Logic:**
+> Nếu T-code chưa tồn tại: SE93 → `ZBUG_HOME` → Create → Transaction with parameters (Dialog transaction) → Program = `Z_BUG_WORKSPACE_MP`, Screen = `0400`.
+
+**Checkpoint:** Gõ `ZBUG_HOME` → mở thẳng Screen 0400 (Project List).
+
+---
+
+## C4: SE41 — Tạo 5 GUI Statuses
+
+### Cách vào SE41:
+
+1. Gõ **SE41** → Enter
+2. Program: `Z_BUG_WORKSPACE_MP`
+3. Status: nhập tên (vd `STATUS_0100`) → **Create (F5)**
+4. Short Description → Enter → màn hình vẽ nút hiện ra
+
+### Cách thêm nút:
+
+- Click ô trống trong **Application Toolbar**
+- Điền Function Code (FCode) + Text → Enter
+- Trong **Function Keys** tab: gán phím tắt cho BACK/EXIT/CANC
+
+### Standard Toolbar (tích cho MỌI status):
+
+Tất cả 5 statuses đều cần 3 nút standard:
+
+| Function Code | Gán vào phím | Mô tả |
+|---------------|-------------|-------|
+| `BACK` | F3 (= Standard Back) | Back |
+| `EXIT` | Shift+F3 | Exit |
+| `CANC` | F12 | Cancel |
+
+---
+
+### STATUS_0100 — Hub (DEPRECATED)
+
+**Short Description:** `Bug Tracking Hub (Deprecated)`
+
+| # | FCode | Text | Icon |
+|---|-------|------|------|
+| 1 | `BUG_LIST` | Bug List | — |
+| 2 | `PROJ_LIST` | Project List | — |
+
+> Status này giữ để code không dump nếu ai đó vô tình call Screen 0100.
+
+---
+
+### STATUS_0200 — Bug List
+
+**Short Description:** `Bug List`
+
+| # | FCode | Text | Icon | Notes |
+|---|-------|------|------|-------|
+| 1 | `CREATE` | Create Bug | `ICON_CREATE` | Hidden: Dev role, My Bugs mode |
+| 2 | `CHANGE` | Change | `ICON_CHANGE` | |
+| 3 | `DISPLAY` | Display | `ICON_DISPLAY` | |
+| 4 | `DELETE` | Delete | `ICON_DELETE` | Hidden: Dev, Tester, My Bugs mode |
+| 5 | — | *(separator)* | | |
+| 6 | `REFRESH` | Refresh | `ICON_REFRESH` | |
+
+---
+
+### STATUS_0300 — Bug Detail
+
+**Short Description:** `Bug Detail`
+
+| # | FCode | Text | Icon | Notes |
+|---|-------|------|------|-------|
+| 1 | `SAVE` | Save | `ICON_SYSTEM_SAVE` | Hidden: Display mode |
+| 2 | `STATUS_CHG` | Change Status | `ICON_CHANGE` | Hidden: Create mode |
+| 3 | — | *(separator)* | | |
+| 4 | `UP_FILE` | Upload Evidence | `ICON_IMPORT` | Hidden: Create mode |
+| 5 | `UP_REP` | Upload Report | `ICON_IMPORT` | Hidden: Dev role |
+| 6 | `UP_FIX` | Upload Fix | `ICON_IMPORT` | Hidden: Tester role |
+
+> **CRITICAL:** Đảm bảo fcode `SAVE` có trong status. Thiếu `SAVE` = nút Save sẽ không hiện kể cả ở Change mode.
+
+---
+
+### STATUS_0400 — Project List (INITIAL SCREEN)
+
+**Short Description:** `Project List`
+
+| # | FCode | Text | Icon | Notes |
+|---|-------|------|------|-------|
+| 1 | `MY_BUGS` | My Bugs | `ICON_BIW_REPORT` | **NEW** — All roles |
+| 2 | — | *(separator)* | | |
+| 3 | `CREA_PRJ` | Create Project | `ICON_CREATE` | Manager only |
+| 4 | `CHNG_PRJ` | Change | `ICON_CHANGE` | Manager only |
+| 5 | `DISP_PRJ` | Display | `ICON_DISPLAY` | All |
+| 6 | `DEL_PRJ` | Delete | `ICON_DELETE` | Manager only |
+| 7 | — | *(separator)* | | |
+| 8 | `UPLOAD` | Upload Excel | `ICON_IMPORT` | Manager only |
+| 9 | `DN_TMPL` | Download Template | `ICON_EXPORT` | Manager only |
+| 10 | `REFRESH` | Refresh | `ICON_REFRESH` | All |
+
+> **LƯU Ý:** Nút `MY_BUGS` là mới — không có trong version cũ.
+
+---
+
+### STATUS_0500 — Project Detail
+
+**Short Description:** `Project Detail`
+
+| # | FCode | Text | Icon | Notes |
+|---|-------|------|------|-------|
+| 1 | `SAVE` | Save | `ICON_SYSTEM_SAVE` | Manager + Change/Create only |
+| 2 | — | *(separator)* | | |
+| 3 | `ADD_USER` | Add User | `ICON_INSERT_ROW` | Manager + Change/Create only |
+| 4 | `REMO_USR` | Remove User | `ICON_DELETE_ROW` | Manager + Change/Create only |
+
+> Fcode `REMO_USR` (không phải `REMOVE_USER`) — giới hạn 8 ký tự cho fcode.
+
+---
+
+Save + Activate từng status.
+
+**Checkpoint:** SE41 → tất cả 5 statuses hiện xanh (activated).
+
+---
+
+## C5: SE41 — Tạo 5 Title Bars
+
+Trong SE41, chuyển sang **Object Type: Title** (dropdown ở đầu màn hình):
+
+1. Program: `Z_BUG_WORKSPACE_MP`
+2. Object Type: **Title**
+3. Nhập tên → Create
+
+| Title Name | Text | Used by |
+|------------|------|---------|
+| `TITLE_MAIN` | `&1` | Screen 0100 — nhận 1 param |
+| `TITLE_BUGLIST` | `&1` | Screen 0200 — nhận title text |
+| `TITLE_BUGDETAIL` | `&1` | Screen 0300 — nhận mode + bug_id |
+| `TITLE_PROJLIST` | `&1` | Screen 0400 — nhận "Project List" |
+| `TITLE_PRJDET` | `&1` | Screen 0500 — nhận project name |
+
+> **Cách SET TITLEBAR hoạt động:** Khi code viết `SET TITLEBAR 'TITLE_BUGLIST' WITH 'Bugs — ProjectX'`, SAP thay `&1` bằng text đó. Vì vậy chỉ cần define `&1` trong Title.
+
+Save + Activate.
+
+---
+
+## C6: Screen 0400 — Project List (INITIAL)
+
+> **Đây là screen đầu tiên user thấy** khi mở T-code `ZBUG_HOME`.
+
+### C6.1: Tạo Screen trong SE51
+
+1. **SE80** → `Z_BUG_WORKSPACE_MP` → Right-click → Create → **Screen** → Number: **0400**
+2. Short Description: `Project List`
+3. Screen Type: **Normal**
+4. Next Screen: `0400` (loop back to itself — navigation handled by PAI)
+
+### C6.2: Flow Logic (tab "Flow Logic")
 
 ```abap
 PROCESS BEFORE OUTPUT.
-  MODULE status_0100.
   MODULE init_user_role.
+  MODULE status_0400.
+  MODULE init_project_list.
 
 PROCESS AFTER INPUT.
-  MODULE user_command_0100.
+  MODULE user_command_0400.
 ```
 
-**Trong `Z_BUG_WS_PBO`:**
+> **LƯU Ý:** `init_user_role` phải chạy ở đây vì 0400 là initial screen. Module này chỉ load role 1 lần (CHECK gv_role IS INITIAL).
 
-```abap
-MODULE status_0100 OUTPUT.
-  SET PF-STATUS 'STATUS_0100'.
-  SET TITLEBAR 'TITLE_MAIN' WITH 'Bug Tracking Workspace'.
-ENDMODULE.
+### C6.3: Layout (tab "Layout")
 
-MODULE init_user_role OUTPUT.
-  gv_uname = sy-uname. " Gán vào biến phụ trước khi dùng trong SQL @
+Click **Layout** button → Screen Painter mở ra.
 
-  SELECT SINGLE role FROM zbug_users INTO @gv_role
-    WHERE user_id = @gv_uname AND is_del <> 'X'.
+1. **Vẽ Custom Control:**
+   - Menu: Edit → Create Element → Custom Control
+   - Hoặc: click icon Custom Control trên toolbar → vẽ hình chữ nhật phủ gần toàn bộ screen
+   - Name: **`CC_PROJECT_LIST`**
+   - Size: chiếm ~90% diện tích screen (để lại chút margin trên/dưới)
 
-  IF sy-subrc <> 0.
-    MESSAGE s003(zbug_msg) DISPLAY LIKE 'E'.
-    LEAVE PROGRAM.
-  ENDIF.
-ENDMODULE.
-```
+2. **Không cần vẽ thêm gì khác** — tất cả buttons nằm trên GUI Status toolbar
 
-**Trong `Z_BUG_WS_PAI`:**
+3. Save + Activate Screen
 
-```abap
-MODULE user_command_0100 INPUT.
-  gv_save_ok = gv_ok_code.
-  CLEAR gv_ok_code.
-  CASE gv_save_ok.
-    WHEN 'BACK' OR 'EXIT' OR 'CANC'. LEAVE PROGRAM.
-    WHEN 'BUG_LIST'.     CALL SCREEN 0200.
-    WHEN 'PROJECT_LIST'. CALL SCREEN 0400.
-  ENDCASE.
-ENDMODULE.
-```
-
-> ✅ **Checkpoint:** Chạy thử Main Hub hiển thị chuẩn bị chuyển màn hình.
+**Checkpoint:** SE80 → double-click Screen 0400 → thấy `CC_PROJECT_LIST` trong Element List.
 
 ---
 
-## Bước C4: Screen 0200 — Bug List (ALV Grid)
+## C7: Screen 0200 — Bug List (Dual Mode)
 
-**Mục tiêu:** ALV Grid hiển thị danh sách bug với toolbar buttons.
+### C7.1: Tạo Screen
 
-Tạo Screen **0200**.
+1. SE80 → Right-click program → Create → Screen → **0200**
+2. Short Description: `Bug List`
+3. Screen Type: Normal
+4. Next Screen: `0200`
 
-**Screen Layout:** Tạo 1 Custom Container `CC_BUG_LIST`.
-
-**Flow Logic:**
+### C7.2: Flow Logic
 
 ```abap
 PROCESS BEFORE OUTPUT.
@@ -259,148 +313,25 @@ PROCESS AFTER INPUT.
   MODULE user_command_0200.
 ```
 
-**Trong `Z_BUG_WS_PBO`:**
+### C7.3: Layout
 
-```abap
-MODULE status_0200 OUTPUT.
-  DATA: lt_excl TYPE TABLE OF sy-ucomm.
-  IF gv_role <> 'M'.
-    APPEND 'DELETE' TO lt_excl.
-  ENDIF.
-  IF gv_role = 'D'.
-    APPEND 'CREATE' TO lt_excl.
-  ENDIF.
-  SET PF-STATUS 'STATUS_0200' EXCLUDING lt_excl.
-  SET TITLEBAR 'TITLE_BUGLIST' WITH 'Bug List'.
-ENDMODULE.
+1. Vẽ Custom Control: **`CC_BUG_LIST`** — phủ gần toàn bộ screen
+2. Save + Activate
 
-MODULE init_bug_list OUTPUT.
-  PERFORM select_bug_data.
-  IF go_alv_bug IS INITIAL.
-    CREATE OBJECT go_cont_bug EXPORTING container_name = 'CC_BUG_LIST'.
-    CREATE OBJECT go_alv_bug EXPORTING i_parent = go_cont_bug.
-
-    PERFORM build_bug_fieldcat.
-
-    DATA: ls_layout TYPE lvc_s_layo.
-    ls_layout-zebra      = 'X'.
-    ls_layout-cwidth_opt = 'X'.
-    ls_layout-ctab_fname = 'T_COLOR'.  " Color column
-
-    go_alv_bug->set_table_for_first_display(
-      EXPORTING is_layout       = ls_layout
-      CHANGING  it_outtab       = gt_bugs
-                it_fieldcatalog = gt_fcat_bug ).
-
-    " Register event handler
-    CREATE OBJECT go_event_handler.
-    SET HANDLER go_event_handler->handle_hotspot_click FOR go_alv_bug.
-  ELSE.
-    go_alv_bug->refresh_table_display( ).
-  ENDIF.
-ENDMODULE.
-```
-
-**FORM `select_bug_data` (trong `Z_BUG_WS_F01`):**
-
-```abap
-FORM select_bug_data.
-  CLEAR gt_bugs.
-
-  gv_uname = sy-uname.
-
-  CASE gv_role.
-    WHEN 'T'.  " Tester: own bugs only
-      SELECT * FROM zbug_tracker
-        INTO CORRESPONDING FIELDS OF TABLE @gt_bugs
-        WHERE tester_id = @gv_uname AND is_del <> 'X'.
-    WHEN 'D'.  " Developer: assigned bugs
-      SELECT * FROM zbug_tracker
-        INTO CORRESPONDING FIELDS OF TABLE @gt_bugs
-        WHERE dev_id = @gv_uname AND is_del <> 'X'.
-    WHEN 'M'.  " Manager: all bugs
-      SELECT * FROM zbug_tracker
-        INTO CORRESPONDING FIELDS OF TABLE @gt_bugs
-        WHERE is_del <> 'X'.
-  ENDCASE.
-
-  " Map status code → text + priority → text
-  LOOP AT gt_bugs ASSIGNING FIELD-SYMBOL(<bug>).
-    <bug>-status_text = SWITCH #( <bug>-status
-      WHEN '1' THEN 'New'        WHEN 'W' THEN 'Waiting'
-      WHEN '2' THEN 'Assigned'   WHEN '3' THEN 'InProgress'
-      WHEN '4' THEN 'Pending'    WHEN '5' THEN 'Fixed'
-      WHEN '6' THEN 'Resolved'   WHEN '7' THEN 'Closed'
-      WHEN 'R' THEN 'Rejected' ).
-
-    <bug>-priority_text = SWITCH #( <bug>-priority
-      WHEN 'H' THEN 'High' WHEN 'M' THEN 'Medium' WHEN 'L' THEN 'Low' ).
-  ENDLOOP.
-
-  " Apply color-coding
-  PERFORM set_bug_colors.
-ENDFORM.
-```
-
-**FORM `build_bug_fieldcat` (trong `Z_BUG_WS_F00`):**
-
-```abap
-FORM build_bug_fieldcat.
-  DATA: ls_fcat TYPE lvc_s_fcat.
-  CLEAR gt_fcat_bug.
-
-  DEFINE add_fcat.
-    CLEAR ls_fcat.
-    ls_fcat-fieldname = &1. ls_fcat-coltext = &2. ls_fcat-outputlen = &3.
-    APPEND ls_fcat TO gt_fcat_bug.
-  END-OF-DEFINITION.
-
-  add_fcat 'BUG_ID'        'Bug ID'     12.
-  add_fcat 'TITLE'         'Title'      40.
-  add_fcat 'PROJECT_ID'    'Project'    15.
-  add_fcat 'STATUS_TEXT'   'Status'     15.
-  add_fcat 'PRIORITY_TEXT' 'Priority'   10.
-  add_fcat 'SEVERITY'      'Severity'   10.
-  add_fcat 'BUG_TYPE'      'Type'        8.
-  add_fcat 'TESTER_ID'     'Tester'     12.
-  add_fcat 'DEV_ID'        'Developer'  12.
-  add_fcat 'CREATED_AT'    'Created'    10.
-
-  " Set BUG_ID as hotspot (clickable → opens Bug Detail)
-  READ TABLE gt_fcat_bug ASSIGNING FIELD-SYMBOL(<fc>)
-    WITH KEY fieldname = 'BUG_ID'.
-  IF sy-subrc = 0.
-    <fc>-hotspot = 'X'.
-  ENDIF.
-
-  " Hide raw status code column (we show STATUS_TEXT instead)
-  ls_fcat-fieldname = 'STATUS'. ls_fcat-no_out = 'X'.
-  APPEND ls_fcat TO gt_fcat_bug.
-  ls_fcat-fieldname = 'PRIORITY'. ls_fcat-no_out = 'X'.
-  APPEND ls_fcat TO gt_fcat_bug.
-ENDFORM.
-```
+**Checkpoint:** Screen 0200 activated.
 
 ---
 
-## Bước C5: Screen 0300 — Bug Detail (Tab Strip)
+## C8: Screen 0300 — Bug Detail (Tab Strip Host)
 
-**Mục tiêu:** Màn hình chi tiết bug với Tab Strip cho notes, evidence, history.
+### C8.1: Tạo Screen
 
-Tạo Screen **0300**.
+1. SE80 → Create Screen → **0300**
+2. Short Description: `Bug Detail`
+3. Screen Type: Normal
+4. Next Screen: `0300`
 
-**Phần dưới: Tab Strip control (`TS_DETAIL`) — 6 Tabs tương ứng 6 Subscreens:**
-
-| Tab | Subscreen | Nội dung | Container |
-| :--- | :--- | :--- | :--- |
-| Bug Info | `0310` | Fields: Title, Status, Priority, Severity, etc. | (input fields) |
-| Dev Note | `0320` | Long Text editor (Text ID Z001) | `CC_DEV_NOTE` |
-| Func Note | `0330` | Long Text editor (Text ID Z002) | `CC_FUNC_NOTE` |
-| Root Cause | `0340` | Long Text editor (Text ID Z003) | `CC_ROOTCAUSE` |
-| Evidence | `0350` | GOS file list (BDS) | `CC_EVIDENCE` |
-| History | `0360` | ALV readonly (ZBUG_HISTORY) | `CC_HISTORY` |
-
-**Flow Logic 0300:**
+### C8.2: Flow Logic
 
 ```abap
 PROCESS BEFORE OUTPUT.
@@ -414,179 +345,246 @@ PROCESS AFTER INPUT.
   MODULE user_command_0300.
 ```
 
-**Trong `Z_BUG_WS_PBO`:**
+> **CALL SUBSCREEN** yêu cầu:
+> - Có Subscreen Area tên `SS_TAB` trên layout
+> - `gv_active_subscreen` chứa screen number (0310-0360)
+> - PBO: `INCLUDING sy-repid gv_active_subscreen`
+> - PAI: chỉ `CALL SUBSCREEN ss_tab.` (không có INCLUDING)
 
-```abap
-MODULE status_0300 OUTPUT.
-  DATA: lt_excl TYPE TABLE OF sy-ucomm.
-  " Display mode → hide SAVE, STATUS_CHG
-  IF gv_mode = gc_mode_display.
-    APPEND 'SAVE' TO lt_excl.
-  ENDIF.
-  " Tester: hide UPLOAD_FIX (trừ Config bug)
-  IF gv_role = 'T' AND gs_bug_detail-bug_type <> 'F'.
-    APPEND 'UPLOAD_FIX' TO lt_excl.
-  ENDIF.
-  " Developer: hide UPLOAD_REPORT
-  IF gv_role = 'D'.
-    APPEND 'UPLOAD_REPORT' TO lt_excl.
-  ENDIF.
-  SET PF-STATUS 'STATUS_0300' EXCLUDING lt_excl.
-  SET TITLEBAR 'TITLE_BUGDETAIL' WITH gs_bug_detail-bug_id.
-ENDMODULE.
+### C8.3: Layout — Tab Strip + Subscreen Area
 
-MODULE load_bug_detail OUTPUT.
-  CHECK gv_current_bug_id IS NOT INITIAL.
-  SELECT SINGLE * FROM zbug_tracker INTO @gs_bug_detail
-    WHERE bug_id = @gv_current_bug_id AND is_del <> 'X'.
+**Bước 1: Vẽ Tab Strip**
 
-  " Default active subscreen
-  IF gv_active_subscreen IS INITIAL.
-    gv_active_subscreen = '0310'.
-  ENDIF.
-ENDMODULE.
+1. Mở Layout Editor
+2. Menu: Edit → Create Element → Tab Strip (hoặc click icon TabStrip trên toolbar)
+3. Vẽ hình chữ nhật phủ ~85% screen (để chừa toolbar phía trên)
+4. Name: **`TS_DETAIL`**
+5. SAP hỏi số tabs → nhập **6**
+6. SAP tạo 6 tab buttons. Đặt tên + FCode cho từng tab:
 
-MODULE modify_screen_0300 OUTPUT.
-  " Dynamic control: readonly khi Display mode hoặc Bug đã Closed
-  LOOP AT SCREEN.
-    IF gv_mode = gc_mode_display OR gs_bug_detail-status = '7'.
-      IF screen-group1 = 'EDT'.  " Group EDT = editable fields
-        screen-input = 0.
-        MODIFY SCREEN.
-      ENDIF.
-    ENDIF.
-  ENDLOOP.
-ENDMODULE.
-```
+| Tab # | Name (button) | Text | FCode |
+|-------|--------------|------|-------|
+| 1 | `TAB_INFO` | Bug Info | `TAB_INFO` |
+| 2 | `TAB_DESC` | Description | `TAB_DESC` |
+| 3 | `TAB_DEVNOTE` | Dev Note | `TAB_DEVNOTE` |
+| 4 | `TAB_TSTR_NOTE` | Tester Note | `TAB_TSTR_NOTE` |
+| 5 | `TAB_EVIDENCE` | Evidence | `TAB_EVIDENCE` |
+| 6 | `TAB_HISTORY` | History | `TAB_HISTORY` |
 
-**Trong `Z_BUG_WS_PAI`:**
+**Bước 2: Vẽ Subscreen Area bên trong Tab Strip**
 
-```abap
-MODULE user_command_0300 INPUT.
-  gv_save_ok = gv_ok_code.
-  CLEAR gv_ok_code.
+1. Click vào vùng trống bên trong tab strip body
+2. Menu: Edit → Create Element → Subscreen Area
+3. Vẽ hình chữ nhật lấp đầy phần body của tab strip
+4. Name: **`SS_TAB`**
 
-  CASE gv_save_ok.
-    WHEN 'BACK'.
-      LEAVE TO SCREEN 0200.
+**Bước 3: Kết nối Tab Strip với subscreen (Reference Field)**
 
-    WHEN 'SAVE'.
-      PERFORM save_bug_detail.
+1. Double-click vào tab strip `TS_DETAIL` → Attributes
+2. Đảm bảo "Control" Reference: `TS_DETAIL` (trong TOP đã có `CONTROLS: ts_detail TYPE TABSTRIP`)
+3. Mỗi tab button có FCode tương ứng — PAI sẽ handle switch
 
-    WHEN 'STATUS_CHG'.
-      PERFORM change_bug_status.
+Save + Activate Screen 0300.
 
-    WHEN 'UPLOAD_FILE'.
-      PERFORM upload_evidence_file.
-
-    " Tab switching
-    WHEN 'TAB_INFO'.     gv_active_subscreen = '0310'.
-    WHEN 'TAB_DEVNOTE'.  gv_active_subscreen = '0320'.
-    WHEN 'TAB_FUNCNOTE'. gv_active_subscreen = '0330'.
-    WHEN 'TAB_ROOTCAUSE'.gv_active_subscreen = '0340'.
-    WHEN 'TAB_EVIDENCE'. gv_active_subscreen = '0350'.
-    WHEN 'TAB_HISTORY'.  gv_active_subscreen = '0360'.
-  ENDCASE.
-ENDMODULE.
-```
+**Checkpoint:** Screen 0300 có Tab Strip với 6 tabs + Subscreen Area `SS_TAB`.
 
 ---
 
-## Bước C6: Screen 0400 — Project List (ALV Grid)
+## C9: Subscreens 0310-0360
 
-**Mục tiêu:** ALV Grid hiển thị danh sách Project + toolbar CRUD + Excel Upload.
+> **Tất cả subscreens** phải có Screen Type = **Subscreen**.
 
-Tạo Screen **0400**, Custom Container `CC_PROJECT_LIST`.
+### C9.1: Screen 0310 — Bug Info (Fields + Description Mini Editor)
+
+**Tạo Screen:**
+1. SE80 → Create Screen → **0310**
+2. Short Description: `Bug Info`
+3. Screen Type: **Subscreen**
 
 **Flow Logic:**
 
 ```abap
 PROCESS BEFORE OUTPUT.
-  MODULE status_0400.
-  MODULE init_project_list.
+  MODULE init_desc_mini.
 
 PROCESS AFTER INPUT.
-  MODULE user_command_0400.
 ```
 
-**FORM `select_project_data` (trong `Z_BUG_WS_F01`):**
+> PBO module `init_desc_mini` tạo/load description mini editor.
+
+**Layout — Step by step:**
+
+**Bước 1: Thêm fields từ Dictionary**
+
+1. Mở Layout Editor → click **Dict/Program Fields** (icon book trên toolbar)
+2. Table/Field Name: `GS_BUG_DETAIL` → Get from Program
+3. SAP liệt kê tất cả fields của `gs_bug_detail` (work area TYPE zbug_tracker)
+4. Tick chọn các fields cần hiện:
+   - `BUG_ID`, `TITLE`, `PROJECT_ID`, `STATUS`, `PRIORITY`
+   - `SEVERITY`, `BUG_TYPE`, `SAP_MODULE`
+   - `TESTER_ID`, `DEV_ID`, `VERIFY_TESTER_ID`
+   - `CREATED_AT`
+5. Click **Enter** → SAP tạo labels + input fields → kéo thả sắp xếp
+
+**Bước 2: Thêm display text fields**
+
+1. Dict/Program Fields → Variable: `GV_STATUS_DISP` → Get from Program
+2. Kéo field ra cạnh STATUS field → Set **Input = OFF** (display-only)
+3. Lặp lại cho: `GV_PRIORITY_DISP`, `GV_SEVERITY_DISP`, `GV_BUG_TYPE_DISP`
+
+**Bước 3: Set Screen Groups**
+
+Double-click từng field → tab Attributes → set Group1:
+
+| Field | Group1 | Purpose |
+|-------|--------|---------|
+| `GS_BUG_DETAIL-BUG_ID` | **BID** | Display-only after creation |
+| `GS_BUG_DETAIL-PROJECT_ID` | **PRJ** | Locked when creating from project |
+| `GS_BUG_DETAIL-TITLE` | **EDT** | Editable (disabled in Display mode) |
+| `GS_BUG_DETAIL-STATUS` | **EDT** | Editable |
+| `GS_BUG_DETAIL-PRIORITY` | **EDT** | Editable |
+| `GS_BUG_DETAIL-SEVERITY` | **EDT** | Editable |
+| `GS_BUG_DETAIL-BUG_TYPE` | **EDT** | Editable |
+| `GS_BUG_DETAIL-SAP_MODULE` | **EDT** | Editable |
+| `GS_BUG_DETAIL-TESTER_ID` | **TST** | Only Tester/Manager can edit |
+| `GS_BUG_DETAIL-VERIFY_TESTER_ID` | **TST** | Only Tester/Manager can edit |
+| `GS_BUG_DETAIL-DEV_ID` | **DEV** | Only Dev/Manager can edit |
+| `GS_BUG_DETAIL-CREATED_AT` | — | Always display-only (Input = OFF) |
+| `GV_STATUS_DISP` | — | Always display-only |
+| `GV_PRIORITY_DISP` | — | Always display-only |
+| `GV_SEVERITY_DISP` | — | Always display-only |
+| `GV_BUG_TYPE_DISP` | — | Always display-only |
+
+**Bước 4: Thêm Group Boxes (optional UX)**
+
+1. Menu: Edit → Create Element → Box
+2. Vẽ box quanh nhóm fields → set Text:
+   - **"Bug Information"** — quanh BUG_ID, TITLE, PROJECT_ID, STATUS, PRIORITY
+   - **"Classification"** — quanh SEVERITY, BUG_TYPE, SAP_MODULE
+   - **"Assignment"** — quanh TESTER_ID, DEV_ID, VERIFY_TESTER_ID
+   - **"Description"** — quanh CC_DESC_MINI
+
+**Bước 5: Thêm Description Mini Editor (Custom Control)**
+
+1. Edit → Create Element → Custom Control
+2. Vẽ hình chữ nhật nhỏ (~60 chars wide x 4 lines high) ở phần dưới screen
+3. Name: **`CC_DESC_MINI`**
+
+**Bước 6: Labels**
+
+Rename labels cho rõ ràng:
+- `BUG_ID` → "Bug ID"
+- `TITLE` → "Title *" (required indicator)
+- `PROJECT_ID` → "Project *"
+- `STATUS` → "Status"
+- etc.
+
+Save + Activate Screen 0310.
+
+**Layout Preview (approximate):**
+
+```
+┌─ Bug Information ──────────────────────────────────────────┐
+│ Bug ID:        [__________]                                │
+│ Title *:       [________________________________________]  │
+│ Project *:     [__________________]                        │
+│ Status:        [____] → [New         ] (display)           │
+│ Priority:      [_]   → [Medium      ] (display)           │
+└────────────────────────────────────────────────────────────┘
+┌─ Classification ──────────────────────────────────────────┐
+│ Severity:      [_]   → [Normal      ] (display)           │
+│ Bug Type:      [_]   → [Functional  ] (display)           │
+│ SAP Module:    [__________________]                        │
+└────────────────────────────────────────────────────────────┘
+┌─ Assignment ──────────────────────────────────────────────┐
+│ Tester:        [____________]                              │
+│ Developer:     [____________]                              │
+│ Verify Tester: [____________]                              │
+│ Created Date:  [__________] (display-only)                 │
+└────────────────────────────────────────────────────────────┘
+┌─ Description ─────────────────────────────────────────────┐
+│ ┌──────────────────────────────────────────────────────┐  │
+│ │ (CC_DESC_MINI — cl_gui_textedit, 3-4 lines)         │  │
+│ │                                                      │  │
+│ └──────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### C9.2: Screen 0320 — Description (Long Text Z001)
+
+1. Create Screen **0320**, Type = **Subscreen**
+2. Flow Logic: empty (PBO/PAI trống)
 
 ```abap
-FORM select_project_data.
-  CLEAR gt_projects.
-
-  IF gv_role = 'M'.
-    " Manager thấy tất cả projects
-    SELECT * FROM zbug_project
-      INTO CORRESPONDING FIELDS OF TABLE @gt_projects
-      WHERE is_del <> 'X'.
-  ELSE.
-    " Tester/Dev chỉ thấy projects mình thuộc
-    SELECT p~project_id p~project_name p~description
-           p~start_date p~end_date p~project_manager p~project_status
-      FROM zbug_project AS p
-      INNER JOIN zbug_user_projec AS up
-        ON p~project_id = up~project_id
-      INTO CORRESPONDING FIELDS OF TABLE @gt_projects
-      WHERE up~user_id = @sy-uname
-        AND p~is_del <> 'X'.
-  ENDIF.
-
-  " Map status code → text
-  LOOP AT gt_projects ASSIGNING FIELD-SYMBOL(<prj>).
-    <prj>-status_text = SWITCH #( <prj>-project_status
-      WHEN '1' THEN 'Opening'   WHEN '2' THEN 'InProcess'
-      WHEN '3' THEN 'Done'      WHEN '4' THEN 'Cancel' ).
-  ENDLOOP.
-ENDFORM.
+PROCESS BEFORE OUTPUT.
+PROCESS AFTER INPUT.
 ```
 
-**GUI Status `STATUS_0400`:**
+3. Layout: vẽ Custom Control **`CC_DESC`** chiếm toàn bộ subscreen
+4. Save + Activate
 
-| Button | FCode | Icon | Role |
-| :--- | :--- | :--- | :--- |
-| Create | `CREATE_PRO` | `ICON_CREATE` | M |
-| Change | `CHANGE_PRO` | `ICON_CHANGE` | M |
-| Display | `DISPLAY_PRO` | `ICON_DISPLAY` | All |
-| Delete | `DELETE_PRO` | `ICON_DELETE` | M |
-| Upload | `UPLOAD` | `ICON_IMPORT` | M |
-| Download Template | `DOWNLOAD_TMPL` | `ICON_EXPORT` | M |
-| Refresh | `REFRESH` | `ICON_REFRESH` | All |
-| Back | `BACK` | `ICON_BACK` | All |
+> Long Text editor (cl_gui_textedit) được tạo trong PBO khi tab được click. Xem `load_long_text` trong CODE_PAI.md → call khi user chọn TAB_DESC.
 
 ---
 
-## Bước C7: Screen 0500 — Project Detail
+### C9.3: Screen 0330 — Dev Note (Long Text Z002)
 
-**Mục tiêu:** Form nhập/sửa thông tin Project + bảng user-project.
-
-Tạo Screen **0500**, chứa các fields:
-
-| Screen Element | Field | Type |
-| :--- | :--- | :--- |
-| Input Field | `GS_PROJECT-PROJECT_ID` | CHAR 20 |
-| Input Field | `GS_PROJECT-PROJECT_NAME` | CHAR 100 |
-| Input Field | `GS_PROJECT-DESCRIPTION` | CHAR 255 |
-| Input Field | `GS_PROJECT-START_DATE` | DATS |
-| Input Field | `GS_PROJECT-END_DATE` | DATS |
-| Input Field | `GS_PROJECT-PROJECT_MANAGER` | CHAR 12 |
-| Dropdown | `GS_PROJECT-PROJECT_STATUS` | CHAR 1 |
-| Table Control | `TC_USERS` | User-Project list |
-
-**Cách tạo bảng TC_USERS trong Layout:**
-
-1. Vẽ Table Control, đặt tên `TC_USERS`.
-2. Dùng Dict/Program Fields → nhập bảng `ZBUG_USER_PROJEC` → chọn `USER_ID`, `PROJECT_ID`.
-3. Thả vào bên trong khung bảng. Xong Save & Activate.
+1. Create Screen **0330**, Type = Subscreen
+2. Flow Logic: empty
+3. Layout: Custom Control **`CC_DEV_NOTE`**
+4. Save + Activate
 
 ---
 
-**Flow Logic của Screen 0500 (Tab Flow Logic):**
+### C9.4: Screen 0340 — Tester Note (Long Text Z003)
+
+1. Create Screen **0340**, Type = Subscreen
+2. Flow Logic: empty
+3. Layout: Custom Control **`CC_TSTR_NOTE`**
+4. Save + Activate
+
+---
+
+### C9.5: Screen 0350 — Evidence (GOS)
+
+1. Create Screen **0350**, Type = Subscreen
+2. Flow Logic: empty
+3. Layout: Custom Control **`CC_EVIDENCE`**
+4. Save + Activate
+
+> Phase D: GOS attachment logic sẽ dùng container `CC_EVIDENCE`.
+
+---
+
+### C9.6: Screen 0360 — History (ALV readonly)
+
+1. Create Screen **0360**, Type = Subscreen
+2. Flow Logic: empty
+3. Layout: Custom Control **`CC_HISTORY`** chiếm toàn bộ subscreen
+4. Save + Activate
+
+> History ALV được tạo trong `load_history_data` (CODE_F01.md) khi user click tab History.
+
+---
+
+## C10: Screen 0500 — Project Detail + Table Control
+
+### C10.1: Tạo Screen
+
+1. SE80 → Create Screen → **0500**
+2. Short Description: `Project Detail`
+3. Screen Type: Normal
+4. Next Screen: `0500`
+
+### C10.2: Flow Logic
 
 ```abap
 PROCESS BEFORE OUTPUT.
   MODULE status_0500.
   MODULE init_project_detail.
+  MODULE modify_screen_0500.
   LOOP AT gt_user_project INTO gs_user_project WITH CONTROL tc_users.
   ENDLOOP.
 
@@ -597,868 +595,247 @@ PROCESS AFTER INPUT.
   MODULE user_command_0500.
 ```
 
----
+### C10.3: Layout
 
-**Trong `Z_BUG_WS_PBO` (dán xuống cuối file):**
+**Bước 1: Thêm Project fields**
 
-```abap
-MODULE status_0500 OUTPUT.
-  SET PF-STATUS 'STATUS_0500'.
-  SET TITLEBAR 'TITLE_PRJDET' WITH 'Project Detail'.
-ENDMODULE.
+1. Dict/Program Fields → `GS_PROJECT` → Get from Program
+2. Chọn: `PROJECT_ID`, `PROJECT_NAME`, `DESCRIPTION`, `PROJECT_STATUS`, `START_DATE`, `END_DATE`, `PROJECT_MANAGER`, `NOTE`
+3. Kéo thả sắp xếp thành 2 cột
 
-MODULE init_project_detail OUTPUT.
-  IF gv_mode <> gc_mode_create AND gs_project-project_id IS NOT INITIAL.
-    SELECT * FROM zbug_user_projec
-      INTO TABLE @gt_user_project
-      WHERE project_id = @gs_project-project_id.
-  ENDIF.
-ENDMODULE.
+**Bước 2: Thêm display text cho Project Status**
+
+1. Dict/Program Fields → `GV_PRJ_STATUS_DISP` → Get from Program
+2. Đặt cạnh `GS_PROJECT-PROJECT_STATUS` → Input = OFF (display-only)
+
+**Bước 3: Set Screen Groups**
+
+| Field | Group1 |
+|-------|--------|
+| `GS_PROJECT-PROJECT_ID` | **EDT** |
+| `GS_PROJECT-PROJECT_NAME` | **EDT** |
+| `GS_PROJECT-DESCRIPTION` | **EDT** |
+| `GS_PROJECT-PROJECT_STATUS` | **EDT** |
+| `GS_PROJECT-START_DATE` | **EDT** |
+| `GS_PROJECT-END_DATE` | **EDT** |
+| `GS_PROJECT-PROJECT_MANAGER` | **EDT** |
+| `GS_PROJECT-NOTE` | **EDT** |
+| `GV_PRJ_STATUS_DISP` | — (display-only) |
+
+**Bước 4: Vẽ Table Control**
+
+1. Edit → Create Element → Table Control
+2. Vẽ hình chữ nhật ở phần dưới screen (~50% diện tích)
+3. Name: **`TC_USERS`**
+4. SAP hỏi columns → thêm columns:
+
+| Column | Field Name | Header Text | Width |
+|--------|-----------|-------------|-------|
+| 1 | `GS_USER_PROJECT-USER_ID` | User ID | 12 |
+| 2 | `GS_USER_PROJECT-ROLE` | Role | 5 |
+| 3 | `GS_USER_PROJECT-ERNAM` | Created By | 12 |
+| 4 | `GS_USER_PROJECT-ERDAT` | Created On | 10 |
+
+**Cách thêm columns vào Table Control:**
+
+1. Double-click Table Control `TC_USERS` → Attributes mở ra
+2. Hoặc: click vào bên trong table control → Dict/Program Fields → `GS_USER_PROJECT` → chọn `USER_ID`, `ROLE`, `ERNAM`, `ERDAT` → kéo vào table control
+
+**Bước 5: Labels**
+
+- Add label "Team Members" phía trên Table Control
+- PROJECT_ID → "Project ID *"
+- PROJECT_NAME → "Project Name *"
+
+Save + Activate Screen 0500.
+
+**Layout Preview:**
+
+```
+┌─ Project Information ─────────────────────────────────────┐
+│ Project ID *:  [__________________]                       │
+│ Project Name *:[________________________________________] │
+│ Description:   [________________________________________] │
+│ Status:        [_] → [Opening     ] (display)             │
+│ Start Date:    [__________]   End Date: [__________]      │
+│ Manager:       [____________]                              │
+│ Note:          [________________________________________] │
+└───────────────────────────────────────────────────────────┘
+
+Team Members:
+┌────────────┬──────┬────────────┬──────────┐
+│ User ID    │ Role │ Created By │ Created  │
+├────────────┼──────┼────────────┼──────────┤
+│ DEV-089    │ M    │ DEV-089    │ 09.04.26 │
+│ DEV-061    │ D    │ DEV-089    │ 09.04.26 │
+│ DEV-118    │ T    │ DEV-089    │ 09.04.26 │
+└────────────┴──────┴────────────┴──────────┘
 ```
 
 ---
 
-**Trong `Z_BUG_WS_PAI` (dán xuống cuối file):**
+## C11: Screen 0100 — Hub (DEPRECATED)
 
-```abap
-MODULE user_command_0500 INPUT.
-  gv_save_ok = gv_ok_code.
-  CLEAR gv_ok_code.
-  CASE gv_save_ok.
-    WHEN 'BACK' OR 'CANC'.
-      LEAVE TO SCREEN 0400.
-    WHEN 'SAVE'.
-      PERFORM save_project_detail.
-  ENDCASE.
-ENDMODULE.
+> Screen 0100 **không được sử dụng** trong flow mới. Giữ lại để tránh dump.
 
-MODULE tc_users_modify INPUT.
-  MODIFY gt_user_project FROM gs_user_project
-    INDEX tc_users-current_line.
-ENDMODULE.
-```
+### Tạo Screen (nếu chưa tạo):
 
-**FORM `save_project_detail` (trong `Z_BUG_WS_F01`) — Strict Mode:**
+1. SE80 → Create Screen → **0100**
+2. Short Description: `Hub (DEPRECATED)`
+3. Screen Type: Normal
 
-```abap
-FORM save_project_detail.
-  DATA: lv_uname TYPE sy-uname.
-  lv_uname = sy-uname. " Biến phụ cho Strict Mode
-
-  IF gv_mode = gc_mode_create.
-    gs_project-ernam = lv_uname.
-    gs_project-erdat = sy-datum.
-    gs_project-erzet = sy-uzeit.
-    gs_project-project_status = '1'. " Opening
-    INSERT zbug_project FROM @gs_project.
-  ELSE.
-    gs_project-aenam = lv_uname.
-    gs_project-aedat = sy-datum.
-    gs_project-aezet = sy-uzeit.
-    UPDATE zbug_project FROM @gs_project.
-  ENDIF.
-
-  IF sy-subrc = 0.
-    COMMIT WORK.
-    MESSAGE 'Project saved successfully' TYPE 'S'.
-  ELSE.
-    ROLLBACK WORK.
-    MESSAGE 'Error saving project' TYPE 'E'.
-  ENDIF.
-ENDFORM.
-```
-
----
-
-## Bước C8: GUI Status Creation (SE41)
-
-**Mục tiêu:** Tạo 5 GUI Statuses (thanh nút bấm) cho 5 màn hình.
-
----
-
-### 🛠️ Cách vào SE41
-
-1. Ở màn hình SAP chính, gõ **`SE41`** vào ô lệnh → Enter.
-2. Ô **Program**: Nhập `Z_BUG_WORKSPACE_MP`.
-3. Ô **Status**: Nhập tên status cần tạo (ví dụ `STATUS_0100`).
-4. Nhấn nút **Create (F5)**.
-5. Điền **Short Description** → Nhấn **Enter**.
-6. Màn hình vẽ nút bấm hiện ra. Ní làm theo hướng dẫn từng status bên dưới.
-
----
-
-### 📌 Cách thêm nút bấm trong SE41
-
-- Nhìn vào tab **Function Keys** (Phím chức năng) hoặc **Application Toolbar** (Thanh công cụ ứng dụng).
-- Click vào ô trống trong **Application Toolbar**.
-- Điền: **Function Code** (FCode) và **Icon/Text** → Nhấn **Enter**.
-- Click **Attributes** để thêm Text hiển thị và chọn Icon.
-- Lặp lại cho từng nút.
-
----
-
-### STATUS_0100 — Main Hub
-
-**Short Description:** `Bug Tracking Hub`
-
-**Application Toolbar buttons:**
-
-| STT | Function Code | Text hiển thị | Phím tắt |
-| :--- | :--- | :--- | :--- |
-| 1 | `BUG_LIST` | Bug List | F5 |
-| 2 | `PROJ_LIST` | Project List | F6 |
-
-**Standard Toolbar (tích vào các ô này):**
-
-| Function Code | Mô tả |
-| :--- | :--- |
-| `BACK` | Back |
-| `EXIT` | Exit |
-| `CANC` | Cancel |
-
-Nhấn **Save (Ctrl+S)** → **Activate**.
-
----
-
-### STATUS_0200 — Bug List
-
-**Short Description:** `Bug List Screen`
-
-**Application Toolbar buttons:**
-
-| STT | Function Code | Text | Icon gợi ý |
-| :--- | :--- | :--- | :--- |
-| 1 | `CREATE` | Create Bug | `@01@` |
-| 2 | `CHANGE` | Change | `@02@` |
-| 3 | `DISPLAY` | Display | `@03@` |
-| 4 | `DELETE` | Delete | `@14@` |
-| 5 | *(separator)* | | |
-| 6 | `REFRESH` | Refresh | `@5B@` |
-| 7 | `PRINT` | Print | `@SF@` |
-
-**Standard Toolbar:** Tích `BACK`.
-
-**PBO code cho status_0200 (sửa lại trong `Z_BUG_WS_PBO`):**
-
-```abap
-MODULE status_0200 OUTPUT.
-  DATA: lt_excl TYPE TABLE OF sy-ucomm.
-  " Developer không được tạo bug
-  IF gv_role = 'D'.
-    APPEND 'CREATE' TO lt_excl.
-    APPEND 'DELETE' TO lt_excl.
-  ENDIF.
-  " Tester không được xóa
-  IF gv_role = 'T'.
-    APPEND 'DELETE' TO lt_excl.
-  ENDIF.
-  SET PF-STATUS 'STATUS_0200' EXCLUDING lt_excl.
-  SET TITLEBAR 'TITLE_BUGLIST' WITH 'Bug List'.
-ENDMODULE.
-```
-
----
-
-### STATUS_0300 — Bug Detail
-
-**Short Description:** `Bug Detail Screen`
-
-**Application Toolbar buttons:**
-
-| STT | Function Code | Text |
-| :--- | :--- | :--- |
-| 1 | `SAVE` | Save |
-| 2 | `STATUS_CHG` | Change Status |
-| 3 | *(separator)* | |
-| 4 | `UP_FILE` | Upload Evidence |
-| 5 | `UP_REP` | Upload Report |
-| 6 | `UP_FIX` | Upload Fix |
-
-**Standard Toolbar:** Tích `BACK`.
-
-> ✅ Nút ẩn/hiện theo Role đã có trong `MODULE status_0300 OUTPUT` ở `Z_BUG_WS_PBO`.
-
----
-
-### STATUS_0400 — Project List
-
-**Short Description:** `Project List Screen`
-
-**Application Toolbar buttons:**
-
-| STT | Function Code | Text |
-| :--- | :--- | :--- |
-| 1 | `CREA_PRJ` | Create Project |
-| 2 | `CHNG_PRJ` | Change |
-| 3 | `DISP_PRJ` | Display |
-| 4 | `DEL_PRJ` | Delete |
-| 5 | *(separator)* | |
-| 6 | `UPLOAD` | Upload Excel |
-| 7 | `DN_TMPL` | Download Template |
-| 8 | `REFRESH` | Refresh |
-
-**Standard Toolbar:** Tích `BACK`.
-
-**PBO code (thêm vào `status_0400` trong `Z_BUG_WS_PBO`):**
-
-```abap
-MODULE status_0400 OUTPUT.
-  DATA: lt_excl TYPE TABLE OF sy-ucomm.
-  " Chỉ Manager mới được Create/Change/Delete/Upload
-  IF gv_role <> 'M'.
-    APPEND 'CREA_PRJ' TO lt_excl.
-    APPEND 'CHNG_PRJ' TO lt_excl.
-    APPEND 'DEL_PRJ'  TO lt_excl.
-    APPEND 'UPLOAD'   TO lt_excl.
-    APPEND 'DN_TMPL'  TO lt_excl.
-  ENDIF.
-  SET PF-STATUS 'STATUS_0400' EXCLUDING lt_excl.
-  SET TITLEBAR 'TITLE_PROJLIST' WITH 'Project List'.
-ENDMODULE.
-```
-
----
-
-### STATUS_0500 — Project Detail
-
-**Short Description:** `Project Detail Screen`
-
-**Application Toolbar buttons:**
-
-| STT | Function Code | Text |
-| :--- | :--- | :--- |
-| 1 | `SAVE` | Save |
-| 2 | *(separator)* | |
-| 3 | `ADD_USER` | Add User |
-| 4 | `REMOVE_USER` | Remove User |
-
-**Standard Toolbar:** Tích `BACK`.
-
-**PBO code (thêm vào `status_0500` trong `Z_BUG_WS_PBO`):**
-
-```abap
-MODULE status_0500 OUTPUT.
-  DATA: lt_excl TYPE TABLE OF sy-ucomm.
-  " Chỉ Manager mới được Save/Add/Remove user
-  IF gv_role <> 'M'.
-    APPEND 'SAVE'        TO lt_excl.
-    APPEND 'ADD_USER'    TO lt_excl.
-    APPEND 'REMOVE_USER' TO lt_excl.
-  ENDIF.
-  " Display mode → ẩn Save
-  IF gv_mode = gc_mode_display.
-    APPEND 'SAVE' TO lt_excl.
-  ENDIF.
-  SET PF-STATUS 'STATUS_0500' EXCLUDING lt_excl.
-  SET TITLEBAR 'TITLE_PRJDET' WITH 'Project Detail'.
-ENDMODULE.
-```
-
----
-
-### 🔑 Tạo Title Bars (Cũng trong SE41)
-
-Sau khi tạo xong 5 Status, ní tạo thêm các **Title Bars** bằng cách:
-
-1. Trong SE41, chọn **Object Type: Title**.
-2. Nhập từng tên và nhấn Create:
-
-| Title Name | Text |
-| :--- | :--- |
-| `TITLE_MAIN` | `Bug Tracking Workspace` |
-| `TITLE_BUGLIST` | `Bug List` |
-| `TITLE_BUGDETAIL` | `Bug Detail` |
-| `TITLE_PROJLIST` | `Project List` |
-| `TITLE_PRJDET` | `Project Detail` |
-
----
-
-> ✅ **Checkpoint C8:** 5 GUI Statuses + 5 Titles được tạo → Activate từng cái → Quay lại program Activate toàn bộ.
-
----
-
-## Bước C9: Hoàn thiện Bug Detail & Business Logic
-
-> ✅ **Expected Result sau C9:**
->
-> - Nút **Create** → Mở 0300 trống để nhập Bug mới → Bấm **Save** lưu vào DB
-> - Nút **Change** → Mở 0300 với data Bug đã chọn → Cho phép sửa → Bấm **Save**
-> - Nút **Display** → Mở 0300 với data Bug đã chọn → Chỉ đọc (không cho sửa)
-> - Nút **Delete** → Popup xác nhận → Soft delete (`is_del = 'X'`)
-> - Nút **Change Status** → Popup chọn status mới → Lưu + ghi History
-
----
-
-### C9.1: Lấy dòng được chọn trong ALV (Bug List)
-
-**Vấn đề:** Khi bấm Change/Display, SAP không biết đang chọn Bug nào.
-**Fix:** Dùng method `get_selected_rows` của ALV Grid.
-
-**Thêm vào `user_command_0200` (Z_BUG_WS_PAI):**
-
-```abap
-MODULE user_command_0200 INPUT.
-  gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
-  CASE gv_save_ok.
-    WHEN 'BACK' OR 'CANC'. LEAVE TO SCREEN 0100.
-    WHEN 'CREATE'.
-      CLEAR: gv_current_bug_id, gs_bug_detail.
-      gv_mode = gc_mode_create.
-      gv_active_subscreen = '0310'.
-      CALL SCREEN 0300.
-    WHEN 'CHANGE' OR 'DISPLAY'.
-      PERFORM get_selected_bug CHANGING gv_current_bug_id.
-      IF gv_current_bug_id IS INITIAL.
-        MESSAGE 'Please select a bug first' TYPE 'W'.
-      ELSE.
-        gv_mode = COND #( WHEN gv_save_ok = 'CHANGE' THEN gc_mode_change
-                          ELSE gc_mode_display ).
-        gv_active_subscreen = '0310'.
-        CALL SCREEN 0300.
-      ENDIF.
-    WHEN 'DELETE'.
-      PERFORM get_selected_bug CHANGING gv_current_bug_id.
-      IF gv_current_bug_id IS NOT INITIAL.
-        PERFORM delete_bug.
-      ENDIF.
-    WHEN 'REFRESH'. PERFORM select_bug_data.
-  ENDCASE.
-ENDMODULE.
-```
-
-**FORM `get_selected_bug` (thêm vào Z_BUG_WS_F01):**
-
-```abap
-FORM get_selected_bug CHANGING pv_bug_id TYPE zde_bug_id.
-  CLEAR pv_bug_id.
-  DATA: lt_rows TYPE lvc_t_roid.
-
-  go_alv_bug->get_selected_rows( IMPORTING et_row_no = lt_rows ).
-  IF lt_rows IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  READ TABLE lt_rows INTO DATA(ls_row) INDEX 1.
-  READ TABLE gt_bugs INTO DATA(ls_bug) INDEX ls_row-row_id.
-  IF sy-subrc = 0.
-    pv_bug_id = ls_bug-bug_id.
-  ENDIF.
-ENDFORM.
-```
-
----
-
-### C9.2: Vẽ Screen 0310 — Tab Bug Info
-
-**Vào SE51 → Z_BUG_WORKSPACE_MP → Screen 0310 → Layout Editor → Change**
-
-Vẽ các trường nhập liệu (Label + Input Field):
-
-| Label | Field Name (Dictionary Ref) | Group |
-|:---|:---|:---|
-| Bug ID | `GS_BUG_DETAIL-BUG_ID` | (input=0 khi create vì auto-gen) |
-| Title | `GS_BUG_DETAIL-TITLE` | EDT |
-| Project | `GS_BUG_DETAIL-PROJECT_ID` | EDT |
-| Status | `GS_BUG_DETAIL-STATUS` | EDT |
-| Priority | `GS_BUG_DETAIL-PRIORITY` | EDT |
-| Severity | `GS_BUG_DETAIL-SEVERITY` | EDT |
-| Tester | `GS_BUG_DETAIL-TESTER_ID` | EDT |
-| Developer | `GS_BUG_DETAIL-DEV_ID` | EDT |
-| SAP Module | `GS_BUG_DETAIL-SAP_MODULE` | EDT |
-| Description | `GS_BUG_DETAIL-DESCRIPTION` | EDT |
-
-> ⚠️ Các trường cần set **Group = EDT** để Module `modify_screen_0300` ẩn input khi Display mode.
-
-**Flow Logic Screen 0310 (Subscreen - để trống):**
+### Flow Logic:
 
 ```abap
 PROCESS BEFORE OUTPUT.
+  MODULE status_0100.
+  MODULE init_user_role.
+
 PROCESS AFTER INPUT.
+  MODULE user_command_0100.
 ```
+
+### Layout:
+
+- Trống hoặc 1 text "This screen is deprecated. Use Project List instead."
+- Không cần buttons — PAI chỉ handle BACK/EXIT/CANC → LEAVE PROGRAM
+
+Save + Activate.
 
 ---
 
-### C9.3: FORM `save_bug_detail` (Z_BUG_WS_F01)
+## C12: Deprecate Old Programs
 
-```abap
-FORM save_bug_detail.
-  DATA: lv_un TYPE sy-uname.
-  lv_un = sy-uname.
+Sau khi Module Pool hoạt động, đánh dấu SE38 programs cũ:
 
-  IF gv_mode = gc_mode_create.
-    " Auto-generate Bug ID
-    SELECT MAX( bug_id ) FROM zbug_tracker INTO @DATA(lv_max_id).
-    DATA(lv_num) = COND i( WHEN lv_max_id IS INITIAL THEN 1
-                           ELSE CONV i( lv_max_id+3 ) + 1 ).
-    gs_bug_detail-bug_id = |BUG{ lv_num WIDTH = 7 ALIGN = RIGHT PAD = '0' }|.
-    gs_bug_detail-ernam  = lv_un.
-    gs_bug_detail-erdat  = sy-datum.
-    gs_bug_detail-erzet  = sy-uzeit.
-    gs_bug_detail-status = '1'.  " New
-    INSERT zbug_tracker FROM @gs_bug_detail.
-  ELSE.
-    gs_bug_detail-aenam = lv_un.
-    gs_bug_detail-aedat = sy-datum.
-    gs_bug_detail-aezet = sy-uzeit.
-    UPDATE zbug_tracker FROM @gs_bug_detail.
-  ENDIF.
-
-  IF sy-subrc = 0.
-    COMMIT WORK.
-    MESSAGE |Bug { gs_bug_detail-bug_id } saved successfully| TYPE 'S'.
-    gv_current_bug_id = gs_bug_detail-bug_id.
-    gv_mode = gc_mode_change.  " Switch to Change mode after save
-  ELSE.
-    ROLLBACK WORK.
-    MESSAGE 'Save failed. Please try again.' TYPE 'E'.
-  ENDIF.
-ENDFORM.
-```
-
----
-
-### C9.4: FORM `delete_bug` — Soft Delete (Z_BUG_WS_F01)
-
-```abap
-FORM delete_bug.
-  DATA: lv_confirmed TYPE abap_bool.
-  PERFORM confirm_action USING |Delete Bug { gv_current_bug_id }?|
-                         CHANGING lv_confirmed.
-  IF lv_confirmed = abap_true.
-    DATA: lv_un TYPE sy-uname.
-    lv_un = sy-uname.
-    UPDATE zbug_tracker SET is_del = 'X'
-                            aenam  = @lv_un
-                            aedat  = @sy-datum
-                            aezet  = @sy-uzeit
-      WHERE bug_id = @gv_current_bug_id.
-    IF sy-subrc = 0.
-      COMMIT WORK.
-      MESSAGE |Bug { gv_current_bug_id } deleted| TYPE 'S'.
-      PERFORM select_bug_data.
-    ENDIF.
-  ENDIF.
-ENDFORM.
-
-FORM confirm_action USING pv_text TYPE string
-                    CHANGING pv_confirmed TYPE abap_bool.
-  DATA: lv_answer TYPE char1.
-  CALL FUNCTION 'POPUP_TO_CONFIRM'
-    EXPORTING
-      titlebar              = 'Confirm'
-      text_question         = pv_text
-      text_button_1         = 'Yes'
-      text_button_2         = 'No'
-      default_button        = '2'
-      display_cancel_button = ' '
-    IMPORTING
-      answer                = lv_answer.
-  pv_confirmed = COND #( WHEN lv_answer = '1' THEN abap_true ELSE abap_false ).
-ENDFORM.
-```
-
----
-
-### C9.5: FORM `change_bug_status` (Z_BUG_WS_F01)
-
-```abap
-FORM change_bug_status.
-  " Popup chọn status mới
-  DATA: lt_opts TYPE TABLE OF ty_sel_opts,
-        ls_opt  TYPE ty_sel_opts.
-
-  " ... (Dùng POPUP_GET_VALUES hoặc custom selection screen)
-  " Tạm thời: mở popup đơn giản với CALL FUNCTION 'POPUP_GET_VALUES'
-  DATA: lt_fields TYPE TABLE OF sval,
-        ls_field  TYPE sval.
-
-  ls_field-tabname   = 'ZBUG_TRACKER'.
-  ls_field-fieldname = 'STATUS'.
-  ls_field-fieldtext = 'New Status'.
-  APPEND ls_field TO lt_fields.
-
-  DATA: lv_rc TYPE char1.
-  CALL FUNCTION 'POPUP_GET_VALUES'
-    EXPORTING
-      popup_title = 'Change Bug Status'
-      start_column = 20
-      start_row    = 5
-    IMPORTING
-      returncode   = lv_rc
-    TABLES
-      fields       = lt_fields.
-
-  IF lv_rc <> 'A'.
-    READ TABLE lt_fields INTO ls_field INDEX 1.
-    IF ls_field-value IS NOT INITIAL.
-      DATA: lv_un TYPE sy-uname.
-      lv_un = sy-uname.
-      UPDATE zbug_tracker SET status = @ls_field-value
-                              aenam  = @lv_un
-                              aedat  = @sy-datum
-                              aezet  = @sy-uzeit
-        WHERE bug_id = @gv_current_bug_id.
-      IF sy-subrc = 0.
-        COMMIT WORK.
-        gs_bug_detail-status = ls_field-value.
-        MESSAGE 'Status updated successfully' TYPE 'S'.
-      ENDIF.
-    ENDIF.
-  ENDIF.
-ENDFORM.
-```
-
----
-
-### C9.6: F4 Search Help (Z_BUG_WS_F02)
-
-**FORM `f4_project_id`:**
-
-```abap
-FORM f4_project_id USING pv_field TYPE dynfnam.
-  DATA: lt_return TYPE TABLE OF ddshretval,
-        lt_values TYPE TABLE OF zbug_project.
-
-  SELECT project_id, project_name, project_status
-    FROM zbug_project INTO CORRESPONDING FIELDS OF TABLE @lt_values
-    WHERE is_del <> 'X'.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield    = 'PROJECT_ID'
-      dynpprog    = sy-repid
-      dynpnr      = sy-dynnr
-      dynprofield = pv_field
-      value_org   = 'S'
-    TABLES
-      value_tab   = lt_values
-      return_tab  = lt_return
-    EXCEPTIONS
-      OTHERS      = 1.
-ENDFORM.
-```
-
-**Gọi F4 từ PAI (user_command_0300):**
-
-```abap
-WHEN 'F4_PROJECT'. PERFORM f4_project_id USING 'GS_BUG_DETAIL-PROJECT_ID'.
-```
-
----
-
-### C9.7: History Tab — Screen 0360
-
-**Vào SE51 → Screen 0360 → Layout Editor:** Vẽ 1 Custom Container tên `CC_HISTORY`.
-
-**FORM `load_history_data` (Z_BUG_WS_F01):**
-
-```abap
-FORM load_history_data.
-  CLEAR gt_history.
-  SELECT * FROM zbug_history
-    INTO CORRESPONDING FIELDS OF TABLE @gt_history
-    WHERE bug_id = @gv_current_bug_id
-    ORDER BY changed_at DESCENDING, changed_time DESCENDING.
-
-  LOOP AT gt_history ASSIGNING FIELD-SYMBOL(<h>).
-    <h>-action_text = SWITCH #( <h>-action_type
-      WHEN 'CR' THEN 'Created'     WHEN 'ST' THEN 'Status Change'
-      WHEN 'UP' THEN 'Updated'     WHEN 'AT' THEN 'Attachment'
-      WHEN 'DL' THEN 'Deleted'     WHEN 'RJ' THEN 'Rejected' ).
-  ENDLOOP.
-
-  IF go_alv_history IS INITIAL.
-    CREATE OBJECT go_cont_history EXPORTING container_name = 'CC_HISTORY'.
-    CREATE OBJECT go_alv_history  EXPORTING i_parent = go_cont_history.
-    DATA: lt_fcat TYPE lvc_t_fcat, ls_fcat TYPE lvc_s_fcat.
-    DEFINE add_hfcat.
-      CLEAR ls_fcat.
-      ls_fcat-fieldname = &1. ls_fcat-coltext = &2. ls_fcat-outputlen = &3.
-      APPEND ls_fcat TO lt_fcat.
-    END-OF-DEFINITION.
-    add_hfcat 'CHANGED_AT'   'Date'       10.
-    add_hfcat 'CHANGED_TIME' 'Time'        8.
-    add_hfcat 'CHANGED_BY'   'Changed By' 12.
-    add_hfcat 'ACTION_TEXT'  'Action'     15.
-    add_hfcat 'OLD_VALUE'    'Old Value'  20.
-    add_hfcat 'NEW_VALUE'    'New Value'  20.
-    add_hfcat 'REASON'       'Reason'     40.
-    DATA: ls_layo TYPE lvc_s_layo.
-    ls_layo-zebra = 'X'. ls_layo-cwidth_opt = 'X'.
-    go_alv_history->set_table_for_first_display(
-      EXPORTING is_layout = ls_layo
-      CHANGING it_outtab = gt_history it_fieldcatalog = lt_fcat ).
-  ELSE.
-    go_alv_history->refresh_table_display( ).
-  ENDIF.
-ENDFORM.
-```
-
-> ✅ **Checkpoint C9:** Tất cả nút Create/Change/Display/Delete hoạt động đúng, Bug Detail Form có data, History tab hiện ALV lịch sử.
-
----
-
-### F4 Search Help
-
-**FORM `f4_project_id` (trong `Z_BUG_WS_F02`):**
-
-```abap
-FORM f4_project_id USING pv_field TYPE dynfnam.
-  DATA: lt_return TYPE TABLE OF ddshretval,
-        lt_values TYPE TABLE OF zbug_project.
-
-  SELECT project_id project_name project_status
-    FROM zbug_project INTO CORRESPONDING FIELDS OF TABLE @lt_values
-    WHERE is_del <> 'X'.
-
-  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
-    EXPORTING
-      retfield    = 'PROJECT_ID'
-      dynpprog    = sy-repid
-      dynpnr      = sy-dynnr
-      dynprofield = pv_field
-      value_org   = 'S'
-    TABLES
-      value_tab   = lt_values
-      return_tab  = lt_return
-    EXCEPTIONS
-      OTHERS      = 1.
-ENDFORM.
-```
-
-### History Tab (SubScreen 0360)
-
-**FORM `load_history_data` (trong `Z_BUG_WS_F01`):**
-
-```abap
-FORM load_history_data.
-  CLEAR gt_history.
-
-  SELECT * FROM zbug_history
-    INTO CORRESPONDING FIELDS OF TABLE @gt_history
-    WHERE bug_id = @gv_current_bug_id
-    ORDER BY changed_at DESCENDING, changed_time DESCENDING.
-
-  " Map action_type → text
-  LOOP AT gt_history ASSIGNING FIELD-SYMBOL(<h>).
-    <h>-action_text = SWITCH #( <h>-action_type
-      WHEN 'CR' THEN 'Created'       WHEN 'AS' THEN 'Assigned'
-      WHEN 'RS' THEN 'Reassigned'    WHEN 'ST' THEN 'Status Change'
-      WHEN 'UP' THEN 'Updated'       WHEN 'DL' THEN 'Deleted'
-      WHEN 'AT' THEN 'Attachment'    WHEN 'RJ' THEN 'Rejected' ).
-  ENDLOOP.
-
-  " Hiển thị bằng ALV readonly
-  IF go_alv_history IS INITIAL.
-    CREATE OBJECT go_cont_history EXPORTING container_name = 'CC_HISTORY'.
-    CREATE OBJECT go_alv_history EXPORTING i_parent = go_cont_history.
-
-    DATA: lt_fcat TYPE lvc_t_fcat, ls_fcat TYPE lvc_s_fcat.
-    DEFINE add_hfcat.
-      CLEAR ls_fcat.
-      ls_fcat-fieldname = &1. ls_fcat-coltext = &2. ls_fcat-outputlen = &3.
-      APPEND ls_fcat TO lt_fcat.
-    END-OF-DEFINITION.
-
-    add_hfcat 'CHANGED_AT'   'Date'      10.
-    add_hfcat 'CHANGED_TIME' 'Time'       8.
-    add_hfcat 'CHANGED_BY'   'Changed By' 12.
-    add_hfcat 'ACTION_TEXT'  'Action'     15.
-    add_hfcat 'OLD_VALUE'    'Old Value'  20.
-    add_hfcat 'NEW_VALUE'    'New Value'  20.
-    add_hfcat 'REASON'       'Reason'     40.
-
-    DATA: ls_layout TYPE lvc_s_layo.
-    ls_layout-zebra = 'X'.
-    ls_layout-cwidth_opt = 'X'.
-
-    go_alv_history->set_table_for_first_display(
-      EXPORTING is_layout       = ls_layout
-      CHANGING  it_outtab       = gt_history
-                it_fieldcatalog = lt_fcat ).
-  ELSE.
-    go_alv_history->refresh_table_display( ).
-  ENDIF.
-ENDFORM.
-```
-
----
-
-## Bước C10: POPUP_TO_CONFIRM + ALV Color-Coding
-
-### POPUP_TO_CONFIRM
-
-```abap
-FORM confirm_action USING pv_text TYPE string
-                    CHANGING pv_confirmed TYPE abap_bool.
-  DATA: lv_answer TYPE char1.
-
-  CALL FUNCTION 'POPUP_TO_CONFIRM'
-    EXPORTING
-      titlebar              = 'Confirm'
-      text_question         = pv_text
-      text_button_1         = 'Yes'
-      text_button_2         = 'No'
-      default_button        = '2'
-      display_cancel_button = ' '
-    IMPORTING
-      answer                = lv_answer.
-
-  pv_confirmed = COND #( WHEN lv_answer = '1' THEN abap_true ELSE abap_false ).
-ENDFORM.
-```
-
-### ALV Color-Coding (Status → Row Color)
-
-```abap
-FORM set_bug_colors.
-  LOOP AT gt_bugs ASSIGNING FIELD-SYMBOL(<bug>).
-    DATA: ls_color TYPE lvc_s_scol.
-    CLEAR <bug>-t_color.
-
-    ls_color-fname = 'STATUS_TEXT'.
-    CASE <bug>-status.
-      WHEN '1'. ls_color-color-col = 1. ls_color-color-int = 0. " Blue — New
-      WHEN 'W'. ls_color-color-col = 3. ls_color-color-int = 1. " Yellow — Waiting
-      WHEN '2'. ls_color-color-col = 7. ls_color-color-int = 0. " Orange — Assigned
-      WHEN '3'. ls_color-color-col = 6. ls_color-color-int = 0. " Purple — InProgress
-      WHEN '4'. ls_color-color-col = 3. ls_color-color-int = 0. " Light Yellow — Pending
-      WHEN '5'. ls_color-color-col = 5. ls_color-color-int = 0. " Green — Fixed
-      WHEN '6'. ls_color-color-col = 4. ls_color-color-int = 1. " Light Green — Resolved
-      WHEN '7'. ls_color-color-col = 1. ls_color-color-int = 1. " Grey — Closed
-      WHEN 'R'. ls_color-color-col = 6. ls_color-color-int = 1. " Red — Rejected
-    ENDCASE.
-    APPEND ls_color TO <bug>-t_color.
-  ENDLOOP.
-ENDFORM.
-```
-
----
-
-## Bước C11: Deprecate Old SE38 Programs
-
-**Mục tiêu:** Sau khi Module Pool hoạt động, đánh dấu các SE38 programs cũ là deprecated.
-
-> ⚠️ **KHÔNG XÓA** — chỉ deprecate. Xóa sau khi Phase E testing xác nhận Module Pool ổn định.
-
-### Danh sách programs bị thay thế
-
-| Old Program | Old T-Code | Thay thế bởi | Screen |
-| :--- | :--- | :--- | :--- |
-| `Z_BUG_CREATE_SCREEN` | `ZBUG_CREATE` | Screen 0200 → nút CREATE | 0300 (Create mode) |
-| `Z_BUG_UPDATE_SCREEN` | `ZBUG_UPDATE` | Screen 0300 → nút STATUS_CHG | 0300 (Change mode) |
-| `Z_BUG_REPORT_ALV` | `ZBUG_REPORT` | Screen 0200 (Bug List ALV) | 0200 |
-| `Z_BUG_MANAGER_DASHBOARD` | `ZBUG_MANAGER` | Screen 0100 (Main Hub) | 0100 |
-| `Z_BUG_PRINT` | `ZBUG_PRINT` | Screen 0200 → nút PRINT | 0200 |
-| `Z_BUG_USER_MANAGEMENT` | `ZBUG_USERS` | Screen 0500 (Project Detail + TC_USERS) | 0500 |
-
-### Cách deprecate
-
-1. Mở từng program trong **SE38** → **Attributes** → sửa Title thêm `[DEPRECATED]`
-2. Thêm comment ở đầu mỗi program:
+1. SE38 → mỗi program cũ → Attributes → Title thêm `[DEPRECATED]`
+2. Thêm comment đầu program:
 
 ```abap
 * ============================================
 * [DEPRECATED] — Replaced by Z_BUG_WORKSPACE_MP
 * Use T-code ZBUG_HOME instead.
-* This program will be deleted after go-live.
 * ============================================
 ```
 
-1. Cũng sửa cũ SE38 program `Z_BUG_WORKSPACE` (Phase 2 hub) → `[DEPRECATED]`
+| Old Program | Old T-Code | Replaced by |
+|-------------|-----------|-------------|
+| `Z_BUG_CREATE_SCREEN` | `ZBUG_CREATE` | Screen 0300 (Create mode) |
+| `Z_BUG_UPDATE_SCREEN` | `ZBUG_UPDATE` | Screen 0300 (Change mode) |
+| `Z_BUG_REPORT_ALV` | `ZBUG_REPORT` | Screen 0200 (Bug List ALV) |
+| `Z_BUG_MANAGER_DASHBOARD` | `ZBUG_MANAGER` | Screen 0400 (Project List) |
+| `Z_BUG_PRINT` | `ZBUG_PRINT` | Screen 0200 (Print button) |
 
-### Kế hoạch xóa
-
-- **Phase E testing pass** → xóa T-codes cũ ở SE93 (xem Phase E, Bước E1.2)
-- **Go-live ổn định 1 tuần** → xóa programs cũ và SE93 entries hoàn toàn
-
-> ✅ **Checkpoint:** SE80 → mỗi program cũ có `[DEPRECATED]` trong title.
-
----
-
-## Include F00: Event Handler Class
-
-**Mục tiêu:** Define class xử lý ALV events.
-
-**Trong `Z_BUG_WS_F00`:**
-
-```abap
-*&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F00 — ALV Event Handler Class
-*&---------------------------------------------------------------------*
-
-CLASS lcl_event_handler DEFINITION.
-  PUBLIC SECTION.
-    METHODS:
-      handle_hotspot_click
-        FOR EVENT hotspot_click OF cl_gui_alv_grid
-        IMPORTING e_row_id e_column_id,
-
-      handle_toolbar
-        FOR EVENT toolbar OF cl_gui_alv_grid
-        IMPORTING e_object e_interactive,
-
-      handle_user_command
-        FOR EVENT user_command OF cl_gui_alv_grid
-        IMPORTING e_ucomm.
-ENDCLASS.
-
-CLASS lcl_event_handler IMPLEMENTATION.
-
-  METHOD handle_hotspot_click.
-    " Bug List: click Bug ID → open Bug Detail
-    IF e_column_id-fieldname = 'BUG_ID'.
-      READ TABLE gt_bugs INTO DATA(ls_bug) INDEX e_row_id-index.
-      IF sy-subrc = 0.
-        gv_current_bug_id = ls_bug-bug_id.
-        gv_mode = gc_mode_display.
-        gv_active_subscreen = '0310'.  " Reset to Info tab
-        CALL SCREEN 0300.
-      ENDIF.
-    ENDIF.
-
-    " Project List: click Project ID → open Project Detail
-    IF e_column_id-fieldname = 'PROJECT_ID'.
-      READ TABLE gt_projects INTO DATA(ls_prj) INDEX e_row_id-index.
-      IF sy-subrc = 0.
-        gv_current_project_id = ls_prj-project_id.
-        gv_mode = gc_mode_display.
-        CALL SCREEN 0500.
-      ENDIF.
-    ENDIF.
-  ENDMETHOD.
-
-  METHOD handle_toolbar.
-    " Custom toolbar buttons nếu cần thêm
-  ENDMETHOD.
-
-  METHOD handle_user_command.
-    " Custom ALV toolbar command handling
-  ENDMETHOD.
-
-ENDCLASS.
-```
+> **KHÔNG XÓA** programs cũ — chỉ deprecate. Xóa sau Phase E testing.
 
 ---
 
-## TỔNG KẾT PHASE C
+## C13: Testing Checklist
 
-Sau khi hoàn thành Phase C, bạn phải có:
+### Flow Tests:
 
-- [x] Module Pool `Z_BUG_WORKSPACE_MP` (Type M) + 6 includes
-- [x] Screen `0100` → Router / Main Hub
-- [x] Screen `0200` → Bug List ALV (role-based filter, color-coded status)
-- [x] Screen `0300` → Bug Detail (Tab Strip **6 tabs**: Info, Dev Note, Func Note, Root Cause, Evidence, History)
-- [x] Screen `0400` → Project List ALV (CRUD + Excel buttons)
-- [x] Screen `0500` → Project Detail (form + user table control)
-- [x] 5 GUI Statuses (SE41) với role-based excluding
-- [x] F4 Search Help cho Project, Developer, Module
-- [x] History Tab subscreen `0360` (ALV readonly + action text mapping)
-- [x] `POPUP_TO_CONFIRM` cho delete/close/reject actions
-- [x] ALV color-coding (9 status → 9 colors)
-- [x] Event handler class `LCL_EVENT_HANDLER` (Hotspot click → navigate)
-- [x] Dynamic screen control (`LOOP AT SCREEN` / `MODIFY SCREEN`)
-- [x] Complete `select_bug_data`, `build_bug_fieldcat` FORMs
-- [x] Old SE38 programs deprecated (chưa xóa)
+- [ ] `ZBUG_HOME` → mở Screen 0400 (Project List)
+- [ ] Click project hotspot → mở Screen 0200 (Bug List, all bugs of project)
+- [ ] "My Bugs" button → mở Screen 0200 (filtered by role)
+- [ ] Back từ Bug List → Screen 0400
+- [ ] Back từ Project List → LEAVE PROGRAM
+- [ ] Create Bug (từ project) → Screen 0300 (PROJECT_ID pre-filled + locked)
+- [ ] Create Bug button hidden trong My Bugs mode
+- [ ] Back từ Bug Detail → Screen 0200
 
-👉 **Chuyển sang Phase D: Advanced Features (Excel Upload, Message Class Migration)**
+### CRUD Tests:
+
+- [ ] Create Bug → auto-gen BUG_ID → save → status changes to "Change" mode
+- [ ] BUG_ID display-only after creation
+- [ ] Change Bug → modify fields → Save successful
+- [ ] Display Bug → all fields readonly
+- [ ] Delete Bug → confirm popup → soft delete → ALV refreshes
+- [ ] Create Project (Manager only) → save → success
+- [ ] Add User to Project → popup → save → table control updates
+- [ ] Remove User from Project → confirm → success
+
+### Display Tests:
+
+- [ ] Status shows text (New/Assigned/...) not raw code (1/2/...)
+- [ ] Priority shows text (High/Medium/Low) not raw code (H/M/L)
+- [ ] Severity shows text in ALV (Dump/Critical, Very High, ...)
+- [ ] Bug Type shows text in ALV (Functional, Performance, ...)
+- [ ] Project Status shows text (Opening/In Process/...)
+- [ ] Title bar shows mode: "Create Bug" / "Change Bug: BUG0000001"
+- [ ] ALV rows color-coded by status
+
+### Role Tests:
+
+- [ ] Tester: cannot create bugs, cannot delete bugs
+- [ ] Developer: cannot create bugs, cannot delete bugs, cannot edit Tester fields
+- [ ] Manager: full access
+- [ ] Tester: cannot see Dev-only fields (DEV group disabled)
+- [ ] Non-manager: cannot create/change/delete projects
+
+### Tab Tests:
+
+- [ ] Tab Info → fields + description mini editor visible
+- [ ] Tab Description → long text editor (Z001)
+- [ ] Tab Dev Note → long text editor (Z002)
+- [ ] Tab Tester Note → long text editor (Z003)
+- [ ] Tab Evidence → placeholder (Phase D)
+- [ ] Tab History → ALV with change log
+
+---
+
+## TROUBLESHOOTING
+
+### "Screen field not found" error
+
+**Nguyên nhân:** Layout reference field tên khác với code (vd `GS_BUG_DETAIL-BUG_ID` vs `GS_BUG-BUG_ID`).
+**Fix:** Trong SE51 Layout, double-click field → kiểm tra name khớp chính xác với `GS_BUG_DETAIL-xxx` (global work area).
+
+### "Module xxx not found" error
+
+**Nguyên nhân:** Flow Logic reference module chưa tồn tại trong PBO/PAI include.
+**Fix:** Kiểm tra tên module trong Flow Logic khớp với tên trong `Z_BUG_WS_PBO`/`Z_BUG_WS_PAI`. Module Pool không cho phép typo.
+
+### "Class lcl_event_handler unknown" error
+
+**Nguyên nhân:** Include `Z_BUG_WS_F00` nằm SAU `PBO`/`PAI` trong main program.
+**Fix:** Đảm bảo thứ tự include: TOP → **F00** → PBO → PAI → F01 → F02.
+
+### ALV không hiện data
+
+**Nguyên nhân:** Custom Container name trên screen khác với code.
+**Fix:** Layout có `CC_BUG_LIST` → code có `container_name = 'CC_BUG_LIST'`. Phải khớp chính xác (case-insensitive).
+
+### Tab strip không switch
+
+**Nguyên nhân:** Subscreen Area name không khớp hoặc FCode tab buttons chưa set.
+**Fix:** Double-click mỗi tab button → Attributes → Function Code phải = `TAB_INFO`/`TAB_DESC`/etc.
+
+### Save button không hiện
+
+**Nguyên nhân:** Fcode `SAVE` thiếu trong GUI Status `STATUS_0300`.
+**Fix:** SE41 → `STATUS_0300` → thêm `SAVE` vào Application Toolbar.
+
+---
+
+## TỔNG KẾT PHASE C (v2.0)
+
+Sau khi hoàn thành:
+
+- [x] Program `Z_BUG_WORKSPACE_MP` + 6 includes (code mới v2.0)
+- [x] T-code `ZBUG_HOME` → Screen **0400** (thay vì 0100)
+- [x] Screen 0400 — Project List (initial, ALV, My Bugs button)
+- [x] Screen 0200 — Bug List (dual mode: Project / My Bugs)
+- [x] Screen 0300 — Bug Detail (Tab Strip, 6 subscreens)
+- [x] Subscreen 0310 — Bug Info + Description Mini Editor + Group Boxes
+- [x] Subscreens 0320-0360 — Long Text / Evidence / History
+- [x] Screen 0500 — Project Detail + Table Control (with ROLE column)
+- [x] Screen 0100 — Hub (deprecated, kept for safety)
+- [x] 5 GUI Statuses with correct fcodes (MY_BUGS, REMO_USR, etc.)
+- [x] 5 Title Bars with dynamic `&1` parameter
+- [x] Role-based button exclusion (Manager/Tester/Dev)
+- [x] Screen groups: EDT, BID, PRJ, TST, DEV
+- [x] Display text fields: status/priority/severity/bug_type/project_status
+- [x] ALV: severity_text, bug_type_text columns (raw hidden)
+- [x] Old programs deprecated
+
+**Next:** Phase D — Excel Upload, GOS Attachments, Message Class Migration
