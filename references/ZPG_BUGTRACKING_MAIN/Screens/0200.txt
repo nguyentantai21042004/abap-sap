@@ -1,0 +1,9 @@
+*---------------------*
+PROCESS BEFORE OUTPUT.
+*---------------------*
+  MODULE pbo_01.
+
+*---------------------*
+PROCESS AFTER INPUT.
+*---------------------*
+  MODULE pai_01.

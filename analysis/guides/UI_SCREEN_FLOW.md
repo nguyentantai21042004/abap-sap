@@ -9,7 +9,7 @@
 ## 1. NAVIGATION DIAGRAM
 
 ```
-T-code ZBUG_HOME
+T-code ZBUG_WS
     │
     ▼
 Screen 0400 — PROJECT LIST (initial screen)
@@ -104,7 +104,7 @@ Screen 0400 — PROJECT LIST (initial screen)
 
 Screen 0100 (Homepage/Hub) **không được sử dụng** trong flow mới:
 - Code PBO/PAI vẫn giữ nguyên (không xóa, tránh dump nếu ai đó call)
-- T-code `ZBUG_HOME` trỏ tới Screen **0400** thay vì 0100
+- T-code `ZBUG_WS` trỏ tới Screen **0400** thay vì 0100
 - Không có navigation nào dẫn tới Screen 0100 nữa
 
 ---
@@ -112,7 +112,7 @@ Screen 0100 (Homepage/Hub) **không được sử dụng** trong flow mới:
 ## 5. SCREEN 0400 — PROJECT LIST (NEW INITIAL SCREEN)
 
 ### Vai trò:
-- **Entry point** khi user mở T-code `ZBUG_HOME`
+- **Entry point** khi user mở T-code `ZBUG_WS`
 - Hiển thị danh sách projects user có quyền xem
 - Manager thấy ALL projects; Tester/Dev chỉ thấy projects được assign
 
@@ -214,12 +214,12 @@ Screen 0100 (Homepage/Hub) **không được sử dụng** trong flow mới:
 ## 9. SE93 T-CODE CHANGE
 
 ```
-Before: ZBUG_HOME → Z_BUG_WORKSPACE_MP, Screen 0100
-After:  ZBUG_HOME → Z_BUG_WORKSPACE_MP, Screen 0400
+Before: ZBUG_WS → Z_BUG_WORKSPACE_MP, Screen 0100
+After:  ZBUG_WS → Z_BUG_WORKSPACE_MP, Screen 0400
 ```
 
 **Steps:**
-1. SE93 → Enter `ZBUG_HOME` → Change
+1. SE93 → Enter `ZBUG_WS` → Change
 2. Change "Initial Screen" from `0100` to `0400`
 3. Save + Activate
 

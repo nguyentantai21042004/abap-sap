@@ -26,7 +26,7 @@ Xây dựng 3 bảng + 8 Function Modules + 7 Programs SE38 + 7 T-codes. Các t�
 
 ### Giai đoạn 2: Big Update ✅
 
-Centralized Workspace (`ZBUG_HOME`), 3 evidence paths, Bug Type (Code/Config), Dynamic UI với popup screens. Chi tiết → [update-guidance.md](update-guidance.md)
+Centralized Workspace (`ZBUG_WS`), 3 evidence paths, Bug Type (Code/Config), Dynamic UI với popup screens. Chi tiết → [update-guidance.md](update-guidance.md)
 
 ### Giai đoạn 3: Module Pool Integration 🔄 (HIỆN TẠI)
 

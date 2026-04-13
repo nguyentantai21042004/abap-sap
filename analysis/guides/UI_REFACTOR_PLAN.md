@@ -9,7 +9,7 @@
 ## FLOW CHANGES (Prerequisite — trước tất cả 16 items)
 
 ### F1. Screen 0400 thành Initial Screen
-- **SE93**: Đổi `ZBUG_HOME` initial screen từ `0100` → `0400`
+- **SE93**: Đổi `ZBUG_WS` initial screen từ `0100` → `0400`
 - **CODE_PBO**: Module `init_user_role` gắn vào Screen 0400 PBO (thay vì 0100)
 - **CODE_PAI**: Screen 0400 `BACK/CANC` → `LEAVE PROGRAM` (thay vì `LEAVE TO SCREEN 0100`)
 

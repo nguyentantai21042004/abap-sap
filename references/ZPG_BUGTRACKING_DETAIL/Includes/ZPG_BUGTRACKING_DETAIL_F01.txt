@@ -1,0 +1,730 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPG_BUGTRACKING_DETAIL_F01
+*&---------------------------------------------------------------------*
+
+
+*&---------------------------------------------------------------------*
+*&      Form  SAVE_EDITOR
+*&---------------------------------------------------------------------*
+" text
+" -----------------------------------------------------------------------
+" -->  p1        text
+" <--  p2        text
+" -----------------------------------------------------------------------
+
+FORM save_editor.
+  CLEAR   : text_tab, it_tline.
+
+  REFRESH : text_tab, it_tline.
+
+  gv_editor->get_text_as_r3table( IMPORTING  table  =  ttype
+                                  EXCEPTIONS OTHERS = 1 ).
+
+  CLEAR: can_not_fix.
+  IF gs_bug_row-bug_status = '4' OR gs_bug_row-bug_status = '5'.
+    IF ttype_org = ttype.
+      MESSAGE s052 DISPLAY LIKE 'E'.
+      can_not_fix = abap_true.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  LOOP AT ttype INTO wa_text.
+    MOVE-CORRESPONDING wa_text TO text_tab.
+    APPEND text_tab.
+  ENDLOOP.
+
+  LOOP AT text_tab.
+
+    it_tline-tdline   = text_tab-text.
+    it_tline-tdformat = '/'.
+    AT FIRST. it_tline-tdformat = '*'. ENDAT.
+    APPEND it_tline.
+
+  ENDLOOP.
+
+
+  thead-tdspras  = sy-langu.
+  thead-tdobject = 'BUG_NOTE_1'.
+
+  CASE number.
+
+    WHEN '0310'.
+      thead-tdid     = 'Z002'.
+      w_theadnum     = '011'.
+      thead-tdname   = w_project_id && w_bug_id &&'DEV'.
+    WHEN '0320'.
+
+      thead-tdid     = 'Z003'.
+      w_theadnum     = '012'.
+      thead-tdname   = w_project_id && w_bug_id &&'FUNC'.
+    WHEN '0330'.
+      thead-tdid     = 'Z004'.
+      w_theadnum     = '013'.
+      thead-tdname   = w_project_id && w_bug_id &&'CONF'.
+    WHEN '0340'.
+      thead-tdid     = 'Z001'.
+      w_theadnum     = '014'.
+      thead-tdname   = w_project_id.
+  ENDCASE.
+
+  CALL FUNCTION 'SAVE_TEXT'
+    EXPORTING
+*     client          = sy-mandt
+      header          = thead
+      savemode_direct = 'X'
+    TABLES
+      lines           = it_tline
+    EXCEPTIONS
+      id              = 1
+      language        = 2
+      name            = 3
+      object          = 4
+      OTHERS          = 5.
+
+  IF sy-subrc <> 0.
+
+    MESSAGE ID sy-msgid TYPE 'E' NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form get_project
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+
+FORM get_project.
+  CLEAR gs_project.
+
+  SELECT SINGLE * INTO gs_project
+    FROM ztb_project
+    WHERE project_id = w_project_id.
+
+  IF text_tab IS INITIAL .
+    text_tab = gs_project-note.
+    APPEND text_tab.
+
+    LOOP AT text_tab.
+      APPEND text_tab TO ttype.
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form get_user
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+
+FORM get_user.
+
+  SELECT b~user_id,
+         b~user_name,
+         b~email_address,
+          CASE b~role
+           WHEN '1' THEN 'Developer'
+           WHEN '2' THEN 'Fucntional'
+           WHEN '3' THEN 'Project Manager'
+          END AS role
+    INTO CORRESPONDING FIELDS OF TABLE @it_user_project
+      FROM ztb_user_project AS a
+      INNER JOIN ztb_user_info AS b
+        ON a~user_id = b~user_id
+    WHERE project_id = @w_project_id.
+
+  SORT it_user_project BY user_id.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form get_Bug
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_bug.
+  CLEAR gt_bug.
+
+  " get bug
+  SELECT SINGLE * FROM ztb_buginfo
+    WHERE project_id = @w_project_id
+      AND bug_id     = @w_bug_id
+    INTO @gs_bug_row.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form Create_bug ID
+*&---------------------------------------------------------------------*
+
+FORM create_bug_id .
+  DATA: lv_bugid TYPE ztb_buginfo-bug_id,
+        lv_num   TYPE i.
+
+  SELECT COUNT(*)
+    FROM ztb_buginfo
+    WHERE project_id = @w_project_id
+    INTO @lv_num.
+  lv_num = lv_num + 1.
+  lv_bugid = |{ w_project_id }_{ lv_num }|.
+  w_bug_id = lv_bugid.
+  gs_bug_row-bug_id = lv_bugid.
+  gs_bug_row-project_id = w_project_id.
+  gs_bug_row-bug_status = '1'.
+  gs_bug_row-start_date = sy-datum.
+  CLEAR: lv_num, lv_bugid.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form SAVE_PRJ
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_prj .
+
+  TYPES: BEGIN OF ty_result,
+           project_id TYPE ztb_project-project_id,
+           prjstatus  TYPE ztb_project-project_status,
+           user_name  TYPE ztb_user_project-user_id,
+         END OF ty_result.
+  DATA: lt_result TYPE TABLE OF ty_result,
+        ls_result TYPE ty_result
+        .
+  SELECT a~project_id,
+         a~project_status,
+         b~user_id
+    INTO TABLE @lt_result
+    FROM ztb_project AS a
+    INNER JOIN ztb_user_project AS b
+      ON a~project_id = b~project_id
+    WHERE a~project_id <> @gs_project-project_id
+      AND a~project_status = '2'
+      AND EXISTS (
+        SELECT 1 FROM ztb_user_project AS up
+         WHERE up~project_id = @gs_project-project_id
+           AND up~user_id = b~user_id
+      ).
+*  PERFORM get_delete_bug.
+*  IF gt_delete_bug IS NOT INITIAL.
+*    DELETE ztb_buginfo FROM TABLE gt_delete_bug.
+*    IF sy-subrc = 0.
+*      COMMIT WORK.
+*    ENDIF.
+*  ENDIF.
+
+  PERFORM get_resolve_bug.
+
+  IF lt_result IS NOT INITIAL AND gs_project-project_status = 2.
+    MESSAGE s000 WITH 'Employee cannot do many project at same time' DISPLAY LIKE 'E'.
+    RETURN.
+  ELSEIF gt_resolve_bug IS NOT INITIAL AND gs_project-project_status = 3.
+    MESSAGE s000 WITH 'This project still has unresolved issues.' DISPLAY LIKE 'E'.
+    PERFORM get_project.
+    PERFORM get_user.
+    COMMIT WORK.
+    RETURN.
+  ELSE.
+    PERFORM save_editor.
+    gs_project-note = text_tab.
+    gs_project-aedat = sy-datum.
+    gs_project-aezet = sy-uzeit.
+    gs_project-aenam = sy-uname.
+    MODIFY ztb_project FROM gs_project.
+
+    IF sy-subrc = 0.
+      COMMIT WORK.
+      MESSAGE 'Save Project Successfully' TYPE 'S'.
+    ENDIF.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_resolve_bug
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_resolve_bug .
+  SELECT bug_status
+        INTO TABLE @gt_resolve_bug
+        FROM ztb_buginfo
+        WHERE project_id = @gs_project-project_id
+         AND bug_status <> '7'
+         AND is_del <> 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_delete_bug
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_delete_bug .
+  SELECT *
+        INTO TABLE @gt_delete_bug
+        FROM ztb_buginfo
+        WHERE project_id = @gs_project-project_id
+         AND bug_status = '1'
+         AND is_del = 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form SAVE_BUG
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_bug .
+  IF w_ok = 'X'.
+
+    SELECT SINGLE file_name
+   FROM ztb_evd
+   INTO @DATA(lv_file)
+   WHERE bug_id = @gs_bug_row-bug_id
+    AND cnam = @sy-uname
+    AND file_name LIKE '%BUGPROOF%'.
+
+    IF gs_bug_row-priority IS NOT INITIAL.
+      IF ( gs_bug_row-bug_type = '1' OR gs_bug_row-bug_type = '2'
+        OR gs_bug_row-bug_type = '3' ) AND ( gs_bug_row-priority = '2' OR gs_bug_row-priority = '3' ).
+        "If bug type is Dump or Very High or High. POB must be High!!
+        MESSAGE s047(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    IF lv_file IS INITIAL.
+      MESSAGE s000 WITH 'Upload your BUGPROOF_ file before create, please !!' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+
+    PERFORM save_editor.
+    gs_bug_row-aedat = sy-datum.
+    gs_bug_row-aenam = sy-uname.
+    gs_bug_row-aezet = sy-uzeit.
+    gs_bug_row-ernam = sy-uname.
+    gs_bug_row-erzet = sy-uzeit.
+    MODIFY ztb_buginfo FROM gs_bug_row.
+    COMMIT WORK.
+    IF sy-subrc = 0.
+      MESSAGE s017.
+    ENDIF.
+  ENDIF.
+
+
+  IF w_ok = 'C'.
+
+    IF gs_bug_row-abap_pic IS NOT INITIAL.
+      SELECT SINGLE *
+        FROM ztb_user_info
+        WHERE user_id = @gs_bug_row-abap_pic
+        AND role = '1'
+        INTO @DATA(ls_dev).
+      IF ls_dev IS INITIAL.
+        "Developer does not exist!!
+        MESSAGE s046(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+        CLEAR ls_dev.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    IF gs_bug_row-func_pic IS NOT INITIAL.
+      SELECT SINGLE *
+        FROM ztb_user_info
+        WHERE user_id = @gs_bug_row-func_pic
+        AND role = '2'
+        INTO @DATA(ls_func).
+      IF ls_func IS INITIAL.
+        "Functional does not exist!!
+        MESSAGE s051(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+        CLEAR ls_func.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    CLEAR is_check.
+
+    " When status is in process by Abap, then Developer field is required
+    IF gs_bug_row-bug_status = '2' AND gs_bug_row-abap_pic IS INITIAL.
+      MESSAGE s054(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+
+    " When status is in process by Functional, then Functional field is required
+    IF gs_bug_row-bug_status = '3' AND gs_bug_row-func_pic IS INITIAL.
+      MESSAGE s055(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+
+    " When status is Resolve, then Functional field is required
+    IF gs_bug_row-bug_status = '7' AND gs_bug_row-func_pic IS INITIAL.
+      MESSAGE s055(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+      is_check = abap_true.
+      RETURN.
+    ENDIF.
+
+    IF gs_bug_row-priority IS NOT INITIAL.
+      IF ( gs_bug_row-bug_type = '1' OR gs_bug_row-bug_type = '2'
+        OR gs_bug_row-bug_type = '3' ) AND ( gs_bug_row-priority = '2' OR gs_bug_row-priority = '3' ).
+        "If bug type is Dump or Very High or High. POB must be High!!
+        MESSAGE s047(zmsg_sap09_bugtrack) DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    IF gs_bug_row-bug_status = '6' AND gs_bug_row-abap_pic = sy-uname.
+      SELECT SINGLE file_name
+   FROM ztb_evd
+   INTO @DATA(lv_filedev)
+   WHERE docno NOT LIKE '%1%'
+    AND bug_id = @gs_bug_row-bug_id
+    AND cnam = @sy-uname
+    AND file_name LIKE '%TESTCASE%'.
+
+      IF lv_filedev IS INITIAL.
+        is_check = abap_true.
+        MESSAGE s000 WITH 'Upload your TESTCASE_ file before update, please !!' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+    IF gs_bug_row-bug_status = '7' AND gs_bug_row-func_pic = sy-uname.
+      SELECT SINGLE file_name
+   FROM ztb_evd
+   INTO @DATA(lv_filefunc)
+   WHERE docno NOT LIKE '%1%'
+    AND bug_id = @gs_bug_row-bug_id
+    AND cnam = @sy-uname
+    AND file_name LIKE '%CONFIRM%'.
+
+      IF lv_filefunc IS INITIAL.
+        is_check = abap_true.
+        MESSAGE s000 WITH 'Upload your CONFIRM_ file before update, please !!' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    SELECT SINGLE user_id
+       FROM ztb_user_info
+       INTO @DATA(lv_checkfunc)
+       WHERE user_id = @sy-uname
+         AND role = '2'.
+    IF gs_bug_row-bug_status = '7' AND lv_checkfunc IS INITIAL.
+      MESSAGE s000 WITH 'Just Functionalist can check Resolve' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
+    PERFORM save_editor.
+    IF can_not_fix <> abap_true.
+      gs_bug_row-aedat = sy-datum.
+      gs_bug_row-aezet = sy-uzeit.
+      gs_bug_row-aenam = sy-uname.
+
+      MODIFY ztb_buginfo FROM gs_bug_row.
+      IF sy-subrc = 0.
+        COMMIT WORK.
+        MESSAGE s017.
+      ENDIF.
+    ENDIF.
+
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Module  CHECK_PIC_ABAP  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE check_pic_abap INPUT.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CHECK_PIC_FUNC  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE check_pic_func INPUT.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Form get_user_role
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_user_role .
+  SELECT SINGLE user_id role
+    FROM ztb_user_info
+    INTO CORRESPONDING FIELDS OF gs_user_info
+    WHERE user_id = sy-uname.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_LONGTEXT
+*&---------------------------------------------------------------------*
+" text
+" -----------------------------------------------------------------------
+" -->  p1        text
+" <--  p2        text
+" -----------------------------------------------------------------------
+
+FORM check_longtext.
+
+*  CALL METHOD gv_editor->get_text_as_r3table
+*    IMPORTING
+*      table  = ttype
+*    EXCEPTIONS
+  " OTHERS = 1.
+*
+
+*  IF ttype[] IS INITIAL.
+*    MESSAGE e156.
+*  ENDIF.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  CALL_DMS_MODULE
+*&---------------------------------------------------------------------*
+" text
+" -----------------------------------------------------------------------
+" -->  p1        text
+" <--  p2        text
+" -----------------------------------------------------------------------
+
+FORM call_dms_module.
+  DATA l_prj_id TYPE ztt_evd-project_id.
+  DATA l_bug_id TYPE ztt_evd-bug_id.
+  DATA l_bukrs  TYPE bukrs.
+
+  DATA l_docty  TYPE char02.
+
+  l_prj_id = gs_bug_row-project_id.
+  l_bug_id = gs_bug_row-bug_id.
+  GET PARAMETER ID 'BUK' FIELD l_bukrs.
+
+  IF l_bukrs IS INITIAL.
+    l_bukrs = '1000'.
+
+  ENDIF.
+
+  l_docty = 'CT'.
+
+  CALL FUNCTION 'ZFM_BUGTRACKING_MAINTENANCE'
+    EXPORTING
+      i_imexi  = 'E'
+      i_docty  = l_docty
+      i_prj_id = l_prj_id
+      i_bug_id = l_bug_id
+      i_action = w_ok.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_back
+*&---------------------------------------------------------------------*
+
+FORM check_back .
+  SELECT SINGLE *
+    FROM ztb_buginfo
+    WHERE bug_id = @gs_bug_row-bug_id
+    INTO @DATA(lv_bugcheck).
+  IF w_ok = 'C' AND lv_bugcheck <> gs_bug_row.
+    gv_question = TEXT-q02.
+    PERFORM call_popup_confirm USING gv_question.
+    IF gv_answer = 1.
+      PERFORM save_bug.
+      IF sy-subrc = 0.
+        LEAVE PROGRAM.
+      ENDIF.
+    ELSE.
+      LEAVE PROGRAM.
+    ENDIF.
+    CLEAR: gv_question, gv_answer.
+  ELSEIF  w_ok = 'X' AND lv_bugcheck IS INITIAL.
+    gv_question = TEXT-q02.
+    PERFORM call_popup_confirm USING gv_question.
+    IF gv_answer = 1.
+      PERFORM save_bug.
+      IF sy-subrc = 0.
+        LEAVE PROGRAM.
+      ENDIF.
+    ELSE.
+      PERFORM delete_filecreate.
+      LEAVE PROGRAM.
+    ENDIF.
+    CLEAR: gv_question, gv_answer.
+  ELSE.
+    LEAVE PROGRAM.
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form call_popup_confirm
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM call_popup_confirm USING pv_question TYPE c.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = TEXT-w01 "'Warning Message'
+*     DIAGNOSE_OBJECT       = ' '
+      text_question         = pv_question
+      text_button_1         = TEXT-a01 "confirm
+      text_button_2         = TEXT-a02 "cancel
+      default_button        = '2'
+      display_cancel_button = ''
+    IMPORTING
+      answer                = gv_answer
+    EXCEPTIONS
+      text_not_found        = 1
+      OTHERS                = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_prjstatus
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_prjstatus .
+  PERFORM get_project.
+  IF gs_project-project_status = '3' OR
+     gs_project-project_status = '4'.
+    MESSAGE e000 WITH 'This project status is done or cancel can not create bug ticket'.
+    CALL SCREEN 0100.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_user
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> SAVE_OK
+*&      --> W_OK
+*&---------------------------------------------------------------------*
+FORM check_user  USING    u_save_ok
+                          u_ok.
+*
+*  SELECT SINGLE a~user_id, b~role
+*    INTO @DATA(ls_curuser)
+*    FROM ztb_user_project AS a
+*    LEFT JOIN ztb_user_info AS b
+*    ON a~user_id = b~user_id
+*    WHERE a~user_id = @sy-uname
+*    AND   a~project_id = @w_project_id.
+*
+*  IF sy-subrc <> 0.
+*    MESSAGE e056.
+*  ENDIF.
+*
+*  CASE u_save_ok.
+*
+*    WHEN 'PRO_C'.
+*
+*      IF u_ok = 'C'.
+*        IF ls_curuser-role <> '3'.
+*          MESSAGE e056.
+*        ENDIF.
+*      ENDIF.
+*    WHEN 'ISS_C'.
+*
+*      IF w_ok = 'C'.
+*        IF ls_curuser-role = '3'.
+*          MESSAGE e056.
+*        ENDIF.
+*      ENDIF.             " Change
+*
+*    WHEN 'ISS_X'.
+*
+*      IF w_ok = 'X'.
+*        IF ls_curuser-role <> '2'.
+*          MESSAGE e056.
+*        ENDIF.
+*      ENDIF.            " Create
+*
+*  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form Delete_fileCreate
+*&---------------------------------------------------------------------*
+FORM delete_filecreate .
+
+  DELETE FROM ztb_evd WHERE bug_id = gs_bug_row-bug_id.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form Check_backPrj
+*&---------------------------------------------------------------------*
+FORM check_backprj .
+
+  SELECT SINGLE *
+     FROM ztb_project
+     WHERE project_id = @gs_project-project_id
+     INTO @DATA(lv_prjcheck).
+  IF lv_prjcheck <> gs_project.
+    gv_question = TEXT-q02.
+    PERFORM call_popup_confirm USING gv_question.
+    IF gv_answer = 1.
+      PERFORM save_prj.
+      IF sy-subrc = 0.
+        LEAVE PROGRAM.
+      ENDIF.
+    ELSE.
+      LEAVE PROGRAM.
+    ENDIF.
+    CLEAR: gv_question, gv_answer.
+  ELSE.
+    LEAVE PROGRAM.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form send_mail
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM send_mail .
+  IF ttype_org <> ttype.
+    MESSAGE s000 WITH 'Note issue have not save yet.' DISPLAY LIKE 'E'.
+  ELSEIF ttype_org IS INITIAL.
+    MESSAGE s000 WITH 'Note is initial.' DISPLAY LIKE 'E'.
+    RETURN.
+  ELSE.
+    PERFORM get_user_role.
+    IF gs_user_info-user_id IS NOT INITIAL.
+      SUBMIT zpg_bugtracking_smartforms WITH p_prjid   = w_project_id
+                                        WITH p_bugid   = w_bug_id
+                                        WITH p_sender  = gs_user_info-user_id
+      AND RETURN.
+    ELSE.
+      MESSAGE s000 WITH 'No Sender Found.' DISPLAY LIKE 'E'.
+    ENDIF.
+  ENDIF.
+ENDFORM.

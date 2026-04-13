@@ -1,0 +1,6 @@
+PROCESS BEFORE OUTPUT.
+  MODULE create_editor.
+*
+PROCESS AFTER INPUT.
+  "MODULE exit_command AT EXIT-COMMAND.=> subscreen khong can exit
+  MODULE user_command_0310.

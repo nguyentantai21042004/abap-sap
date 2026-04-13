@@ -1,5 +1,12 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_TOP — Global Declarations
+*& Include Z_BUG_WS_TOP — Global Declarations (v4.0)
+*&---------------------------------------------------------------------*
+*& v4.0 changes (over v3.0):
+*&  - Evidence ALV objects (go_cont_evidence, go_alv_evidence)
+*&  - Evidence field catalog (gt_fcat_evidence)
+*&  - Evidence ALV type (ty_evidence_alv — metadata only, no CONTENT)
+*&  - Evidence internal table (gt_evidence)
+*&  - Snapshot variables (gs_bug_snapshot, gs_prj_snapshot) for unsaved detection
 *&---------------------------------------------------------------------*
 " === FORWARD DECLARATION ===
 CLASS lcl_event_handler DEFINITION DEFERRED.
@@ -31,7 +38,12 @@ DATA: gv_ok_code   TYPE sy-ucomm,
       gv_current_bug_id     TYPE zde_bug_id,
       gv_current_project_id TYPE zde_project_id.
 
-" === BUG LIST FILTER MODE (NEW — Project-first flow) ===
+" === PBO DATA-LOADING FLAGS (v3.0 — prevent reload on tab switch) ===
+" Set to abap_true after first DB load; cleared before each CALL SCREEN
+DATA: gv_detail_loaded     TYPE abap_bool,   " Bug Detail (Screen 0300)
+      gv_prj_detail_loaded TYPE abap_bool.   " Project Detail (Screen 0500)
+
+" === BUG LIST FILTER MODE (Project-first flow) ===
 " 'P' = Project mode (all bugs of a project, no role filter)
 " 'M' = My Bugs mode (cross-project, filtered by role)
 DATA: gv_bug_filter_mode TYPE char1.
@@ -55,6 +67,10 @@ DATA: go_cont_bug     TYPE REF TO cl_gui_custom_container,
       go_cont_history TYPE REF TO cl_gui_custom_container,
       go_alv_history  TYPE REF TO cl_gui_alv_grid.
 
+" === v4.0: EVIDENCE ALV (Subscreen 0350, container CC_EVIDENCE) ===
+DATA: go_cont_evidence TYPE REF TO cl_gui_custom_container,
+      go_alv_evidence  TYPE REF TO cl_gui_alv_grid.
+
 " === TEXT EDIT OBJECTS (subscreens 0320/0330/0340) ===
 DATA: go_cont_desc      TYPE REF TO cl_gui_custom_container,
       go_edit_desc      TYPE REF TO cl_gui_textedit,
@@ -68,9 +84,10 @@ DATA: go_desc_mini_cont TYPE REF TO cl_gui_custom_container,
       go_desc_mini_edit TYPE REF TO cl_gui_textedit.
 
 " === FIELD CATALOGS (Column Definitions) ===
-DATA: gt_fcat_bug     TYPE lvc_t_fcat,
-      gt_fcat_project TYPE lvc_t_fcat,
-      gt_fcat_history TYPE lvc_t_fcat.
+DATA: gt_fcat_bug      TYPE lvc_t_fcat,
+      gt_fcat_project  TYPE lvc_t_fcat,
+      gt_fcat_history  TYPE lvc_t_fcat,
+      gt_fcat_evidence TYPE lvc_t_fcat.    " v4.0
 
 " === INTERNAL TABLES & WORK AREAS ===
 " ALV Bug Data — khớp chính xác với ZBUG_TRACKER fields + display text columns
@@ -83,9 +100,9 @@ TYPES: BEGIN OF ty_bug_alv,
          priority         TYPE zde_priority,       " CHAR 1
          priority_text    TYPE char10,             " Display: High/Medium/Low
          severity         TYPE zde_severity,       " CHAR 1
-         severity_text    TYPE char20,             " Display: Dump/VeryHigh/... (NEW)
+         severity_text    TYPE char20,             " Display: Dump/VeryHigh/...
          bug_type         TYPE zde_bug_type,       " CHAR 1
-         bug_type_text    TYPE char20,             " Display: Functional/Performance/... (NEW)
+         bug_type_text    TYPE char20,             " Display: Functional/Performance/...
          tester_id        TYPE zde_username,        " CHAR 12
          verify_tester_id TYPE zde_username,        " CHAR 12
          dev_id           TYPE zde_username,        " CHAR 12
@@ -96,6 +113,9 @@ TYPES: BEGIN OF ty_bug_alv,
 
 DATA: gt_bugs       TYPE TABLE OF ty_bug_alv,
       gs_bug_detail TYPE zbug_tracker.
+
+" v4.0: Snapshot of bug detail for unsaved changes detection
+DATA: gs_bug_snapshot TYPE zbug_tracker.
 
 " ALV Project Data — khớp với ZBUG_PROJECT fields
 TYPES: BEGIN OF ty_project_alv,
@@ -114,6 +134,9 @@ TYPES: BEGIN OF ty_project_alv,
 DATA: gt_projects TYPE TABLE OF ty_project_alv,
       gs_project  TYPE zbug_project.
 
+" v4.0: Snapshot of project for unsaved changes detection
+DATA: gs_prj_snapshot TYPE zbug_project.
+
 " ALV History Data — khớp với ZBUG_HISTORY fields
 TYPES: BEGIN OF ty_history_alv,
          changed_at   TYPE zde_bug_cr_date,    " DATS 8
@@ -127,6 +150,18 @@ TYPES: BEGIN OF ty_history_alv,
        END OF ty_history_alv.
 
 DATA: gt_history TYPE TABLE OF ty_history_alv.
+
+" v4.0: Evidence ALV Data — metadata only (no CONTENT for performance)
+TYPES: BEGIN OF ty_evidence_alv,
+         evd_id    TYPE numc10,          " Evidence ID
+         file_name TYPE sdok_filnm,      " File name (CHAR 255)
+         mime_type TYPE w3conttype,       " MIME type (CHAR 128)
+         file_size TYPE int4,            " File size in bytes
+         ernam     TYPE ernam,           " Created by
+         erdat     TYPE erdat,           " Created date
+       END OF ty_evidence_alv.
+
+DATA: gt_evidence TYPE TABLE OF ty_evidence_alv.
 
 " === TABLE CONTROL SCREEN 0500 ===
 DATA: gt_user_project TYPE TABLE OF zbug_user_projec,
