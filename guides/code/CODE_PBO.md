@@ -1,21 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_PBO — Presentation Logic (v4.0)
-*&---------------------------------------------------------------------*
-*& v4.0 changes (over v3.0):
-*&  - load_bug_detail: saves snapshot (gs_bug_snapshot) after first load
-*&  - init_project_detail: saves snapshot (gs_prj_snapshot) after first load
-*&  - status_0300: added SENDMAIL, DL_EVD exclusion logic
-*&  - status_0200: added template download button exclusions (DN_TC/DN_CONF/DN_PROOF)
-*&  - init_evidence_alv: NEW module for subscreen 0350
-*&  - modify_screen_0300: added FNC screen group (Tester/Manager-only fields)
-*&
-*& v4.1 BUGFIX changes:
-*&  - load_bug_detail: Create mode sets BUG_ID = '(Auto)' placeholder (Bug #5)
-*&  - modify_screen_0300: BID group → ALWAYS display-only (Bug #5)
-*&  - init_desc_mini: added EXCEPTIONS to set_text_as_r3table (Bug #6)
-*&  - status_0500: exclude ADD_USER/REMO_USR in Create mode (Bug #1)
-*&  - init_project_detail: Create mode sets PROJECT_ID = '(Auto)' (Bug #1)
-*&  - modify_screen_0500: added PID group → always display-only (Bug #1/#3)
+*& Include Z_BUG_WS_PBO — Presentation Logic (PBO modules for all screens)
 *&---------------------------------------------------------------------*
 
 *&--- HUB SCREEN 0100 (DEPRECATED — kept for safety, no navigation leads here) ---*
@@ -24,13 +8,15 @@ MODULE status_0100 OUTPUT.
   SET TITLEBAR 'TITLE_MAIN' WITH 'Bug Tracking Hub'.
 ENDMODULE.
 
-*&--- INIT USER ROLE (runs on initial screen 0400, loaded once) ---*
+*&--- INIT USER ROLE (runs on initial screen 0410, loaded once) ---*
 MODULE init_user_role OUTPUT.
   " Load role once at startup
   CHECK gv_role IS INITIAL.
   gv_uname = sy-uname.
   SELECT SINGLE role FROM zbug_users INTO @gv_role
-    WHERE user_id = @gv_uname AND is_del <> 'X'.
+    WHERE user_id = @gv_uname
+      AND is_del <> 'X'
+      AND is_active = 'X'.
   IF sy-subrc <> 0.
     MESSAGE 'User not registered in Bug Tracking system.' TYPE 'E' DISPLAY LIKE 'I'.
     LEAVE PROGRAM.
@@ -38,7 +24,15 @@ MODULE init_user_role OUTPUT.
 ENDMODULE.
 
 *&=====================================================================*
-*& SCREEN 0200: BUG LIST (dual mode: Project / My Bugs)
+*& SCREEN 0410 — PROJECT SEARCH (initial screen)
+*&=====================================================================*
+MODULE status_0410 OUTPUT.
+  SET PF-STATUS 'STATUS_0410'.
+  SET TITLEBAR 'T_0410'.
+ENDMODULE.
+
+*&=====================================================================*
+*& SCREEN 0200: BUG LIST (dual mode: Project / My Bugs) + Dashboard
 *&=====================================================================*
 MODULE status_0200 OUTPUT.
   CLEAR gm_excl.
@@ -59,7 +53,7 @@ MODULE status_0200 OUTPUT.
     APPEND 'DELETE' TO gm_excl.
   ENDIF.
 
-  " v4.0: Template downloads only for Testers/Managers
+  " Template downloads only for Testers/Managers
   IF gv_role = 'D'.
     APPEND 'DN_TC'    TO gm_excl.    " Download Testcase template
     APPEND 'DN_CONF'  TO gm_excl.    " Download Confirm template
@@ -121,7 +115,7 @@ MODULE status_0300 OUTPUT.
   " Display mode: hide SAVE + upload buttons + email + delete evidence
   IF gv_mode = gc_mode_display.
     APPEND 'SAVE'     TO gm_excl.
-    APPEND 'SENDMAIL' TO gm_excl.    " v4.0
+    APPEND 'SENDMAIL' TO gm_excl.
   ENDIF.
   " Tester cannot upload fix
   IF gv_role = 'T'.
@@ -131,21 +125,21 @@ MODULE status_0300 OUTPUT.
   IF gv_role = 'D'.
     APPEND 'UP_REP' TO gm_excl.
   ENDIF.
-  " Create mode: hide status change + file uploads + email + delete evidence
+  " Create mode: hide status change + some uploads + email + delete evidence
+  " UP_FILE is allowed in create mode (auto-save before upload)
   IF gv_mode = gc_mode_create.
     APPEND 'STATUS_CHG' TO gm_excl.
-    APPEND 'UP_FILE'    TO gm_excl.
     APPEND 'UP_REP'     TO gm_excl.
     APPEND 'UP_FIX'     TO gm_excl.
-    APPEND 'SENDMAIL'   TO gm_excl.    " v4.0: no email for unsaved bug
-    APPEND 'DL_EVD'     TO gm_excl.    " v4.0: no delete evidence before save
+    APPEND 'SENDMAIL'   TO gm_excl.    " No email for unsaved bug
+    APPEND 'DL_EVD'     TO gm_excl.    " No delete evidence before save
   ENDIF.
   " Display mode: hide upload + delete evidence
   IF gv_mode = gc_mode_display.
     APPEND 'UP_FILE' TO gm_excl.
     APPEND 'UP_REP'  TO gm_excl.
     APPEND 'UP_FIX'  TO gm_excl.
-    APPEND 'DL_EVD'  TO gm_excl.       " v4.0
+    APPEND 'DL_EVD'  TO gm_excl.
   ENDIF.
   SET PF-STATUS 'STATUS_0300' EXCLUDING gm_excl.
 
@@ -185,17 +179,20 @@ MODULE load_bug_detail OUTPUT.
   " 5. Create mode: reset work area with defaults
   IF gv_mode = gc_mode_create.
     CLEAR gs_bug_detail.
-    " v4.1 BUGFIX #5: Show placeholder — BUG_ID will be auto-generated on save
+    " Show placeholder — BUG_ID will be auto-generated on save
     gs_bug_detail-bug_id = '(Auto)'.
     " Pre-fill PROJECT_ID from project context (locked on screen)
     IF gv_current_project_id IS NOT INITIAL.
       gs_bug_detail-project_id = gv_current_project_id.
     ENDIF.
-    gs_bug_detail-tester_id = gv_uname.  " Default tester = current user
-    gs_bug_detail-priority  = 'M'.       " Default priority = Medium
+    " Force status=New, pre-fill created_at + tester_id
+    gs_bug_detail-status     = gc_st_new.       " Always '1'
+    gs_bug_detail-tester_id  = gv_uname.        " Default tester = current user
+    gs_bug_detail-created_at = sy-datum.         " Pre-fill created date
+    gs_bug_detail-priority   = 'M'.             " Default priority = Medium
   ENDIF.
 
-  " 6. v4.0: Save snapshot for unsaved changes detection
+  " 6. Save snapshot for unsaved changes detection
   gs_bug_snapshot = gs_bug_detail.
 
   " 7. Mark as loaded — subsequent PBO calls skip DB read
@@ -206,16 +203,18 @@ ENDMODULE.
 *& Separated from load_bug_detail so display texts update after
 *& status change without requiring a DB reload.
 MODULE compute_bug_display_texts OUTPUT.
+  " 10-state status mapping (6=FinalTesting, V=Resolved)
   gv_status_disp = SWITCH #( gs_bug_detail-status
-    WHEN gc_st_new        THEN 'New'
-    WHEN gc_st_assigned   THEN 'Assigned'
-    WHEN gc_st_inprogress THEN 'In Progress'
-    WHEN gc_st_pending    THEN 'Pending'
-    WHEN gc_st_fixed      THEN 'Fixed'
-    WHEN gc_st_resolved   THEN 'Resolved'
-    WHEN gc_st_closed     THEN 'Closed'
-    WHEN gc_st_waiting    THEN 'Waiting'
-    WHEN gc_st_rejected   THEN 'Rejected'
+    WHEN gc_st_new          THEN 'New'
+    WHEN gc_st_assigned     THEN 'Assigned'
+    WHEN gc_st_inprogress   THEN 'In Progress'
+    WHEN gc_st_pending      THEN 'Pending'
+    WHEN gc_st_fixed        THEN 'Fixed'
+    WHEN gc_st_finaltesting THEN 'Final Testing'
+    WHEN gc_st_closed       THEN 'Closed'
+    WHEN gc_st_waiting      THEN 'Waiting'
+    WHEN gc_st_rejected     THEN 'Rejected'
+    WHEN gc_st_resolved     THEN 'Resolved'
     ELSE gs_bug_detail-status ).
 
   gv_priority_disp = SWITCH #( gs_bug_detail-priority
@@ -246,7 +245,8 @@ MODULE modify_screen_0300 OUTPUT.
   LOOP AT SCREEN.
     " Readonly mode: disable all fields with group EDT
     IF screen-group1 = 'EDT'.
-      IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed.
+      IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
+         OR gs_bug_detail-status = gc_st_resolved.
         screen-input = 0.
       ELSE.
         screen-input = 1.
@@ -254,10 +254,23 @@ MODULE modify_screen_0300 OUTPUT.
       MODIFY SCREEN.
     ENDIF.
 
-    " BUG_ID: ALWAYS display-only (auto-generated on save) — v4.1 BUGFIX #5
-    " Previously was editable in Create mode which confused users
+    " BUG_ID: ALWAYS display-only (auto-generated on save)
     IF screen-group1 = 'BID'.
       screen-input = 0.  " Always locked — shows "(Auto)" in Create, real ID after save
+      MODIFY SCREEN.
+    ENDIF.
+
+    " STATUS field — ALWAYS locked (change only via popup Screen 0370)
+    " Screen group STS assigned to STATUS field on Screen 0310
+    IF screen-group1 = 'STS'.
+      screen-input = 0.  " Never editable — use STATUS_CHG button → popup 0370
+      MODIFY SCREEN.
+    ENDIF.
+
+    " CREATED fields — ALWAYS read-only (system-generated)
+    " Assign group CRD in SE51 to: GS_BUG_DETAIL-ERDAT, ERNAM, ERZET
+    IF screen-group1 = 'CRD'.
+      screen-input = 0.
       MODIFY SCREEN.
     ENDIF.
 
@@ -282,14 +295,15 @@ MODULE modify_screen_0300 OUTPUT.
       screen-input = 0. MODIFY SCREEN.
     ENDIF.
 
-    " v4.0: FNC group — fields only Tester/Manager can edit
-    " (BUG_TYPE, PRIORITY, SEVERITY, DEADLINE)
+    " FNC group — fields only Tester/Manager can edit
+    " (BUG_TYPE, PRIORITY, SEVERITY)
     " Developer cannot edit these fields even in Change mode
     IF screen-group1 = 'FNC'.
       IF gv_role = 'D'.
         screen-input = 0. MODIFY SCREEN.
       ENDIF.
-      IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed.
+      IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
+         OR gs_bug_detail-status = gc_st_resolved.
         screen-input = 0. MODIFY SCREEN.
       ENDIF.
     ENDIF.
@@ -302,10 +316,16 @@ ENDMODULE.
 MODULE init_desc_mini OUTPUT.
   " Create mini text editor (3-4 lines) for quick description on Bug Info tab
   IF go_desc_mini_cont IS INITIAL.
-    CREATE OBJECT go_desc_mini_cont EXPORTING container_name = 'CC_DESC_MINI'.
-    CREATE OBJECT go_desc_mini_edit EXPORTING parent = go_desc_mini_cont.
-    go_desc_mini_edit->set_toolbar_mode( cl_gui_textedit=>false ).
-    go_desc_mini_edit->set_statusbar_mode( cl_gui_textedit=>false ).
+    TRY.
+        CREATE OBJECT go_desc_mini_cont EXPORTING container_name = 'CC_DESC_MINI'.
+        CREATE OBJECT go_desc_mini_edit EXPORTING parent = go_desc_mini_cont.
+        go_desc_mini_edit->set_toolbar_mode( cl_gui_textedit=>false ).
+        go_desc_mini_edit->set_statusbar_mode( cl_gui_textedit=>false ).
+      CATCH cx_root.
+        MESSAGE 'Cannot create Mini Description editor. Check Custom Control CC_DESC_MINI on screen 0310.'
+          TYPE 'S' DISPLAY LIKE 'W'.
+        RETURN.
+    ENDTRY.
 
     " Load DESC_TEXT into mini editor — ONLY on first creation
     " (subsequent PBO calls skip this, preserving user edits during tab switch)
@@ -322,77 +342,110 @@ MODULE init_desc_mini OUTPUT.
   ENDIF.
 
   " Readonly mode: set every PBO (may differ between bugs)
-  IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed.
-    go_desc_mini_edit->set_readonly_mode( cl_gui_textedit=>true ).
-  ELSE.
-    go_desc_mini_edit->set_readonly_mode( cl_gui_textedit=>false ).
+  IF go_desc_mini_edit IS NOT INITIAL.
+    IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
+       OR gs_bug_detail-status = gc_st_resolved.
+      go_desc_mini_edit->set_readonly_mode( cl_gui_textedit=>true ).
+    ELSE.
+      go_desc_mini_edit->set_readonly_mode( cl_gui_textedit=>false ).
+    ENDIF.
   ENDIF.
 ENDMODULE.
 
 *&=====================================================================*
 *& SUBSCREEN 0320: Description Long Text (Text ID Z001)
+*& TRY-CATCH for container creation (prevents dump if CC missing)
 *&=====================================================================*
 MODULE init_long_text_desc OUTPUT.
   IF go_cont_desc IS INITIAL.
-    CREATE OBJECT go_cont_desc EXPORTING container_name = 'CC_DESC'.
-    CREATE OBJECT go_edit_desc EXPORTING parent = go_cont_desc.
-    go_edit_desc->set_toolbar_mode( cl_gui_textedit=>false ).
-    go_edit_desc->set_statusbar_mode( cl_gui_textedit=>false ).
+    TRY.
+        CREATE OBJECT go_cont_desc EXPORTING container_name = 'CC_DESC'.
+        CREATE OBJECT go_edit_desc EXPORTING parent = go_cont_desc.
+        go_edit_desc->set_toolbar_mode( cl_gui_textedit=>false ).
+        go_edit_desc->set_statusbar_mode( cl_gui_textedit=>false ).
+      CATCH cx_root.
+        MESSAGE 'Cannot create Description editor. Check Custom Control CC_DESC on screen 0320.'
+          TYPE 'S' DISPLAY LIKE 'W'.
+        RETURN.
+    ENDTRY.
     " Load text from DB on first creation only
     PERFORM load_long_text USING 'Z001'.
   ENDIF.
   " Readonly: set every PBO
-  IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed.
-    go_edit_desc->set_readonly_mode( cl_gui_textedit=>true ).
-  ELSE.
-    go_edit_desc->set_readonly_mode( cl_gui_textedit=>false ).
+  IF go_edit_desc IS NOT INITIAL.
+    IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
+       OR gs_bug_detail-status = gc_st_resolved.
+      go_edit_desc->set_readonly_mode( cl_gui_textedit=>true ).
+    ELSE.
+      go_edit_desc->set_readonly_mode( cl_gui_textedit=>false ).
+    ENDIF.
   ENDIF.
 ENDMODULE.
 
 *&=====================================================================*
 *& SUBSCREEN 0330: Dev Note Long Text (Text ID Z002)
+*& TRY-CATCH for container creation (prevents dump if CC missing)
 *&=====================================================================*
 MODULE init_long_text_devnote OUTPUT.
   IF go_cont_dev_note IS INITIAL.
-    CREATE OBJECT go_cont_dev_note EXPORTING container_name = 'CC_DEVNOTE'.
-    CREATE OBJECT go_edit_dev_note EXPORTING parent = go_cont_dev_note.
-    go_edit_dev_note->set_toolbar_mode( cl_gui_textedit=>false ).
-    go_edit_dev_note->set_statusbar_mode( cl_gui_textedit=>false ).
+    TRY.
+        CREATE OBJECT go_cont_dev_note EXPORTING container_name = 'CC_DEVNOTE'.
+        CREATE OBJECT go_edit_dev_note EXPORTING parent = go_cont_dev_note.
+        go_edit_dev_note->set_toolbar_mode( cl_gui_textedit=>false ).
+        go_edit_dev_note->set_statusbar_mode( cl_gui_textedit=>false ).
+      CATCH cx_root.
+        MESSAGE 'Cannot create Dev Note editor. Check Custom Control CC_DEVNOTE on screen 0330.'
+          TYPE 'S' DISPLAY LIKE 'W'.
+        RETURN.
+    ENDTRY.
     " Load text from DB on first creation only
     PERFORM load_long_text USING 'Z002'.
   ENDIF.
-  " Readonly: Testers cannot edit Dev Notes; also readonly in display/closed
-  IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
-     OR gv_role = 'T'.
-    go_edit_dev_note->set_readonly_mode( cl_gui_textedit=>true ).
-  ELSE.
-    go_edit_dev_note->set_readonly_mode( cl_gui_textedit=>false ).
+  " Readonly: Testers cannot edit Dev Notes; also readonly in display/closed/resolved
+  IF go_edit_dev_note IS NOT INITIAL.
+    IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
+       OR gs_bug_detail-status = gc_st_resolved
+       OR gv_role = 'T'.
+      go_edit_dev_note->set_readonly_mode( cl_gui_textedit=>true ).
+    ELSE.
+      go_edit_dev_note->set_readonly_mode( cl_gui_textedit=>false ).
+    ENDIF.
   ENDIF.
 ENDMODULE.
 
 *&=====================================================================*
 *& SUBSCREEN 0340: Tester Note Long Text (Text ID Z003)
+*& TRY-CATCH for container creation (prevents dump if CC missing)
 *&=====================================================================*
 MODULE init_long_text_tstrnote OUTPUT.
   IF go_cont_tstr_note IS INITIAL.
-    CREATE OBJECT go_cont_tstr_note EXPORTING container_name = 'CC_TSTRNOTE'.
-    CREATE OBJECT go_edit_tstr_note EXPORTING parent = go_cont_tstr_note.
-    go_edit_tstr_note->set_toolbar_mode( cl_gui_textedit=>false ).
-    go_edit_tstr_note->set_statusbar_mode( cl_gui_textedit=>false ).
+    TRY.
+        CREATE OBJECT go_cont_tstr_note EXPORTING container_name = 'CC_TSTRNOTE'.
+        CREATE OBJECT go_edit_tstr_note EXPORTING parent = go_cont_tstr_note.
+        go_edit_tstr_note->set_toolbar_mode( cl_gui_textedit=>false ).
+        go_edit_tstr_note->set_statusbar_mode( cl_gui_textedit=>false ).
+      CATCH cx_root.
+        MESSAGE 'Cannot create Tester Note editor. Check Custom Control CC_TSTRNOTE on screen 0340.'
+          TYPE 'S' DISPLAY LIKE 'W'.
+        RETURN.
+    ENDTRY.
     " Load text from DB on first creation only
     PERFORM load_long_text USING 'Z003'.
   ENDIF.
-  " Readonly: Devs cannot edit Tester Notes; also readonly in display/closed
-  IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
-     OR gv_role = 'D'.
-    go_edit_tstr_note->set_readonly_mode( cl_gui_textedit=>true ).
-  ELSE.
-    go_edit_tstr_note->set_readonly_mode( cl_gui_textedit=>false ).
+  " Readonly: Devs cannot edit Tester Notes; also readonly in display/closed/resolved
+  IF go_edit_tstr_note IS NOT INITIAL.
+    IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
+       OR gs_bug_detail-status = gc_st_resolved
+       OR gv_role = 'D'.
+      go_edit_tstr_note->set_readonly_mode( cl_gui_textedit=>true ).
+    ELSE.
+      go_edit_tstr_note->set_readonly_mode( cl_gui_textedit=>false ).
+    ENDIF.
   ENDIF.
 ENDMODULE.
 
 *&=====================================================================*
-*& v4.0: SUBSCREEN 0350: Evidence ALV (attachment list)
+*& SUBSCREEN 0350: Evidence ALV (attachment list)
 *&=====================================================================*
 MODULE init_evidence_alv OUTPUT.
   " Always reload evidence data (files may have been added/deleted)
@@ -430,7 +483,101 @@ MODULE init_history_alv OUTPUT.
 ENDMODULE.
 
 *&=====================================================================*
-*& SCREEN 0400: PROJECT LIST (INITIAL SCREEN)
+*& SCREEN 0370 — STATUS TRANSITION POPUP
+*&=====================================================================*
+MODULE status_0370 OUTPUT.
+  SET PF-STATUS 'STATUS_0370'.
+  SET TITLEBAR 'T_0370'.
+ENDMODULE.
+
+MODULE init_trans_popup OUTPUT.
+  " 1. Pre-fill read-only fields from current bug detail
+  gv_trans_bug_id     = gs_bug_detail-bug_id.
+  gv_trans_title      = gs_bug_detail-title.
+  gv_trans_reporter   = gs_bug_detail-tester_id.
+  gv_trans_cur_status = gs_bug_detail-status.
+
+  " 2. Compute current status display text
+  gv_trans_cur_st_text = SWITCH #( gs_bug_detail-status
+    WHEN gc_st_new          THEN 'New'
+    WHEN gc_st_assigned     THEN 'Assigned'
+    WHEN gc_st_inprogress   THEN 'In Progress'
+    WHEN gc_st_pending      THEN 'Pending'
+    WHEN gc_st_fixed        THEN 'Fixed'
+    WHEN gc_st_finaltesting THEN 'Final Testing'
+    WHEN gc_st_waiting      THEN 'Waiting'
+    WHEN gc_st_rejected     THEN 'Rejected'
+    WHEN gc_st_resolved     THEN 'Resolved'
+    WHEN gc_st_closed       THEN 'Closed'
+    ELSE gs_bug_detail-status ).
+
+  " 3. Pre-fill existing developer/tester (user may override via F4)
+  gv_trans_dev_id     = gs_bug_detail-dev_id.
+  gv_trans_ftester_id = gs_bug_detail-verify_tester_id.
+
+  " 4. Init text editor for TRANS_NOTE (transition justification / test results)
+  IF go_cont_trans_note IS INITIAL.
+    TRY.
+        CREATE OBJECT go_cont_trans_note EXPORTING container_name = 'CC_TRANS_NOTE'.
+        CREATE OBJECT go_edit_trans_note EXPORTING parent = go_cont_trans_note.
+        go_edit_trans_note->set_toolbar_mode( cl_gui_textedit=>false ).
+        go_edit_trans_note->set_statusbar_mode( cl_gui_textedit=>false ).
+      CATCH cx_root.
+        MESSAGE 'Cannot create Transition Note editor. Check Custom Control CC_TRANS_NOTE on screen 0370.'
+          TYPE 'S' DISPLAY LIKE 'W'.
+    ENDTRY.
+  ENDIF.
+
+  " 5. Enable/Disable fields based on current status + role
+  "    (calls modify_screen_0370 FORM in CODE_F01)
+  PERFORM modify_screen_0370.
+ENDMODULE.
+
+*&=====================================================================*
+*& SCREEN 0210 — BUG SEARCH INPUT (Modal Dialog popup)
+*&=====================================================================*
+MODULE status_0210 OUTPUT.
+  SET PF-STATUS 'STATUS_0210'.
+  SET TITLEBAR 'T_0210'.
+ENDMODULE.
+
+*&=====================================================================*
+*& SCREEN 0220 — BUG SEARCH RESULTS (Full screen ALV)
+*&=====================================================================*
+MODULE status_0220 OUTPUT.
+  SET PF-STATUS 'STATUS_0220'.
+  SET TITLEBAR 'T_0220'.
+ENDMODULE.
+
+MODULE init_search_results OUTPUT.
+  IF go_cont_search IS INITIAL.
+    CREATE OBJECT go_cont_search EXPORTING container_name = 'CC_SEARCH_RESULTS'.
+    CREATE OBJECT go_search_alv  EXPORTING i_parent = go_cont_search.
+    " Use dedicated build_search_fieldcat (tabname GT_SEARCH_RESULTS)
+    PERFORM build_search_fieldcat.
+    DATA: ls_slayo TYPE lvc_s_layo.
+    ls_slayo-zebra      = 'X'.
+    ls_slayo-cwidth_opt = 'X'.
+    ls_slayo-sel_mode   = 'A'.   " Multiple-row selection
+    ls_slayo-ctab_fname = 'T_COLOR'.
+    go_search_alv->set_table_for_first_display(
+      EXPORTING is_layout      = ls_slayo
+      CHANGING  it_outtab      = gt_search_results
+                it_fieldcatalog = gt_fcat_search ).
+    " Register hotspot handler (click BUG_ID → open Bug Detail)
+    IF go_event_handler IS INITIAL.
+      CREATE OBJECT go_event_handler.
+    ENDIF.
+    SET HANDLER go_event_handler->handle_hotspot_click FOR go_search_alv.
+  ELSE.
+    go_search_alv->refresh_table_display( ).
+  ENDIF.
+ENDMODULE.
+
+*&=====================================================================*
+*& SCREEN 0400: PROJECT LIST
+*& No longer initial screen — 0410 is the new initial screen.
+*& Called via CALL SCREEN 0400 from Screen 0410.
 *&=====================================================================*
 MODULE status_0400 OUTPUT.
   CLEAR gm_excl.
@@ -447,7 +594,16 @@ MODULE status_0400 OUTPUT.
 ENDMODULE.
 
 MODULE init_project_list OUTPUT.
-  PERFORM select_project_data.
+  " If coming from Screen 0410 search, data already loaded
+  " (gv_from_search flag set by search_projects FORM in CODE_F01)
+  IF gv_from_search = abap_true.
+    " Skip select_project_data — gt_projects already populated by search_projects
+    CLEAR gv_from_search.
+  ELSE.
+    " Normal reload (BACK from 0200, REFRESH button, etc.)
+    PERFORM select_project_data.
+  ENDIF.
+
   IF go_alv_project IS INITIAL.
     CREATE OBJECT go_cont_project EXPORTING container_name = 'CC_PROJECT_LIST'.
     CREATE OBJECT go_alv_project  EXPORTING i_parent = go_cont_project.
@@ -484,7 +640,7 @@ MODULE status_0500 OUTPUT.
     APPEND 'ADD_USER' TO gm_excl.
     APPEND 'REMO_USR' TO gm_excl.
   ENDIF.
-  " v4.1 BUGFIX #1: Create mode → hide ADD_USER/REMO_USR
+  " Create mode → hide ADD_USER/REMO_USR
   " Project not yet saved → gv_current_project_id is empty → add user would fail
   IF gv_mode = gc_mode_create.
     APPEND 'ADD_USER' TO gm_excl.
@@ -510,6 +666,9 @@ MODULE init_project_detail OUTPUT.
     RETURN.
   ENDIF.
 
+  " Reset table control selection flag on fresh load
+  CLEAR gv_tc_user_selected.
+
   IF gv_mode <> gc_mode_create AND gv_current_project_id IS NOT INITIAL.
     SELECT SINGLE * FROM zbug_project INTO @gs_project
       WHERE project_id = @gv_current_project_id AND is_del <> 'X'.
@@ -519,13 +678,13 @@ MODULE init_project_detail OUTPUT.
 
   IF gv_mode = gc_mode_create.
     CLEAR: gs_project, gt_user_project.
-    " v4.1 BUGFIX #1: Show placeholder — PROJECT_ID will be auto-generated on save
+    " Show placeholder — PROJECT_ID will be auto-generated on save
     gs_project-project_id      = '(Auto)'.
     gs_project-project_manager = gv_uname.  " Default manager = current user
     gs_project-project_status  = '1'.       " Opening
   ENDIF.
 
-  " v4.0: Save snapshot for unsaved changes detection
+  " Save snapshot for unsaved changes detection
   gs_prj_snapshot = gs_project.
 
   gv_prj_detail_loaded = abap_true.
@@ -553,7 +712,7 @@ MODULE modify_screen_0500 OUTPUT.
       MODIFY SCREEN.
     ENDIF.
 
-    " v4.1 BUGFIX #1/#3: PROJECT_ID ALWAYS display-only (primary key, auto-generated)
+    " PROJECT_ID ALWAYS display-only (primary key, auto-generated)
     IF screen-group1 = 'PID'.
       screen-input = 0.
       MODIFY SCREEN.

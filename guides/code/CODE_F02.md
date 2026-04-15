@@ -1,21 +1,12 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F02 — Helpers: F4, Long Text, Template Downloads (v4.0 → v4.1 BUGFIX)
-*&---------------------------------------------------------------------*
-*& v4.0 changes:
-*&  - NEW: f4_date — Calendar popup for date fields (Feature #4)
-*&  - NEW: download_smw0_template — Generic SMW0 download + auto-open (Feature #10)
-*&  - NEW: download_testcase_template  (ZTEMPLATE_TESTCASE)  (Feature #7)
-*&  - NEW: download_confirm_template   (ZTEMPLATE_CONFIRM)   (Feature #7)
-*&  - NEW: download_bugproof_template  (ZTEMPLATE_BUGPROOF)  (Feature #7)
-*&  - ENHANCED: download_project_template — refactored to use generic helper
-*&
-*& v4.1 BUGFIX changes:
-*&  - NEW: f4_project_status — F4 help for project status dropdown (Bug #1)
-*&  - load_long_text: added EXCEPTIONS to set_text_as_r3table (Bug #6)
-*&  - save_long_text: added cl_gui_cfw=>flush() + EXCEPTIONS to get_text_as_r3table (Bug #6)
+*& Include Z_BUG_WS_F02 — Helpers: F4, Long Text, Template Downloads
 *&---------------------------------------------------------------------*
 
-*&=== F4: PROJECT ID ===*
+*&=====================================================================*
+*& F4 VALUE HELPS — Existing
+*&=====================================================================*
+
+*&=== F4: PROJECT ID (for Screen 0300/0500) ===*
 FORM f4_project_id USING pv_fn TYPE dynfnam.
   TYPES: BEGIN OF ty_prj_f4,
            project_id   TYPE zde_project_id,
@@ -72,7 +63,7 @@ FORM f4_user_id USING pv_fn TYPE dynfnam.
       OTHERS          = 1.
 ENDFORM.
 
-*&=== F4: BUG STATUS ===*
+*&=== F4: BUG STATUS (10 states — 6=FinalTesting, V=Resolved) ===*
 FORM f4_status USING pv_fn TYPE dynfnam.
   TYPES: BEGIN OF ty_st_f4,
            code TYPE char2,
@@ -81,15 +72,16 @@ FORM f4_status USING pv_fn TYPE dynfnam.
   DATA: lt_ret TYPE TABLE OF ddshretval,
         lt_val TYPE TABLE OF ty_st_f4.
 
-  APPEND VALUE ty_st_f4( code = '1' text = 'New' )        TO lt_val.
-  APPEND VALUE ty_st_f4( code = '2' text = 'Assigned' )   TO lt_val.
-  APPEND VALUE ty_st_f4( code = '3' text = 'In Progress' ) TO lt_val.
-  APPEND VALUE ty_st_f4( code = '4' text = 'Pending' )    TO lt_val.
-  APPEND VALUE ty_st_f4( code = '5' text = 'Fixed' )      TO lt_val.
-  APPEND VALUE ty_st_f4( code = '6' text = 'Resolved' )   TO lt_val.
-  APPEND VALUE ty_st_f4( code = '7' text = 'Closed' )     TO lt_val.
-  APPEND VALUE ty_st_f4( code = 'W' text = 'Waiting' )    TO lt_val.
-  APPEND VALUE ty_st_f4( code = 'R' text = 'Rejected' )   TO lt_val.
+  APPEND VALUE ty_st_f4( code = '1' text = 'New' )            TO lt_val.
+  APPEND VALUE ty_st_f4( code = '2' text = 'Assigned' )       TO lt_val.
+  APPEND VALUE ty_st_f4( code = '3' text = 'In Progress' )    TO lt_val.
+  APPEND VALUE ty_st_f4( code = '4' text = 'Pending' )        TO lt_val.
+  APPEND VALUE ty_st_f4( code = '5' text = 'Fixed' )          TO lt_val.
+  APPEND VALUE ty_st_f4( code = '6' text = 'Final Testing' )  TO lt_val.
+  APPEND VALUE ty_st_f4( code = '7' text = 'Closed' )         TO lt_val.
+  APPEND VALUE ty_st_f4( code = 'W' text = 'Waiting' )        TO lt_val.
+  APPEND VALUE ty_st_f4( code = 'R' text = 'Rejected' )       TO lt_val.
+  APPEND VALUE ty_st_f4( code = 'V' text = 'Resolved' )       TO lt_val.
 
   CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
     EXPORTING
@@ -190,11 +182,7 @@ FORM f4_severity USING pv_fn TYPE dynfnam.
       OTHERS          = 1.
 ENDFORM.
 
-*&=====================================================================*
-*& v4.1 BUGFIX #1: F4 PROJECT STATUS
-*& Dropdown for project status field on Screen 0500
-*& Called from POV module f4_prj_status → CODE_PAI.md
-*&=====================================================================*
+*&=== F4: PROJECT STATUS (for Screen 0500) ===*
 FORM f4_project_status USING pv_fn TYPE dynfnam.
   TYPES: BEGIN OF ty_pst_f4,
            code TYPE char1,
@@ -223,7 +211,7 @@ FORM f4_project_status USING pv_fn TYPE dynfnam.
 ENDFORM.
 
 *&=====================================================================*
-*& F4 DATE CALENDAR POPUP (v4.0 — Feature #4)
+*& F4 DATE CALENDAR POPUP
 *&
 *& Shows SAP calendar popup and assigns selected date to the
 *& appropriate global structure field based on pv_field_name.
@@ -234,9 +222,6 @@ ENDFORM.
 *&
 *& NOTE: Bug date fields (DEADLINE, START_DATE) do NOT exist in
 *&       ZBUG_TRACKER per SE11. Only project dates are supported.
-*&
-*& Pattern from ZPG_BUGTRACKING_DETAIL (MODULE f4_date / f4_startdate):
-*& Assigns directly to structure field — screen picks up new value on PBO.
 *&=====================================================================*
 FORM f4_date USING pv_field_name TYPE char20.
   DATA: lv_selected_date TYPE dats.
@@ -264,9 +249,233 @@ FORM f4_date USING pv_field_name TYPE char20.
   ENDCASE.
 ENDFORM.
 
+*&=====================================================================*
+*& NEW F4 VALUE HELPS
+*&=====================================================================*
+
+*&=== F4: SAP MODULE (for Screen 0310) ===*
+*& Static list of SAP modules.
+*& Called from PAI MODULE f4_bug_sapmodule → PERFORM f4_sap_module USING ...
+FORM f4_sap_module USING pv_fn TYPE dynfnam.
+  TYPES: BEGIN OF ty_mod_f4,
+           sap_module TYPE zde_sap_module,
+         END OF ty_mod_f4.
+  DATA: lt_ret TYPE TABLE OF ddshretval,
+        lt_val TYPE TABLE OF ty_mod_f4.
+
+  lt_val = VALUE #(
+    ( sap_module = 'FI' )
+    ( sap_module = 'MM' )
+    ( sap_module = 'SD' )
+    ( sap_module = 'ABAP' )
+    ( sap_module = 'BASIS' )
+    ( sap_module = 'PP' )
+    ( sap_module = 'HR' )
+    ( sap_module = 'QM' )
+    ( sap_module = 'CO' )
+    ( sap_module = 'PM' )
+    ( sap_module = 'WM' )
+    ( sap_module = 'PS' ) ).
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'SAP_MODULE'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = pv_fn
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_val
+      return_tab      = lt_ret
+    EXCEPTIONS
+      OTHERS          = 1.
+ENDFORM.
+
+*&=== F4: PROJECT ID HELP (for Screen 0410 search) ===*
+*& Same logic as f4_project_id but separate form name for PAI module clarity.
+*& Called from PAI MODULE f4_project_id → PERFORM f4_project_id_help USING 'S_PRJ_ID'
+FORM f4_project_id_help USING pv_fn TYPE dynfnam.
+  TYPES: BEGIN OF ty_prj_f4,
+           project_id   TYPE zde_project_id,
+           project_name TYPE zde_prj_name,
+         END OF ty_prj_f4.
+  DATA: lt_ret TYPE TABLE OF ddshretval,
+        lt_val TYPE TABLE OF ty_prj_f4.
+
+  SELECT project_id, project_name FROM zbug_project
+    INTO CORRESPONDING FIELDS OF TABLE @lt_val
+    WHERE is_del <> 'X'
+    ORDER BY project_id.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'PROJECT_ID'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = pv_fn
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_val
+      return_tab      = lt_ret
+    EXCEPTIONS
+      OTHERS          = 1.
+ENDFORM.
+
+*&=== F4: MANAGER HELP (for Screen 0410 search) ===*
+*& Filters ZBUG_USERS by role = 'M' (Manager).
+*& Called from PAI MODULE f4_manager → PERFORM f4_manager_help USING 'S_PRJ_MN'
+FORM f4_manager_help USING pv_fn TYPE dynfnam.
+  TYPES: BEGIN OF ty_mgr_f4,
+           user_id   TYPE zde_username,
+           full_name TYPE zde_bug_full_name,
+         END OF ty_mgr_f4.
+  DATA: lt_ret TYPE TABLE OF ddshretval,
+        lt_val TYPE TABLE OF ty_mgr_f4.
+
+  SELECT user_id, full_name FROM zbug_users
+    INTO CORRESPONDING FIELDS OF TABLE @lt_val
+    WHERE role = 'M' AND is_del <> 'X'
+    ORDER BY user_id.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'USER_ID'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = pv_fn
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_val
+      return_tab      = lt_ret
+    EXCEPTIONS
+      OTHERS          = 1.
+ENDFORM.
+
+*&=== F4: PROJECT STATUS HELP (for Screen 0410 search) ===*
+*& Same logic as f4_project_status but separate form name for PAI module clarity.
+*& Called from PAI MODULE f4_project_status → PERFORM f4_project_status_help USING 'S_PRJ_ST'
+FORM f4_project_status_help USING pv_fn TYPE dynfnam.
+  TYPES: BEGIN OF ty_st_f4,
+           status TYPE char1,
+           text   TYPE char20,
+         END OF ty_st_f4.
+  DATA: lt_ret TYPE TABLE OF ddshretval,
+        lt_val TYPE TABLE OF ty_st_f4.
+
+  lt_val = VALUE #(
+    ( status = '1' text = 'Opening' )
+    ( status = '2' text = 'In Process' )
+    ( status = '3' text = 'Done' )
+    ( status = '4' text = 'Cancelled' ) ).
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'STATUS'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = pv_fn
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_val
+      return_tab      = lt_ret
+    EXCEPTIONS
+      OTHERS          = 1.
+ENDFORM.
+
+*&=====================================================================*
+*& F4: TRANSITION STATUS (for Screen 0370 popup)
+*&
+*& Shows ONLY valid target statuses based on current status
+*& (gv_trans_cur_status) + user role (gv_role).
+*& Enforces the transition matrix at the UI level.
+*&
+*& Called from PAI MODULE f4_trans_status_mod → PERFORM f4_trans_status
+*& Note: hardcoded dynprofield = 'GV_TRANS_NEW_STATUS' (Screen 0370)
+*&=====================================================================*
+FORM f4_trans_status.
+  TYPES: BEGIN OF ty_st_f4,
+           status TYPE zde_bug_status,
+           text   TYPE char20,
+         END OF ty_st_f4.
+  DATA: lt_val TYPE TABLE OF ty_st_f4,
+        lt_ret TYPE TABLE OF ddshretval.
+
+  " Build allowed list based on current status + role
+  CASE gv_trans_cur_status.
+    WHEN gc_st_new.        " New → Assigned, Waiting (Manager only)
+      IF gv_role = 'M'.
+        lt_val = VALUE #(
+          ( status = gc_st_assigned text = 'Assigned' )
+          ( status = gc_st_waiting  text = 'Waiting' ) ).
+      ENDIF.
+
+    WHEN gc_st_waiting.    " Waiting → Assigned, FinalTesting (Manager only)
+      IF gv_role = 'M'.
+        lt_val = VALUE #(
+          ( status = gc_st_assigned     text = 'Assigned' )
+          ( status = gc_st_finaltesting text = 'Final Testing' ) ).
+      ENDIF.
+
+    WHEN gc_st_assigned.   " Assigned → InProgress, Rejected (Dev assigned or Manager)
+      IF gv_role = 'M' OR ( gv_role = 'D' AND gs_bug_detail-dev_id = sy-uname ).
+        lt_val = VALUE #(
+          ( status = gc_st_inprogress text = 'In Progress' )
+          ( status = gc_st_rejected   text = 'Rejected' ) ).
+      ENDIF.
+
+    WHEN gc_st_inprogress. " InProgress → Fixed, Pending, Rejected (Dev assigned or Manager)
+      IF gv_role = 'M' OR ( gv_role = 'D' AND gs_bug_detail-dev_id = sy-uname ).
+        lt_val = VALUE #(
+          ( status = gc_st_fixed    text = 'Fixed' )
+          ( status = gc_st_pending  text = 'Pending' )
+          ( status = gc_st_rejected text = 'Rejected' ) ).
+      ENDIF.
+
+    WHEN gc_st_pending.    " Pending → Assigned (Manager only)
+      IF gv_role = 'M'.
+        lt_val = VALUE #(
+          ( status = gc_st_assigned text = 'Assigned' ) ).
+      ENDIF.
+
+    WHEN gc_st_finaltesting. " FinalTesting → Resolved, InProgress (FinalTester or Manager)
+      IF gs_bug_detail-verify_tester_id = sy-uname OR gv_role = 'M'.
+        lt_val = VALUE #(
+          ( status = gc_st_resolved   text = 'Resolved' )
+          ( status = gc_st_inprogress text = 'In Progress' ) ).
+      ENDIF.
+
+    " Fixed(5), Resolved(V), Closed(7), Rejected(R) → terminal/automatic, no manual transitions
+  ENDCASE.
+
+  IF lt_val IS INITIAL.
+    MESSAGE 'No valid transitions available for your role.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'STATUS'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = 'GV_TRANS_NEW_STATUS'
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_val
+      return_tab      = lt_ret
+    EXCEPTIONS
+      OTHERS          = 1.
+ENDFORM.
+
+*&=====================================================================*
+*& LONG TEXT OPERATIONS
+*&=====================================================================*
+
 *&=== LONG TEXT: LOAD (Text Object ZBUG) ===*
-" pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
-" Editor is resolved internally from global objects (go_edit_desc/dev_note/tstr_note)
+*& pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
+*& Editor is resolved internally from global objects (go_edit_desc/dev_note/tstr_note)
+*&
+*& Explicit lv_tdname TYPE tdobname cast to prevent CALL_FUNCTION_CONFLICT_TYPE:
+*& gv_current_bug_id is CHAR 10, but READ_TEXT NAME expects TDOBNAME = CHAR 70.
 FORM load_long_text USING pv_text_id TYPE thead-tdid.
   CHECK gv_current_bug_id IS NOT INITIAL.
 
@@ -282,11 +491,15 @@ FORM load_long_text USING pv_text_id TYPE thead-tdid.
   DATA: lt_lines TYPE TABLE OF tline,
         ls_line  TYPE tline.
 
+  " Explicit type cast CHAR 10 → CHAR 70 (tdobname)
+  DATA: lv_tdname TYPE tdobname.
+  lv_tdname = gv_current_bug_id.
+
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
       id       = pv_text_id
       language = sy-langu
-      name     = gv_current_bug_id
+      name     = lv_tdname
       object   = 'ZBUG'
     TABLES
       lines    = lt_lines
@@ -307,8 +520,10 @@ FORM load_long_text USING pv_text_id TYPE thead-tdid.
 ENDFORM.
 
 *&=== LONG TEXT: SAVE (Text Object ZBUG) ===*
-" pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
-" Editor is resolved internally. Caller must set gv_current_bug_id before calling.
+*& pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
+*& Editor is resolved internally. Caller must set gv_current_bug_id before calling.
+*&
+*& Explicit lv_tdname TYPE tdobname cast for SAVE_TEXT (same reason as load_long_text).
 FORM save_long_text USING pv_text_id TYPE thead-tdid.
   CHECK gv_current_bug_id IS NOT INITIAL.
 
@@ -325,7 +540,7 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
         lt_lines TYPE TABLE OF tline,
         ls_line  TYPE tline.
 
-  " v4.1 BUGFIX #6: Flush GUI before reading text to prevent POTENTIAL_DATA_LOSS
+  " Flush GUI before reading text to prevent POTENTIAL_DATA_LOSS
   cl_gui_cfw=>flush( ).
 
   lr_editor->get_text_as_r3table(
@@ -344,9 +559,13 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
     APPEND ls_line TO lt_lines.
   ENDLOOP.
 
+  " Explicit type cast CHAR 10 → CHAR 70 (tdobname)
+  DATA: lv_tdname TYPE tdobname.
+  lv_tdname = gv_current_bug_id.
+
   DATA: ls_header TYPE thead.
   ls_header-tdobject = 'ZBUG'.
-  ls_header-tdname   = gv_current_bug_id.
+  ls_header-tdname   = lv_tdname.
   ls_header-tdid     = pv_text_id.
   ls_header-tdspras  = sy-langu.
 
@@ -361,26 +580,70 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
 ENDFORM.
 
 *&=====================================================================*
-*& GENERIC SMW0 TEMPLATE DOWNLOAD + AUTO-OPEN (v4.0 — Features #7, #10)
+*& LONG TEXT: SAVE DIRECT (from table param, no editor)
+*&
+*& Used by apply_status_transition to save transition note text directly
+*& from a char255 table (e.g., text read from go_edit_trans_note popup).
+*& The existing save_long_text reads from go_edit_desc/dev_note/tstr_note
+*& which may not exist when the popup is active.
+*&
+*& Parameters:
+*&   pv_text_id — Text ID (Z001/Z002/Z003)
+*&   pt_text    — Text content as table of char255
+*&=====================================================================*
+FORM save_long_text_direct USING pv_text_id TYPE thead-tdid
+                                 pt_text    TYPE gty_t_char255.
+  CHECK gv_current_bug_id IS NOT INITIAL.
+  CHECK pt_text IS NOT INITIAL.
+
+  DATA: lt_lines TYPE TABLE OF tline,
+        ls_line  TYPE tline.
+
+  LOOP AT pt_text INTO DATA(lv_line).
+    CLEAR ls_line.
+    ls_line-tdformat = '*'.
+    ls_line-tdline   = lv_line.
+    APPEND ls_line TO lt_lines.
+  ENDLOOP.
+
+  " Explicit type cast CHAR 10 → CHAR 70 (tdobname)
+  DATA: lv_tdname TYPE tdobname.
+  lv_tdname = gv_current_bug_id.
+
+  DATA: ls_header TYPE thead.
+  ls_header-tdobject = 'ZBUG'.
+  ls_header-tdname   = lv_tdname.
+  ls_header-tdid     = pv_text_id.
+  ls_header-tdspras  = sy-langu.
+
+  CALL FUNCTION 'SAVE_TEXT'
+    EXPORTING
+      header          = ls_header
+    TABLES
+      lines           = lt_lines
+    EXCEPTIONS
+      OTHERS          = 4.
+ENDFORM.
+
+*&=====================================================================*
+*& GENERIC SMW0 TEMPLATE DOWNLOAD + AUTO-OPEN
 *&
 *& Downloads a binary template from SMW0 (MIME Repository) to local PC
 *& and auto-opens it in the default application (e.g., Excel).
 *&
-*& Pattern from reference program ZPG_BUGTRACKING_MAIN (FORM excute_download):
-*& 1. Check template exists in WWWDATA table
-*& 2. Read file extension + size from WWWPARAMS table
-*& 3. WWWDATA_IMPORT to load binary content into memory
-*& 4. file_save_dialog for user to pick save location
-*& 5. GUI_DOWNLOAD in BIN mode with exact bin_filesize
-*& 6. cl_gui_frontend_services=>execute to auto-open
+*& 2nd parameter pv_default_name — if provided, overrides the display
+*& name from WWWDATA as the default download filename.
+*& This allows custom filenames like 'Bug_report.xlsx' regardless of
+*& what the SMW0 object's text field contains.
 *&
-*& SMW0 Object IDs used:
-*&   ZTEMPLATE_PROJECT  — Project upload template
-*&   ZTEMPLATE_TESTCASE — Test case template (required before Resolved)
-*&   ZTEMPLATE_CONFIRM  — Confirm template (required before Closed)
-*&   ZTEMPLATE_BUGPROOF — Bug proof template (required before Fixed)
+*& SMW0 Object IDs:
+*&   ZTEMPLATE_PROJECT — Project upload template
+*&   ZBT_TMPL_01      — Bug report template (Bug_report.xlsx)
+*&   ZBT_TMPL_02      — Fix report template (fix_report.xlsx)
+*&   ZBT_TMPL_03      — Confirm report template (confirm_report.xlsx)
 *&=====================================================================*
-FORM download_smw0_template USING pv_objid TYPE wwwdatatab-objid.
+FORM download_smw0_template USING pv_objid        TYPE wwwdatatab-objid
+                                  pv_default_name TYPE string.
   DATA: ls_wdata    TYPE wwwdatatab,
         lv_filename TYPE string,
         lv_ext      TYPE string,
@@ -403,13 +666,14 @@ FORM download_smw0_template USING pv_objid TYPE wwwdatatab-objid.
     RETURN.
   ENDIF.
 
-  " 2. Get file metadata from WWWPARAMS
-  "    - text field from WWWDATA = display name (used as default filename)
-  "    - 'fileextension' param  = original file extension
-  "    - 'filesize' param       = exact byte size (critical for BIN download)
-  lv_filename = ls_wdata-text.
-  IF lv_filename IS INITIAL.
-    lv_filename = pv_objid.
+  " 2. Get file metadata — use pv_default_name if provided, else fall back to WWWDATA text
+  IF pv_default_name IS NOT INITIAL.
+    lv_filename = pv_default_name.
+  ELSE.
+    lv_filename = ls_wdata-text.
+    IF lv_filename IS INITIAL.
+      lv_filename = pv_objid.
+    ENDIF.
   ENDIF.
 
   SELECT SINGLE value INTO lv_ext
@@ -480,7 +744,7 @@ FORM download_smw0_template USING pv_objid TYPE wwwdatatab-objid.
     RETURN.
   ENDIF.
 
-  " 6. Auto-open the downloaded file in default app (Feature #10)
+  " 6. Auto-open the downloaded file in default app
   cl_gui_frontend_services=>execute(
     EXPORTING
       document               = lv_fullpath
@@ -500,39 +764,34 @@ FORM download_smw0_template USING pv_objid TYPE wwwdatatab-objid.
   MESSAGE 'Template downloaded successfully.' TYPE 'S'.
 ENDFORM.
 
+*&=====================================================================*
+*& TEMPLATE DOWNLOAD WRAPPERS
+*&=====================================================================*
+
 *&=== DOWNLOAD PROJECT TEMPLATE ===*
 *& Wrapper: downloads ZTEMPLATE_PROJECT from SMW0
 *& Called from PAI fcode DN_TMPL on Screen 0400
 FORM download_project_template.
-  PERFORM download_smw0_template USING 'ZTEMPLATE_PROJECT'.
+  PERFORM download_smw0_template USING 'ZTEMPLATE_PROJECT' 'Project_template.xlsx'.
 ENDFORM.
 
-*&=====================================================================*
-*& DOWNLOAD TESTCASE TEMPLATE (v4.0 — Feature #7)
-*& Wrapper: downloads ZTEMPLATE_TESTCASE from SMW0
+*&=== DOWNLOAD BUG REPORT TEMPLATE ===*
+*& Wrapper: downloads ZBT_TMPL_01 from SMW0 as 'Bug_report.xlsx'
 *& Called from PAI fcode DN_TC on Screen 0200
-*& User must upload this template to SMW0 (Binary, relid = MI)
-*&=====================================================================*
-FORM download_testcase_template.
-  PERFORM download_smw0_template USING 'ZTEMPLATE_TESTCASE'.
+FORM download_bug_report_template.
+  PERFORM download_smw0_template USING 'ZBT_TMPL_01' 'Bug_report.xlsx'.
 ENDFORM.
 
-*&=====================================================================*
-*& DOWNLOAD CONFIRM TEMPLATE (v4.0 — Feature #7)
-*& Wrapper: downloads ZTEMPLATE_CONFIRM from SMW0
-*& Called from PAI fcode DN_CONF on Screen 0200
-*& User must upload this template to SMW0 (Binary, relid = MI)
-*&=====================================================================*
-FORM download_confirm_template.
-  PERFORM download_smw0_template USING 'ZTEMPLATE_CONFIRM'.
-ENDFORM.
-
-*&=====================================================================*
-*& DOWNLOAD BUGPROOF TEMPLATE (v4.0 — Feature #7)
-*& Wrapper: downloads ZTEMPLATE_BUGPROOF from SMW0
+*&=== DOWNLOAD FIX REPORT TEMPLATE ===*
+*& Wrapper: downloads ZBT_TMPL_02 from SMW0 as 'fix_report.xlsx'
 *& Called from PAI fcode DN_PROOF on Screen 0200
-*& User must upload this template to SMW0 (Binary, relid = MI)
-*&=====================================================================*
-FORM download_bugproof_template.
-  PERFORM download_smw0_template USING 'ZTEMPLATE_BUGPROOF'.
+FORM download_fix_report_template.
+  PERFORM download_smw0_template USING 'ZBT_TMPL_02' 'fix_report.xlsx'.
+ENDFORM.
+
+*&=== DOWNLOAD CONFIRM REPORT TEMPLATE ===*
+*& Wrapper: downloads ZBT_TMPL_03 from SMW0 as 'confirm_report.xlsx'
+*& Called from PAI fcode DN_CONF on Screen 0200
+FORM dl_confirm_report_tmpl.
+  PERFORM download_smw0_template USING 'ZBT_TMPL_03' 'confirm_report.xlsx'.
 ENDFORM.

@@ -1,15 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_PAI — User Action Logic (v4.0 → v4.1 BUGFIX)
-*&---------------------------------------------------------------------*
-*& v4.0 changes (over v3.0):
-*&  - user_command_0300: added DL_EVD (delete evidence), SENDMAIL handlers
-*&  - user_command_0300: added unsaved changes check before BACK/CANC
-*&  - user_command_0500: added unsaved changes check before BACK/CANC
-*&  - user_command_0200: added DN_TC, DN_CONF, DN_PROOF (template downloads)
-*&
-*& v4.1 BUGFIX changes:
-*&  - Added 8 POV modules for Screen 0310 F4 help (Bug #5)
-*&  - Added 2 POV modules for Screen 0500: project_status, project_manager (Bug #1)
+*& Include Z_BUG_WS_PAI — User Action Logic (PAI modules for all screens)
 *&---------------------------------------------------------------------*
 
 *&--- HUB SCREEN 0100 (DEPRECATED — kept for safety) ---*
@@ -27,14 +17,37 @@ MODULE user_command_0100 INPUT.
 ENDMODULE.
 
 *&=====================================================================*
+*& SCREEN 0410 — PROJECT SEARCH (initial screen)
+*&=====================================================================*
+MODULE user_command_0410 INPUT.
+  gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
+  CASE gv_save_ok.
+    WHEN 'EXECUTE' OR 'ONLI'.   " F8 = Execute
+      PERFORM search_projects.
+      CALL SCREEN 0400.
+
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      LEAVE PROGRAM.
+  ENDCASE.
+ENDMODULE.
+
+*&=====================================================================*
 *& BUG LIST SCREEN 0200
 *&=====================================================================*
 MODULE user_command_0200 INPUT.
   gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
   CASE gv_save_ok.
     WHEN 'BACK' OR 'CANC'.
-      " Always go back to Project List (initial screen)
-      LEAVE TO SCREEN 0400.
+      " LEAVE TO SCREEN 0 → returns to caller (Screen 0400 via CALL SCREEN)
+      " Destroy Bug ALV to force rebuild on re-entry
+      IF go_alv_bug IS NOT INITIAL.
+        go_alv_bug->free( ).
+        FREE go_alv_bug.
+        go_cont_bug->free( ).
+        FREE go_cont_bug.
+        CLEAR: go_alv_bug, go_cont_bug.
+      ENDIF.
+      LEAVE TO SCREEN 0.
     WHEN 'EXIT'.
       LEAVE PROGRAM.
     WHEN 'CREATE'.
@@ -51,8 +64,8 @@ MODULE user_command_0200 INPUT.
       CLEAR: gv_current_bug_id, gs_bug_detail.
       gv_mode             = gc_mode_create.
       gv_active_subscreen = '0310'.
-      gv_active_tab       = 'TAB_INFO'.      " v3.0: sync tab highlight
-      CLEAR gv_detail_loaded.                 " v3.0: force fresh load
+      gv_active_tab       = 'TAB_INFO'.
+      CLEAR gv_detail_loaded.
       " gv_current_project_id already set from project context
       CALL SCREEN 0300.
     WHEN 'CHANGE'.
@@ -62,8 +75,8 @@ MODULE user_command_0200 INPUT.
       ELSE.
         gv_mode             = gc_mode_change.
         gv_active_subscreen = '0310'.
-        gv_active_tab       = 'TAB_INFO'.    " v3.0
-        CLEAR gv_detail_loaded.               " v3.0
+        gv_active_tab       = 'TAB_INFO'.
+        CLEAR gv_detail_loaded.
         CALL SCREEN 0300.
       ENDIF.
     WHEN 'DISPLAY'.
@@ -73,8 +86,8 @@ MODULE user_command_0200 INPUT.
       ELSE.
         gv_mode             = gc_mode_display.
         gv_active_subscreen = '0310'.
-        gv_active_tab       = 'TAB_INFO'.    " v3.0
-        CLEAR gv_detail_loaded.               " v3.0
+        gv_active_tab       = 'TAB_INFO'.
+        CLEAR gv_detail_loaded.
         CALL SCREEN 0300.
       ENDIF.
     WHEN 'DELETE'.
@@ -93,13 +106,28 @@ MODULE user_command_0200 INPUT.
       IF go_alv_bug IS NOT INITIAL.
         go_alv_bug->refresh_table_display( ).
       ENDIF.
-    " v4.0: Template download buttons
+
+    " Bug Search Engine
+    WHEN 'SEARCH'.
+      " Clear previous search fields + results
+      CLEAR: s_bug_id, s_title, s_status, s_prio, s_mod, s_reporter, s_dev.
+      CLEAR gv_search_executed.
+      " Open search popup (modal dialog)
+      CALL SCREEN 0210 STARTING AT 5 3 ENDING AT 75 18.
+      " After popup closes, check if search was executed
+      " (Cannot CALL SCREEN 0220 from inside modal dialog — use flag pattern)
+      IF gv_search_executed = abap_true.
+        CLEAR gv_search_executed.
+        CALL SCREEN 0220.
+      ENDIF.
+
+    " Template download buttons
     WHEN 'DN_TC'.
-      PERFORM download_testcase_template.
+      PERFORM download_bug_report_template.
     WHEN 'DN_CONF'.
-      PERFORM download_confirm_template.
+      PERFORM dl_confirm_report_tmpl.
     WHEN 'DN_PROOF'.
-      PERFORM download_bugproof_template.
+      PERFORM download_fix_report_template.
   ENDCASE.
 ENDMODULE.
 
@@ -110,7 +138,7 @@ MODULE user_command_0300 INPUT.
   gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
   CASE gv_save_ok.
     WHEN 'BACK' OR 'CANC'.
-      " v4.0: Check unsaved changes before leaving
+      " Check unsaved changes before leaving
       IF gv_mode <> gc_mode_display.
         DATA: lv_continue TYPE abap_bool.
         PERFORM check_unsaved_bug CHANGING lv_continue.
@@ -118,10 +146,11 @@ MODULE user_command_0300 INPUT.
           RETURN.  " User cancelled — stay on screen
         ENDIF.
       ENDIF.
-      PERFORM cleanup_detail_editors.      " v3.0: free editors before leaving
-      LEAVE TO SCREEN 0200.
+      PERFORM cleanup_detail_editors.
+      " LEAVE TO SCREEN 0 → returns to caller (Screen 0200)
+      LEAVE TO SCREEN 0.
     WHEN 'EXIT'.
-      PERFORM cleanup_detail_editors.      " v3.0: free editors before leaving
+      PERFORM cleanup_detail_editors.
       LEAVE PROGRAM.
     WHEN 'SAVE'.
       IF gv_mode = gc_mode_display.
@@ -131,25 +160,41 @@ MODULE user_command_0300 INPUT.
       " Save description mini editor content to gs_bug_detail-desc_text
       PERFORM save_desc_mini_to_workarea.
       PERFORM save_bug_detail.
+
+    " STATUS_CHG opens popup Screen 0370 (replaces old change_bug_status)
     WHEN 'STATUS_CHG'.
       IF gv_mode = gc_mode_create.
         MESSAGE 'Save the bug first before changing status.' TYPE 'W'.
         RETURN.
       ENDIF.
-      PERFORM change_bug_status.
+      IF gv_mode = gc_mode_display.
+        MESSAGE 'Switch to Change mode before changing status.' TYPE 'W'.
+        RETURN.
+      ENDIF.
+      " Clear previous transition state
+      CLEAR: gv_trans_new_status, gv_trans_confirmed.
+      " Open Status Transition Popup
+      CALL SCREEN 0370 STARTING AT 5 3 ENDING AT 85 22.
+      " After popup returns, check if transition was confirmed
+      IF gv_trans_confirmed = abap_true.
+        " Refresh bug detail (status may have changed + auto-assign may have fired)
+        gv_detail_loaded = abap_false.
+        CLEAR gv_trans_confirmed.
+      ENDIF.
+
     WHEN 'UP_FILE'.
       PERFORM upload_evidence_file.
     WHEN 'UP_REP'.
       PERFORM upload_report_file.
     WHEN 'UP_FIX'.
       PERFORM upload_fix_file.
-    " v4.0: Delete evidence
+    " Delete evidence
     WHEN 'DL_EVD'.
       PERFORM delete_evidence.
-    " v4.0: Send email notification
+    " Send email notification
     WHEN 'SENDMAIL'.
       PERFORM send_mail_notification.
-    " ---- Tab switching (v3.0: sync gv_active_tab, no PERFORM load calls) ----
+    " ---- Tab switching ----
     WHEN 'TAB_INFO'.
       gv_active_subscreen = '0310'.
       gv_active_tab       = 'TAB_INFO'.
@@ -172,14 +217,121 @@ MODULE user_command_0300 INPUT.
 ENDMODULE.
 
 *&=====================================================================*
-*& PROJECT LIST SCREEN 0400 (INITIAL SCREEN)
+*& SCREEN 0370 — STATUS TRANSITION POPUP
+*&=====================================================================*
+MODULE user_command_0370 INPUT.
+  gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
+  CASE gv_save_ok.
+    WHEN 'CONFIRM'.
+      " Validate transition (matrix + role + required fields)
+      PERFORM validate_status_transition.
+      IF gv_trans_confirmed = abap_true.
+        " Apply transition (update DB + log history + auto-assign)
+        PERFORM apply_status_transition.
+        " Free container before leaving popup
+        IF go_cont_trans_note IS NOT INITIAL.
+          go_cont_trans_note->free( ).
+          CLEAR: go_cont_trans_note, go_edit_trans_note.
+        ENDIF.
+        LEAVE TO SCREEN 0.  " Close popup → return to Screen 0300
+      ENDIF.
+
+    WHEN 'CANCEL' OR 'BACK'.
+      CLEAR gv_trans_confirmed.
+      IF go_cont_trans_note IS NOT INITIAL.
+        go_cont_trans_note->free( ).
+        CLEAR: go_cont_trans_note, go_edit_trans_note.
+      ENDIF.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'UP_TRANS'.
+      " Upload evidence from within popup
+      IF gv_current_bug_id IS INITIAL.
+        MESSAGE 'Bug not saved yet. Cannot upload evidence.' TYPE 'S' DISPLAY LIKE 'W'.
+      ELSE.
+        PERFORM upload_evidence_file.
+      ENDIF.
+  ENDCASE.
+ENDMODULE.
+
+*&=====================================================================*
+*& SCREEN 0210 — BUG SEARCH INPUT (Modal Dialog popup)
+*&=====================================================================*
+MODULE user_command_0210 INPUT.
+  gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
+  CASE gv_save_ok.
+    WHEN 'EXECUTE' OR 'ONLI'.    " F8 = Execute
+      PERFORM execute_bug_search.
+      " Set flag — caller (user_command_0200) will navigate to Screen 0220
+      " (Cannot CALL SCREEN 0220 from inside modal dialog)
+      IF gt_search_results IS NOT INITIAL.
+        gv_search_executed = abap_true.
+      ENDIF.
+      LEAVE TO SCREEN 0.  " Close popup
+
+    WHEN 'CANCEL' OR 'BACK'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+
+*&=====================================================================*
+*& SCREEN 0220 — BUG SEARCH RESULTS (Full screen ALV)
+*&=====================================================================*
+MODULE user_command_0220 INPUT.
+  gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
+  CASE gv_save_ok.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      " Free search results ALV to force rebuild on next search
+      IF go_cont_search IS NOT INITIAL.
+        go_cont_search->free( ).
+        CLEAR: go_cont_search, go_search_alv.
+      ENDIF.
+      LEAVE TO SCREEN 0.   " Return to Screen 0200
+
+    WHEN 'CHANGE'.
+      PERFORM get_selected_search_bug CHANGING gv_current_bug_id.
+      IF gv_current_bug_id IS INITIAL.
+        MESSAGE 'Please select a bug first.' TYPE 'W'.
+      ELSE.
+        gv_mode             = gc_mode_change.
+        gv_active_subscreen = '0310'.
+        gv_active_tab       = 'TAB_INFO'.
+        CLEAR gv_detail_loaded.
+        CALL SCREEN 0300.
+      ENDIF.
+
+    WHEN 'DISPLAY'.
+      PERFORM get_selected_search_bug CHANGING gv_current_bug_id.
+      IF gv_current_bug_id IS INITIAL.
+        MESSAGE 'Please select a bug first.' TYPE 'W'.
+      ELSE.
+        gv_mode             = gc_mode_display.
+        gv_active_subscreen = '0310'.
+        gv_active_tab       = 'TAB_INFO'.
+        CLEAR gv_detail_loaded.
+        CALL SCREEN 0300.
+      ENDIF.
+  ENDCASE.
+ENDMODULE.
+
+*&=====================================================================*
+*& PROJECT LIST SCREEN 0400
+*& No longer initial screen — called from 0410 via CALL SCREEN
 *&=====================================================================*
 MODULE user_command_0400 INPUT.
   gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
   CASE gv_save_ok.
     WHEN 'BACK' OR 'CANC'.
-      " This is the initial screen — Back = exit program
-      LEAVE PROGRAM.
+      " LEAVE TO SCREEN 0 → returns to caller (Screen 0410)
+      " Destroy Project ALV to force rebuild on re-entry (filtered data may differ)
+      IF go_alv_project IS NOT INITIAL.
+        go_alv_project->free( ).
+        FREE go_alv_project.
+        go_cont_project->free( ).
+        FREE go_cont_project.
+        CLEAR: go_alv_project, go_cont_project.
+      ENDIF.
+      LEAVE TO SCREEN 0.
     WHEN 'EXIT'.
       LEAVE PROGRAM.
     WHEN 'MY_BUGS'.
@@ -202,7 +354,7 @@ MODULE user_command_0400 INPUT.
       ENDIF.
       CLEAR: gv_current_project_id, gs_project, gt_user_project.
       gv_mode = gc_mode_create.
-      CLEAR gv_prj_detail_loaded.            " v3.0: force fresh load
+      CLEAR gv_prj_detail_loaded.
       CALL SCREEN 0500.
     WHEN 'CHNG_PRJ'.
       PERFORM get_selected_project CHANGING gv_current_project_id.
@@ -210,7 +362,7 @@ MODULE user_command_0400 INPUT.
         MESSAGE 'Please select a project first.' TYPE 'W'.
       ELSE.
         gv_mode = gc_mode_change.
-        CLEAR gv_prj_detail_loaded.          " v3.0: force fresh load
+        CLEAR gv_prj_detail_loaded.
         CALL SCREEN 0500.
       ENDIF.
     WHEN 'DISP_PRJ'.
@@ -219,7 +371,7 @@ MODULE user_command_0400 INPUT.
         MESSAGE 'Please select a project first.' TYPE 'W'.
       ELSE.
         gv_mode = gc_mode_display.
-        CLEAR gv_prj_detail_loaded.          " v3.0: force fresh load
+        CLEAR gv_prj_detail_loaded.
         CALL SCREEN 0500.
       ENDIF.
     WHEN 'DEL_PRJ'.
@@ -252,7 +404,7 @@ MODULE user_command_0500 INPUT.
   gv_save_ok = gv_ok_code. CLEAR gv_ok_code.
   CASE gv_save_ok.
     WHEN 'BACK' OR 'CANC'.
-      " v4.0: Check unsaved changes before leaving
+      " Check unsaved changes before leaving
       IF gv_mode <> gc_mode_display.
         DATA: lv_prj_continue TYPE abap_bool.
         PERFORM check_unsaved_prj CHANGING lv_prj_continue.
@@ -260,7 +412,8 @@ MODULE user_command_0500 INPUT.
           RETURN.  " User cancelled — stay on screen
         ENDIF.
       ENDIF.
-      LEAVE TO SCREEN 0400.
+      " LEAVE TO SCREEN 0 → returns to caller (Screen 0400)
+      LEAVE TO SCREEN 0.
     WHEN 'EXIT'.
       LEAVE PROGRAM.
     WHEN 'SAVE'.
@@ -279,12 +432,12 @@ ENDMODULE.
 *&--- TABLE CONTROL SYNC (Screen 0500) ---*
 MODULE tc_users_modify INPUT.
   MODIFY gt_user_project FROM gs_user_project INDEX tc_users-current_line.
+  " Track that user actually interacted with the table control row
+  gv_tc_user_selected = abap_true.
 ENDMODULE.
 
 *&=====================================================================*
-*& v4.0: POV MODULES — F4 Calendar Popup (Screen 0500)
-*& Called from PROCESS ON VALUE-REQUEST in Screen 0500 flow logic.
-*& These modules delegate to FORM f4_date in CODE_F02.md.
+*& POV MODULES — F4 Help (Screen 0500 — Project Detail)
 *&=====================================================================*
 MODULE f4_prj_startdate INPUT.
   PERFORM f4_date USING 'PRJ_START_DATE'.
@@ -294,10 +447,6 @@ MODULE f4_prj_enddate INPUT.
   PERFORM f4_date USING 'PRJ_END_DATE'.
 ENDMODULE.
 
-*&=====================================================================*
-*& v4.1 BUGFIX #1: POV MODULES — Screen 0500 (Project Detail)
-*& F4 help for PROJECT_STATUS and PROJECT_MANAGER fields
-*&=====================================================================*
 MODULE f4_prj_status INPUT.
   PERFORM f4_project_status USING 'GS_PROJECT-PROJECT_STATUS'.
 ENDMODULE.
@@ -307,10 +456,7 @@ MODULE f4_prj_manager INPUT.
 ENDMODULE.
 
 *&=====================================================================*
-*& v4.1 BUGFIX #5: POV MODULES — Screen 0310 (Bug Info)
-*& F4 help for STATUS, PRIORITY, SEVERITY, BUG_TYPE, PROJECT_ID,
-*& TESTER_ID, DEV_ID, VERIFY_TESTER_ID fields
-*& Called from PROCESS ON VALUE-REQUEST in Screen 0310 flow logic.
+*& POV MODULES — F4 Help (Screen 0310 — Bug Info)
 *&=====================================================================*
 MODULE f4_bug_status INPUT.
   PERFORM f4_status USING 'GS_BUG_DETAIL-STATUS'.
@@ -342,4 +488,72 @@ ENDMODULE.
 
 MODULE f4_bug_verify INPUT.
   PERFORM f4_user_id USING 'GS_BUG_DETAIL-VERIFY_TESTER_ID'.
+ENDMODULE.
+
+" SAP Module F4 (Screen 0310)
+MODULE f4_bug_sapmodule INPUT.
+  PERFORM f4_sap_module USING 'GS_BUG_DETAIL-SAP_MODULE'.
+ENDMODULE.
+
+*&=====================================================================*
+*& POV MODULES — F4 Help (Screen 0410 — Project Search)
+*&=====================================================================*
+MODULE f4_project_id INPUT.
+  PERFORM f4_project_id_help USING 'S_PRJ_ID'.
+ENDMODULE.
+
+MODULE f4_manager INPUT.
+  PERFORM f4_manager_help USING 'S_PRJ_MN'.
+ENDMODULE.
+
+MODULE f4_project_status INPUT.
+  PERFORM f4_project_status_help USING 'S_PRJ_ST'.
+ENDMODULE.
+
+*&=====================================================================*
+*& POV MODULES — F4 Help (Screen 0370 — Status Transition)
+*&=====================================================================*
+
+" F4 for New Status — shows only valid transitions based on current status + role
+MODULE f4_trans_status_mod INPUT.
+  PERFORM f4_trans_status.
+ENDMODULE.
+
+" F4 for Developer (assign)
+MODULE f4_trans_developer INPUT.
+  PERFORM f4_user_id USING 'GV_TRANS_DEV_ID'.
+ENDMODULE.
+
+" F4 for Final Tester (assign)
+MODULE f4_trans_ftester INPUT.
+  PERFORM f4_user_id USING 'GV_TRANS_FTESTER_ID'.
+ENDMODULE.
+
+*&=====================================================================*
+*& POV MODULES — F4 Help (Screen 0210 — Bug Search)
+*&=====================================================================*
+
+" Status F4 for search — shows all 10 statuses
+MODULE f4_bug_search_status INPUT.
+  PERFORM f4_status USING 'S_STATUS'.
+ENDMODULE.
+
+" Priority F4 for search
+MODULE f4_bug_search_priority INPUT.
+  PERFORM f4_priority USING 'S_PRIO'.
+ENDMODULE.
+
+" SAP Module F4 for search
+MODULE f4_bug_search_module INPUT.
+  PERFORM f4_sap_module USING 'S_MOD'.
+ENDMODULE.
+
+" Reporter F4 for search (all users)
+MODULE f4_bug_search_reporter INPUT.
+  PERFORM f4_user_id USING 'S_REPORTER'.
+ENDMODULE.
+
+" Developer F4 for search (all users — filter by Dev role is optional)
+MODULE f4_bug_search_developer INPUT.
+  PERFORM f4_user_id USING 'S_DEV'.
 ENDMODULE.

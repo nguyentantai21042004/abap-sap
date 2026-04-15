@@ -1,23 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F01 — Main Business Logic (v4.0 → v4.1 BUGFIX)
-*&---------------------------------------------------------------------*
-*& v4.0 changes (over v3.0):
-*&  - upload_evidence_file/report/fix: REAL implementation (binary → ZBUG_EVIDENCE)
-*&  - load_evidence_data: NEW — SELECT without CONTENT for ALV
-*&  - download_evidence_file: NEW — binary download from ZBUG_EVIDENCE
-*&  - delete_evidence: NEW — popup confirm → DELETE
-*&  - check_evidence_for_status: NEW — file prefix enforcement before transition
-*&  - check_unsaved_bug / check_unsaved_prj: NEW — snapshot comparison
-*&  - send_mail_notification: NEW — real BCS API email
-*&  - save_bug_detail: ENHANCED — severity/priority cross-validation
-*&  - save_project_detail: ENHANCED — completion validation
-*&  - cleanup_detail_editors: ENHANCED — evidence ALV cleanup
-*&
-*& v4.1 BUGFIX changes:
-*&  - save_project_detail: auto-generate PROJECT_ID (PRJ + 7 digits) (Bug #1)
-*&  - add_user_to_project: fix ROLE field (no DDIC ref), validate M/D/T, check project saved (Bug #2)
-*&  - upload_project_excel: move i_tab_raw_data to CHANGING block (Bug #4)
-*&  - save_desc_mini_to_workarea: add cl_gui_cfw=>flush() + EXCEPTIONS (Bug #6)
+*& Include Z_BUG_WS_F01 — Main Business Logic (forms/subroutines)
 *&---------------------------------------------------------------------*
 
 *&=== SELECT BUG DATA (dual mode: Project / My Bugs) ===*
@@ -50,18 +32,19 @@ FORM select_bug_data.
     ENDCASE.
   ENDIF.
 
-  " Status text mapping (9 states)
+  " Status text mapping (10 states — 6=FinalTesting, V=Resolved)
   LOOP AT gt_bugs ASSIGNING FIELD-SYMBOL(<bug>).
     <bug>-status_text = SWITCH #( <bug>-status
-      WHEN gc_st_new        THEN 'New'
-      WHEN gc_st_assigned   THEN 'Assigned'
-      WHEN gc_st_inprogress THEN 'In Progress'
-      WHEN gc_st_pending    THEN 'Pending'
-      WHEN gc_st_fixed      THEN 'Fixed'
-      WHEN gc_st_resolved   THEN 'Resolved'
-      WHEN gc_st_closed     THEN 'Closed'
-      WHEN gc_st_waiting    THEN 'Waiting'
-      WHEN gc_st_rejected   THEN 'Rejected'
+      WHEN gc_st_new          THEN 'New'
+      WHEN gc_st_assigned     THEN 'Assigned'
+      WHEN gc_st_inprogress   THEN 'In Progress'
+      WHEN gc_st_pending      THEN 'Pending'
+      WHEN gc_st_fixed        THEN 'Fixed'
+      WHEN gc_st_finaltesting THEN 'Final Testing'
+      WHEN gc_st_closed       THEN 'Closed'
+      WHEN gc_st_waiting      THEN 'Waiting'
+      WHEN gc_st_rejected     THEN 'Rejected'
+      WHEN gc_st_resolved     THEN 'Resolved'
       ELSE <bug>-status ).
 
     <bug>-priority_text = SWITCH #( <bug>-priority
@@ -85,6 +68,9 @@ FORM select_bug_data.
   ENDLOOP.
 
   PERFORM set_bug_colors.
+
+  " Calculate dashboard metrics after loading bugs
+  PERFORM calculate_dashboard.
 ENDFORM.
 
 *&=== SELECT PROJECT DATA ===*
@@ -108,8 +94,8 @@ FORM select_project_data.
            p~note
       FROM zbug_project AS p
       INNER JOIN zbug_user_projec AS up ON p~project_id = up~project_id
-      INTO CORRESPONDING FIELDS OF TABLE @gt_projects
-      WHERE up~user_id = @gv_uname AND p~is_del <> 'X'.
+      WHERE up~user_id = @gv_uname AND p~is_del <> 'X'
+      INTO CORRESPONDING FIELDS OF TABLE @gt_projects.
   ENDIF.
 
   LOOP AT gt_projects ASSIGNING FIELD-SYMBOL(<prj>).
@@ -128,23 +114,23 @@ FORM save_bug_detail.
 
   " Validate PROJECT_ID is set
   IF gs_bug_detail-project_id IS INITIAL.
-    MESSAGE 'Project ID is required. Bug must belong to a project.' TYPE 'E'.
+    MESSAGE 'Project ID is required. Bug must belong to a project.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
   " Validate TITLE is set
   IF gs_bug_detail-title IS INITIAL.
-    MESSAGE 'Title is required.' TYPE 'E'.
+    MESSAGE 'Title is required.' TYPE 'S' DISPLAY LIKE 'E'.
     RETURN.
   ENDIF.
 
-  " v4.0: Severity vs Priority cross-validation
+  " Severity vs Priority cross-validation
   " Dump/Critical(1), VeryHigh(2), High(3) → must have Priority = High
   IF gs_bug_detail-severity IS NOT INITIAL
      AND ( gs_bug_detail-severity = '1' OR gs_bug_detail-severity = '2'
            OR gs_bug_detail-severity = '3' ).
     IF gs_bug_detail-priority <> 'H'.
-      MESSAGE 'Severity Dump/VeryHigh/High requires Priority = High.' TYPE 'E'.
+      MESSAGE 'Severity Dump/VeryHigh/High requires Priority = High.' TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
   ENDIF.
@@ -166,12 +152,12 @@ FORM save_bug_detail.
     gs_bug_detail-ernam   = lv_un.
     gs_bug_detail-erdat   = sy-datum.
     gs_bug_detail-erzet   = sy-uzeit.
-    IF gs_bug_detail-status IS INITIAL.
-      gs_bug_detail-status = gc_st_new.
-    ENDIF.
-    IF gs_bug_detail-tester_id IS INITIAL.
-      gs_bug_detail-tester_id = lv_un.
-    ENDIF.
+
+    " FORCE status = New (always), pre-fill created_at + tester_id
+    gs_bug_detail-status     = gc_st_new.
+    gs_bug_detail-created_at = sy-datum.
+    gs_bug_detail-tester_id  = lv_un.
+
     INSERT zbug_tracker FROM @gs_bug_detail.
     IF sy-subrc = 0.
       PERFORM add_history_entry USING gs_bug_detail-bug_id 'CR' '' 'New' 'Bug created'.
@@ -195,13 +181,40 @@ FORM save_bug_detail.
     PERFORM save_long_text USING 'Z001'.  " Description
     PERFORM save_long_text USING 'Z002'.  " Dev Note
     PERFORM save_long_text USING 'Z003'.  " Tester Note
+
+    " Sync desc_text from editor after save_long_text
+    IF go_edit_desc IS NOT INITIAL.
+      DATA: lt_desc_sync TYPE TABLE OF char255.
+      cl_gui_cfw=>flush( ).
+      go_edit_desc->get_text_as_r3table(
+        IMPORTING table = lt_desc_sync
+        EXCEPTIONS OTHERS = 3 ).
+      IF sy-subrc = 0.
+        CLEAR gs_bug_detail-desc_text.
+        LOOP AT lt_desc_sync INTO DATA(lv_sync_line).
+          IF gs_bug_detail-desc_text IS NOT INITIAL.
+            gs_bug_detail-desc_text = gs_bug_detail-desc_text
+              && cl_abap_char_utilities=>cr_lf && lv_sync_line.
+          ELSE.
+            gs_bug_detail-desc_text = lv_sync_line.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+    ENDIF.
+
     MESSAGE |Bug { gs_bug_detail-bug_id } saved successfully.| TYPE 'S'.
+
+    " Trigger auto-assign developer after creating new bug
+    IF gv_mode = gc_mode_create.
+      PERFORM auto_assign_developer.
+    ENDIF.
+
     gv_mode = gc_mode_change.
-    " v4.0: Update snapshot after successful save
+    " Update snapshot after successful save
     gs_bug_snapshot = gs_bug_detail.
   ELSE.
     ROLLBACK WORK.
-    MESSAGE 'Save failed. Please check required fields.' TYPE 'E'.
+    MESSAGE 'Save failed. Please check required fields.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -212,7 +225,7 @@ FORM save_desc_mini_to_workarea.
   DATA: lt_mini TYPE TABLE OF char255,
         lv_text TYPE string.
 
-  " v4.1 BUGFIX #6: Flush GUI control data before reading
+  " Flush GUI control data before reading
   " Without flush, CL_GUI_TEXTEDIT raises POTENTIAL_DATA_LOSS
   cl_gui_cfw=>flush( ).
 
@@ -222,16 +235,18 @@ FORM save_desc_mini_to_workarea.
                error_dp_create = 2
                OTHERS          = 3 ).
   IF sy-subrc <> 0.
-    MESSAGE 'Warning: Could not read description text.' TYPE 'S' DISPLAY LIKE 'W'.
+    " Silently return — control may not be ready yet (no user-facing warning)
     RETURN.
   ENDIF.
 
+  " Concatenate lines without inserting extra line breaks
+  " get_text_as_r3table splits at 255 chars — join with space to preserve long text
   CLEAR lv_text.
   LOOP AT lt_mini INTO DATA(lv_line).
-    IF lv_text IS NOT INITIAL.
-      lv_text = lv_text && cl_abap_char_utilities=>cr_lf && lv_line.
-    ELSE.
+    IF sy-tabix = 1.
       lv_text = lv_line.
+    ELSE.
+      lv_text = lv_text && lv_line.
     ENDIF.
   ENDLOOP.
   gs_bug_detail-desc_text = lv_text.
@@ -242,7 +257,7 @@ FORM save_project_detail.
   DATA: lv_un TYPE sy-uname.
   lv_un = sy-uname.
 
-  " v4.1 BUGFIX #1: Auto-generate PROJECT_ID in Create mode
+  " Auto-generate PROJECT_ID in Create mode
   " (user sees "(Auto)" placeholder — real ID generated here before validation)
   IF gv_mode = gc_mode_create.
     DATA: lv_max_prj TYPE zde_project_id,
@@ -261,24 +276,26 @@ FORM save_project_detail.
 
   " Validate required fields
   IF gs_project-project_id IS INITIAL.
-    MESSAGE 'Project ID is required.' TYPE 'E'. RETURN.
+    MESSAGE 'Project ID is required.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
   ENDIF.
   IF gs_project-project_name IS INITIAL.
-    MESSAGE 'Project Name is required.' TYPE 'E'. RETURN.
+    MESSAGE 'Project Name is required.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
   ENDIF.
 
-  " v4.0: Project completion validation — block Done if unresolved bugs
+  " Project completion validation — block Done if unresolved bugs
+  " gc_st_rejected counts as terminal state (resolved OR closed OR rejected = done)
   IF gs_project-project_status = '3'. " Done
     DATA: lv_open_bugs TYPE i.
     SELECT COUNT(*) FROM zbug_tracker INTO @lv_open_bugs
       WHERE project_id = @gs_project-project_id
         AND is_del <> 'X'
         AND status <> @gc_st_resolved
-        AND status <> @gc_st_closed.
+        AND status <> @gc_st_closed
+        AND status <> @gc_st_rejected.
     IF lv_open_bugs > 0.
       DATA: lv_block_msg TYPE string.
-      lv_block_msg = |Cannot set project to Done. { lv_open_bugs } bug(s) not yet Resolved/Closed.|.
-      MESSAGE lv_block_msg TYPE 'E'.
+      lv_block_msg = |Cannot set project to Done. { lv_open_bugs } bug(s) not yet Resolved/Closed/Rejected.|.
+      MESSAGE lv_block_msg TYPE 'S' DISPLAY LIKE 'E'.
       RETURN.
     ENDIF.
   ENDIF.
@@ -303,11 +320,11 @@ FORM save_project_detail.
     MESSAGE |Project { gs_project-project_id } saved successfully.| TYPE 'S'.
     gv_current_project_id = gs_project-project_id.
     gv_mode = gc_mode_change.
-    " v4.0: Update snapshot after successful save
+    " Update snapshot after successful save
     gs_prj_snapshot = gs_project.
   ELSE.
     ROLLBACK WORK.
-    MESSAGE 'Project save failed. Project ID may already exist.' TYPE 'E'.
+    MESSAGE 'Project save failed. Project ID may already exist.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -318,15 +335,16 @@ FORM set_bug_colors.
     CLEAR <bug>-t_color.
     ls_color-fname = 'STATUS_TEXT'.
     CASE <bug>-status.
-      WHEN gc_st_new.        ls_color-color-col = 1. ls_color-color-int = 0.  " Blue
-      WHEN gc_st_waiting.    ls_color-color-col = 3. ls_color-color-int = 1.  " Yellow
-      WHEN gc_st_assigned.   ls_color-color-col = 7. ls_color-color-int = 0.  " Orange
-      WHEN gc_st_inprogress. ls_color-color-col = 6. ls_color-color-int = 0.  " Purple
-      WHEN gc_st_pending.    ls_color-color-col = 3. ls_color-color-int = 0.  " Light Yellow
-      WHEN gc_st_fixed.      ls_color-color-col = 5. ls_color-color-int = 0.  " Green
-      WHEN gc_st_resolved.   ls_color-color-col = 4. ls_color-color-int = 1.  " Light Green
-      WHEN gc_st_closed.     ls_color-color-col = 1. ls_color-color-int = 1.  " Grey
-      WHEN gc_st_rejected.   ls_color-color-col = 6. ls_color-color-int = 1.  " Red
+      WHEN gc_st_new.          ls_color-color-col = 1. ls_color-color-int = 0.  " Blue
+      WHEN gc_st_waiting.      ls_color-color-col = 3. ls_color-color-int = 1.  " Yellow
+      WHEN gc_st_assigned.     ls_color-color-col = 7. ls_color-color-int = 0.  " Orange
+      WHEN gc_st_inprogress.   ls_color-color-col = 6. ls_color-color-int = 0.  " Purple
+      WHEN gc_st_pending.      ls_color-color-col = 3. ls_color-color-int = 0.  " Light Yellow
+      WHEN gc_st_fixed.        ls_color-color-col = 5. ls_color-color-int = 0.  " Green
+      WHEN gc_st_finaltesting. ls_color-color-col = 2. ls_color-color-int = 0.  " Cyan
+      WHEN gc_st_resolved.     ls_color-color-col = 4. ls_color-color-int = 1.  " Light Green
+      WHEN gc_st_closed.       ls_color-color-col = 1. ls_color-color-int = 1.  " Grey
+      WHEN gc_st_rejected.     ls_color-color-col = 6. ls_color-color-int = 1.  " Red
     ENDCASE.
     APPEND ls_color TO <bug>-t_color.
   ENDLOOP.
@@ -341,6 +359,18 @@ FORM get_selected_bug CHANGING pv_bug_id TYPE zde_bug_id.
   IF lt_rows IS INITIAL. RETURN. ENDIF.
   READ TABLE lt_rows INTO DATA(ls_row) INDEX 1.
   READ TABLE gt_bugs INTO DATA(ls_bug) INDEX ls_row-row_id.
+  IF sy-subrc = 0. pv_bug_id = ls_bug-bug_id. ENDIF.
+ENDFORM.
+
+*&=== GET SELECTED BUG FROM SEARCH RESULTS ALV ===*
+FORM get_selected_search_bug CHANGING pv_bug_id TYPE zde_bug_id.
+  CLEAR pv_bug_id.
+  CHECK go_search_alv IS NOT INITIAL.
+  DATA: lt_rows TYPE lvc_t_roid.
+  go_search_alv->get_selected_rows( IMPORTING et_row_no = lt_rows ).
+  IF lt_rows IS INITIAL. RETURN. ENDIF.
+  READ TABLE lt_rows INTO DATA(ls_row) INDEX 1.
+  READ TABLE gt_search_results INTO DATA(ls_bug) INDEX ls_row-row_id.
   IF sy-subrc = 0. pv_bug_id = ls_bug-bug_id. ENDIF.
 ENDFORM.
 
@@ -382,7 +412,7 @@ FORM delete_bug.
     ENDIF.
   ELSE.
     ROLLBACK WORK.
-    MESSAGE 'Delete failed.' TYPE 'E'.
+    MESSAGE 'Delete failed.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -411,7 +441,7 @@ FORM delete_project.
     ENDIF.
   ELSE.
     ROLLBACK WORK.
-    MESSAGE 'Delete failed.' TYPE 'E'.
+    MESSAGE 'Delete failed.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -430,116 +460,6 @@ FORM confirm_action USING    pv_text      TYPE string
     IMPORTING
       answer                = lv_answer.
   pv_confirmed = COND #( WHEN lv_answer = '1' THEN abap_true ELSE abap_false ).
-ENDFORM.
-
-*&=== CHANGE BUG STATUS (with 9-state transition validation) ===*
-FORM change_bug_status.
-  " Build allowed transitions based on current status and role
-  DATA: lt_allowed TYPE TABLE OF zde_bug_status,
-        lv_current TYPE zde_bug_status.
-  lv_current = gs_bug_detail-status.
-
-  CASE gv_role.
-    WHEN 'T'. " Tester
-      CASE lv_current.
-        WHEN gc_st_new.      APPEND gc_st_assigned TO lt_allowed.
-                             APPEND gc_st_waiting  TO lt_allowed.
-        WHEN gc_st_fixed.    APPEND gc_st_resolved TO lt_allowed.
-                             APPEND gc_st_rejected TO lt_allowed.
-        WHEN gc_st_resolved. APPEND gc_st_closed   TO lt_allowed.
-      ENDCASE.
-    WHEN 'D'. " Developer
-      CASE lv_current.
-        WHEN gc_st_assigned.   APPEND gc_st_inprogress TO lt_allowed.
-        WHEN gc_st_inprogress. APPEND gc_st_pending    TO lt_allowed.
-                               APPEND gc_st_fixed      TO lt_allowed.
-                               APPEND gc_st_rejected   TO lt_allowed.
-        WHEN gc_st_pending.    APPEND gc_st_inprogress TO lt_allowed.
-      ENDCASE.
-    WHEN 'M'. " Manager: can set any status
-      APPEND gc_st_new        TO lt_allowed.
-      APPEND gc_st_assigned   TO lt_allowed.
-      APPEND gc_st_inprogress TO lt_allowed.
-      APPEND gc_st_pending    TO lt_allowed.
-      APPEND gc_st_fixed      TO lt_allowed.
-      APPEND gc_st_resolved   TO lt_allowed.
-      APPEND gc_st_closed     TO lt_allowed.
-      APPEND gc_st_waiting    TO lt_allowed.
-      APPEND gc_st_rejected   TO lt_allowed.
-  ENDCASE.
-
-  IF lt_allowed IS INITIAL.
-    MESSAGE |No valid transitions available from current status.| TYPE 'W'.
-    RETURN.
-  ENDIF.
-
-  " Use POPUP_GET_VALUES to get new status
-  DATA: lt_fields TYPE TABLE OF sval,
-        ls_field  TYPE sval.
-  ls_field-tabname   = 'ZBUG_TRACKER'.
-  ls_field-fieldname = 'STATUS'.
-  DATA: lv_hint TYPE string.
-  lv_hint = 'Allowed: '.
-  LOOP AT lt_allowed INTO DATA(lv_al).
-    lv_hint = lv_hint && lv_al && ' '.
-  ENDLOOP.
-  ls_field-fieldtext = lv_hint(40).
-  APPEND ls_field TO lt_fields.
-
-  DATA: lv_rc TYPE char1.
-  CALL FUNCTION 'POPUP_GET_VALUES'
-    EXPORTING
-      popup_title  = 'Change Bug Status'
-      start_column = 20
-      start_row    = 5
-    IMPORTING
-      returncode   = lv_rc
-    TABLES
-      fields       = lt_fields.
-  CHECK lv_rc <> 'A'.
-
-  READ TABLE lt_fields INTO ls_field INDEX 1.
-  CHECK ls_field-value IS NOT INITIAL.
-
-  " Validate transition
-  DATA: lv_new_status TYPE zde_bug_status.
-  lv_new_status = ls_field-value.
-  READ TABLE lt_allowed TRANSPORTING NO FIELDS WITH KEY table_line = lv_new_status.
-  IF sy-subrc <> 0 AND gv_role <> 'M'.
-    MESSAGE |Invalid transition: { lv_current } → { lv_new_status }| TYPE 'W'.
-    RETURN.
-  ENDIF.
-
-  " v4.0: Evidence file prefix enforcement before status transition
-  DATA: lv_evd_ok TYPE abap_bool.
-  PERFORM check_evidence_for_status USING lv_new_status CHANGING lv_evd_ok.
-  IF lv_evd_ok = abap_false.
-    RETURN.  " Message already shown by check_evidence_for_status
-  ENDIF.
-
-  DATA: lv_un TYPE sy-uname.
-  lv_un = sy-uname.
-  UPDATE zbug_tracker
-    SET status = @lv_new_status,
-        aenam  = @lv_un,
-        aedat  = @sy-datum,
-        aezet  = @sy-uzeit
-    WHERE bug_id = @gv_current_bug_id.
-  IF sy-subrc = 0.
-    COMMIT WORK.
-    DATA: lv_old_st TYPE string,
-          lv_new_st TYPE string.
-    lv_old_st = lv_current.
-    lv_new_st = lv_new_status.
-    PERFORM add_history_entry USING gv_current_bug_id 'ST' lv_old_st lv_new_st 'Status changed'.
-    gs_bug_detail-status = lv_new_status.
-    " v4.0: Update snapshot to reflect new status
-    gs_bug_snapshot-status = lv_new_status.
-    MESSAGE |Status updated: { lv_current } → { lv_new_status }| TYPE 'S'.
-  ELSE.
-    ROLLBACK WORK.
-    MESSAGE 'Status update failed.' TYPE 'E'.
-  ENDIF.
 ENDFORM.
 
 *&=== ADD HISTORY ENTRY (auto-generate LOG_ID) ===*
@@ -571,7 +491,7 @@ ENDFORM.
 
 *&=== PROJECT USER MANAGEMENT: ADD ===*
 FORM add_user_to_project.
-  " v4.1 BUGFIX #1: Check project is saved before adding users
+  " Check project is saved before adding users
   IF gv_current_project_id IS INITIAL.
     MESSAGE 'Save the project first before adding users.' TYPE 'W'.
     RETURN.
@@ -585,9 +505,7 @@ FORM add_user_to_project.
   ls_field-fieldtext = 'SAP Username (USER_ID)'.
   APPEND ls_field TO lt_fields.
 
-  " v4.2 BUGFIX #2: Use SVAL-VALUE (generic CHAR 40, no search help)
-  " to avoid DDIC search help crash on ZBUG_USER_PROJEC-ROLE
-  " and avoid "Field P_ROLE does not belong to table" error
+  " Use SVAL-VALUE (generic CHAR 40, no search help) to avoid DDIC crash
   CLEAR ls_field.
   ls_field-tabname   = 'SVAL'.
   ls_field-fieldname = 'VALUE'.
@@ -614,7 +532,7 @@ FORM add_user_to_project.
     MESSAGE 'User ID is required.' TYPE 'W'. RETURN.
   ENDIF.
 
-  " v4.1 BUGFIX #2: Validate ROLE is M, D, or T
+  " Validate ROLE is M, D, or T
   TRANSLATE lv_role TO UPPER CASE.
   IF lv_role <> 'M' AND lv_role <> 'D' AND lv_role <> 'T'.
     MESSAGE 'Role must be M (Manager), D (Developer), or T (Tester).' TYPE 'W'.
@@ -649,11 +567,23 @@ FORM add_user_to_project.
 ENDFORM.
 
 *&=== PROJECT USER MANAGEMENT: REMOVE (selected row from Table Control) ===*
+*& Guard: tc_users-current_line defaults to 1 even without a click.
+*& Uses gv_tc_user_selected flag (set in tc_users_modify) to confirm
+*& the user actually interacted with the table control.
 FORM remove_user_from_project.
+  " Require explicit user interaction before allowing remove
+  IF gv_tc_user_selected = abap_false.
+    MESSAGE 'Please click on a user row to select it first.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
   DATA: lv_line TYPE i.
   lv_line = tc_users-current_line.
-  IF lv_line = 0.
-    MESSAGE 'Please select a user row to remove.' TYPE 'W'. RETURN.
+
+  " Validate range — prevent deleting wrong row
+  IF lv_line <= 0 OR lv_line > lines( gt_user_project ).
+    MESSAGE 'Invalid row selection.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
   ENDIF.
 
   READ TABLE gt_user_project INTO gs_user_project INDEX lv_line.
@@ -671,10 +601,12 @@ FORM remove_user_from_project.
   IF sy-subrc = 0.
     COMMIT WORK.
     DELETE gt_user_project INDEX lv_line.
+    " Reset flag after successful remove
+    CLEAR gv_tc_user_selected.
     MESSAGE |User { gs_user_project-user_id } removed.| TYPE 'S'.
   ELSE.
     ROLLBACK WORK.
-    MESSAGE 'Remove failed.' TYPE 'E'.
+    MESSAGE 'Remove failed.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -695,7 +627,8 @@ FORM load_history_data.
       WHEN 'ST' THEN 'Status Change'
       WHEN 'AT' THEN 'Attachment'
       WHEN 'DL' THEN 'Deleted'
-      WHEN 'RJ' THEN 'Rejected' ).
+      WHEN 'RJ' THEN 'Rejected'
+      WHEN 'AA' THEN 'Auto-Assigned' ).
   ENDLOOP.
 
   IF go_alv_history IS INITIAL.
@@ -716,9 +649,10 @@ FORM load_history_data.
 ENDFORM.
 
 *&=====================================================================*
-*& CLEANUP: Free all Screen 0300 GUI controls (v4.0)
+*& CLEANUP: Free all Screen 0300 GUI controls
 *& Called on BACK/CANC/EXIT from Bug Detail — ensures clean state
 *& for the next bug opened.
+*& Also cleans up Screen 0370 (trans_note) + Screen 0220 (search ALV)
 *&=====================================================================*
 FORM cleanup_detail_editors.
   " --- Mini description editor (Subscreen 0310) ---
@@ -769,7 +703,7 @@ FORM cleanup_detail_editors.
     CLEAR go_cont_tstr_note.
   ENDIF.
 
-  " --- v4.0: Evidence ALV (Subscreen 0350) ---
+  " --- Evidence ALV (Subscreen 0350) ---
   IF go_alv_evidence IS NOT INITIAL.
     go_alv_evidence->free( ).
     FREE go_alv_evidence.
@@ -793,12 +727,36 @@ FORM cleanup_detail_editors.
     CLEAR go_cont_history.
   ENDIF.
 
+  " --- Transition Note Editor (Screen 0370) ---
+  IF go_edit_trans_note IS NOT INITIAL.
+    go_edit_trans_note->free( ).
+    FREE go_edit_trans_note.
+    CLEAR go_edit_trans_note.
+  ENDIF.
+  IF go_cont_trans_note IS NOT INITIAL.
+    go_cont_trans_note->free( ).
+    FREE go_cont_trans_note.
+    CLEAR go_cont_trans_note.
+  ENDIF.
+
+  " --- Search Results ALV (Screen 0220) ---
+  IF go_search_alv IS NOT INITIAL.
+    go_search_alv->free( ).
+    FREE go_search_alv.
+    CLEAR go_search_alv.
+  ENDIF.
+  IF go_cont_search IS NOT INITIAL.
+    go_cont_search->free( ).
+    FREE go_cont_search.
+    CLEAR go_cont_search.
+  ENDIF.
+
   " --- Clear data-loaded flag so next bug triggers fresh DB load ---
   CLEAR gv_detail_loaded.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: LOAD EVIDENCE DATA (metadata only — no CONTENT for performance)
+*& LOAD EVIDENCE DATA (metadata only — no CONTENT for performance)
 *& Used by PBO init_evidence_alv module
 *&=====================================================================*
 FORM load_evidence_data.
@@ -813,7 +771,7 @@ FORM load_evidence_data.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: UPLOAD EVIDENCE — Common logic for UP_FILE / UP_REP / UP_FIX
+*& UPLOAD EVIDENCE — Common logic for UP_FILE / UP_REP / UP_FIX
 *& pv_att_field: 'EVD' = generic, 'REP' = report, 'FIX' = fix
 *&=====================================================================*
 FORM upload_evidence USING pv_att_field TYPE char3.
@@ -830,10 +788,22 @@ FORM upload_evidence USING pv_att_field TYPE char3.
         lv_max_evd_id  TYPE numc10,
         lv_new_evd_id  TYPE numc10.
 
-  " Bug must be saved first (need bug_id for evidence)
+  " Auto-save in create mode before uploading evidence
+  " Evidence needs bug_id (FK). If bug not saved yet, save it first.
   IF gv_current_bug_id IS INITIAL.
-    MESSAGE 'Save the bug first before uploading evidence.' TYPE 'W'.
-    RETURN.
+    IF gv_mode = gc_mode_create.
+      " Auto-validate and save the bug (generates bug_id, switches to Change mode)
+      PERFORM save_desc_mini_to_workarea.
+      PERFORM save_bug_detail.
+      IF gv_current_bug_id IS INITIAL.
+        " Save failed — validation errors already shown via TYPE 'S' DISPLAY LIKE 'E'
+        RETURN.
+      ENDIF.
+      " save_bug_detail already set gv_mode = gc_mode_change
+    ELSE.
+      MESSAGE 'Bug ID not available. Cannot upload evidence.' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ENDIF.
   ENDIF.
 
   " 1. File open dialog
@@ -970,7 +940,7 @@ FORM upload_evidence USING pv_att_field TYPE char3.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: UPLOAD EVIDENCE FILE (generic — no prefix requirement)
+*& UPLOAD EVIDENCE FILE (generic — no prefix requirement)
 *& Fcode UP_FILE
 *&=====================================================================*
 FORM upload_evidence_file.
@@ -978,7 +948,7 @@ FORM upload_evidence_file.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: UPLOAD REPORT FILE (Tester uploads test report / bug proof)
+*& UPLOAD REPORT FILE (Tester uploads test report / bug proof)
 *& Fcode UP_REP — also sets ATT_REPORT on ZBUG_TRACKER
 *&=====================================================================*
 FORM upload_report_file.
@@ -986,7 +956,7 @@ FORM upload_report_file.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: UPLOAD FIX FILE (Developer uploads fix package / patch)
+*& UPLOAD FIX FILE (Developer uploads fix package / patch)
 *& Fcode UP_FIX — also sets ATT_FIX on ZBUG_TRACKER
 *&=====================================================================*
 FORM upload_fix_file.
@@ -994,7 +964,7 @@ FORM upload_fix_file.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: DOWNLOAD EVIDENCE FILE
+*& DOWNLOAD EVIDENCE FILE
 *& Called from evidence ALV double-click handler
 *&=====================================================================*
 FORM download_evidence_file USING pv_evd_id TYPE numc10.
@@ -1053,7 +1023,7 @@ FORM download_evidence_file USING pv_evd_id TYPE numc10.
     EXCEPTIONS OTHERS = 1 ).
   IF sy-subrc = 0.
     MESSAGE |File "{ lv_fname }" downloaded successfully.| TYPE 'S'.
-    " v4.0: Auto-open downloaded file
+    " Auto-open downloaded file
     cl_gui_frontend_services=>execute(
       EXPORTING document = lv_fullpath
       EXCEPTIONS OTHERS = 1 ).
@@ -1063,7 +1033,7 @@ FORM download_evidence_file USING pv_evd_id TYPE numc10.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: DELETE EVIDENCE (selected row from Evidence ALV)
+*& DELETE EVIDENCE (selected row from Evidence ALV)
 *& Fcode DL_EVD
 *&=====================================================================*
 FORM delete_evidence.
@@ -1104,52 +1074,44 @@ FORM delete_evidence.
     go_alv_evidence->refresh_table_display( ).
   ELSE.
     ROLLBACK WORK.
-    MESSAGE 'Delete failed.' TYPE 'E'.
+    MESSAGE 'Delete failed.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: CHECK EVIDENCE PREFIX BEFORE STATUS TRANSITION
-*& Enforces file naming convention per status:
-*&   → Fixed(5):    require BUGPROOF_ evidence exists
-*&   → Resolved(6): require TESTCASE_ evidence exists
-*&   → Closed(7):   require CONFIRM_ evidence exists
+*& CHECK EVIDENCE FOR STATUS TRANSITION
+*&
+*& Rules:
+*&   → Fixed(5): require any evidence file (COUNT > 0)
+*&   → Resolved(V): require any evidence file (COUNT > 0)
+*&   → Other statuses: no evidence check needed
+*&
+*& NOTE: ZBUG_EVIDENCE has NO is_del field — not in WHERE clause.
+*& File prefix enforcement (BUGPROOF_, TESTCASE_, CONFIRM_) not applied.
 *&=====================================================================*
 FORM check_evidence_for_status USING    pv_new_status TYPE zde_bug_status
                                CHANGING pv_ok         TYPE abap_bool.
   pv_ok = abap_true.
   CHECK gv_current_bug_id IS NOT INITIAL.
 
-  DATA: lv_prefix TYPE string,
-        lv_count  TYPE i,
-        lv_like   TYPE sdok_filnm.
-
-  CASE pv_new_status.
-    WHEN gc_st_fixed.     " To Fixed: need bug proof uploaded earlier
-      lv_prefix = 'BUGPROOF_'.
-    WHEN gc_st_resolved.  " To Resolved: need test case result
-      lv_prefix = 'TESTCASE_'.
-    WHEN gc_st_closed.    " To Closed: need confirmation
-      lv_prefix = 'CONFIRM_'.
-    WHEN OTHERS.
-      RETURN.  " No check needed for other transitions
-  ENDCASE.
-
-  " Build LIKE pattern: 'BUGPROOF_%'
-  CONCATENATE lv_prefix '%' INTO lv_like.
-
-  SELECT COUNT(*) FROM zbug_evidence INTO @lv_count
-    WHERE bug_id    = @gv_current_bug_id
-      AND file_name LIKE @lv_like.
-
-  IF lv_count = 0.
-    MESSAGE |Evidence file with prefix "{ lv_prefix }" is required before this status change. Upload first.| TYPE 'W'.
-    pv_ok = abap_false.
+  " Evidence required for Fixed and Resolved
+  IF pv_new_status = gc_st_fixed OR pv_new_status = gc_st_resolved.
+    DATA: lv_count TYPE i.
+    SELECT COUNT(*) FROM zbug_evidence INTO @lv_count
+      WHERE bug_id = @gv_current_bug_id.
+    IF lv_count = 0.
+      IF pv_new_status = gc_st_fixed.
+        MESSAGE 'Evidence file is required before marking as Fixed. Upload first.' TYPE 'S' DISPLAY LIKE 'W'.
+      ELSE.
+        MESSAGE 'Evidence file is required before marking as Resolved. Upload first.' TYPE 'S' DISPLAY LIKE 'W'.
+      ENDIF.
+      pv_ok = abap_false.
+    ENDIF.
   ENDIF.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: CHECK UNSAVED BUG CHANGES (snapshot comparison)
+*& CHECK UNSAVED BUG CHANGES (snapshot comparison)
 *& Pops up Save/Discard/Cancel if changes detected
 *&=====================================================================*
 FORM check_unsaved_bug CHANGING pv_continue TYPE abap_bool.
@@ -1188,7 +1150,7 @@ FORM check_unsaved_bug CHANGING pv_continue TYPE abap_bool.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: CHECK UNSAVED PROJECT CHANGES (snapshot comparison)
+*& CHECK UNSAVED PROJECT CHANGES (snapshot comparison)
 *&=====================================================================*
 FORM check_unsaved_prj CHANGING pv_continue TYPE abap_bool.
   pv_continue = abap_true.
@@ -1223,7 +1185,7 @@ FORM check_unsaved_prj CHANGING pv_continue TYPE abap_bool.
 ENDFORM.
 
 *&=====================================================================*
-*& v4.0: SEND EMAIL NOTIFICATION (BCS API — real implementation)
+*& SEND EMAIL NOTIFICATION (BCS API — real implementation)
 *& Sends email to Dev, Tester, Verify Tester with bug details
 *&=====================================================================*
 FORM send_mail_notification.
@@ -1358,8 +1320,8 @@ FORM upload_project_excel.
          END OF ty_upload.
   DATA: lt_upload TYPE TABLE OF ty_upload.
 
-  " v4.1 BUGFIX #4: i_tab_raw_data is a CHANGING parameter (not EXPORTING)
-  " Passing it in EXPORTING block caused CALL_FUNCTION_CONFLICT_TYPE runtime error
+  " i_tab_raw_data is a CHANGING parameter (not EXPORTING)
+  " Passing it in EXPORTING block causes CALL_FUNCTION_CONFLICT_TYPE runtime error
   CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
     EXPORTING
       i_field_seperator    = 'X'
@@ -1450,5 +1412,697 @@ FORM upload_project_excel.
     ENDIF.
   ELSE.
     MESSAGE 'No valid data to upload.' TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
+ENDFORM.
+
+*&=====================================================================*
+*&=====================================================================*
+*& NEW FORMS
+*&=====================================================================*
+*&=====================================================================*
+
+*&=====================================================================*
+*& SEARCH PROJECTS (Screen 0410 → Screen 0400)
+*&
+*& Filters projects based on s_prj_id, s_prj_mn, s_prj_st.
+*& Security: Manager sees ALL projects (no INNER JOIN).
+*&           Non-Manager uses INNER JOIN with ZBUG_USER_PROJEC.
+*& Results stored in gt_projects.
+*& Sets gv_from_search = abap_true so PBO init_project_list skips
+*& select_project_data (data already loaded).
+*&=====================================================================*
+FORM search_projects.
+  CLEAR gt_projects.
+
+  IF gv_role = 'M'.
+    " Manager sees ALL projects — no security INNER JOIN
+    SELECT p~project_id, p~project_name, p~description,
+           p~project_status, p~project_manager,
+           p~start_date, p~end_date, p~note
+      FROM zbug_project AS p
+      WHERE p~is_del <> 'X'
+        AND ( @s_prj_id IS INITIAL OR p~project_id      = @s_prj_id )
+        AND ( @s_prj_mn IS INITIAL OR p~project_manager  = @s_prj_mn )
+        AND ( @s_prj_st IS INITIAL OR p~project_status   = @s_prj_st )
+      INTO CORRESPONDING FIELDS OF TABLE @gt_projects.
+  ELSE.
+    " Non-Manager: INNER JOIN with ZBUG_USER_PROJEC for security
+    SELECT p~project_id, p~project_name, p~description,
+           p~project_status, p~project_manager,
+           p~start_date, p~end_date, p~note
+      FROM zbug_project AS p
+      INNER JOIN zbug_user_projec AS u ON p~project_id = u~project_id
+      WHERE p~is_del <> 'X'
+        AND u~user_id = @sy-uname
+        AND ( @s_prj_id IS INITIAL OR p~project_id      = @s_prj_id )
+        AND ( @s_prj_mn IS INITIAL OR p~project_manager  = @s_prj_mn )
+        AND ( @s_prj_st IS INITIAL OR p~project_status   = @s_prj_st )
+      INTO CORRESPONDING FIELDS OF TABLE @gt_projects.
+
+    " Remove duplicates (user may have multiple roles in same project)
+    SORT gt_projects BY project_id.
+    DELETE ADJACENT DUPLICATES FROM gt_projects COMPARING project_id.
+  ENDIF.
+
+  " Map status text
+  LOOP AT gt_projects ASSIGNING FIELD-SYMBOL(<prj>).
+    <prj>-status_text = SWITCH #( <prj>-project_status
+      WHEN '1' THEN 'Opening'
+      WHEN '2' THEN 'In Process'
+      WHEN '3' THEN 'Done'
+      WHEN '4' THEN 'Cancelled' ).
+  ENDLOOP.
+
+  " Flag: data already loaded — PBO should NOT call select_project_data
+  gv_from_search = abap_true.
+ENDFORM.
+
+*&=====================================================================*
+*& CALCULATE DASHBOARD (Screen 0200 header metrics)
+*&
+*& Counts gt_bugs by status, priority, and SAP module.
+*& Called from select_bug_data after loading bugs.
+*& Results are displayed on Screen 0200 dashboard header fields.
+*&=====================================================================*
+FORM calculate_dashboard.
+  " Reset all counters
+  CLEAR: gv_dash_total,
+         gv_d_new, gv_d_assigned, gv_d_inprog, gv_d_pending,
+         gv_d_fixed, gv_d_finaltest, gv_d_resolved,
+         gv_d_rejected, gv_d_waiting, gv_d_closed,
+         gv_d_p_high, gv_d_p_med, gv_d_p_low,
+         gv_d_m_fi, gv_d_m_mm, gv_d_m_sd, gv_d_m_abap, gv_d_m_basis.
+
+  gv_dash_total = lines( gt_bugs ).
+
+  LOOP AT gt_bugs ASSIGNING FIELD-SYMBOL(<bug>).
+    " By Status
+    CASE <bug>-status.
+      WHEN gc_st_new.          ADD 1 TO gv_d_new.
+      WHEN gc_st_assigned.     ADD 1 TO gv_d_assigned.
+      WHEN gc_st_inprogress.   ADD 1 TO gv_d_inprog.
+      WHEN gc_st_pending.      ADD 1 TO gv_d_pending.
+      WHEN gc_st_fixed.        ADD 1 TO gv_d_fixed.
+      WHEN gc_st_finaltesting. ADD 1 TO gv_d_finaltest.
+      WHEN gc_st_resolved.     ADD 1 TO gv_d_resolved.
+      WHEN gc_st_rejected.     ADD 1 TO gv_d_rejected.
+      WHEN gc_st_waiting.      ADD 1 TO gv_d_waiting.
+      WHEN gc_st_closed.       ADD 1 TO gv_d_closed.
+    ENDCASE.
+
+    " By Priority
+    CASE <bug>-priority.
+      WHEN 'H'. ADD 1 TO gv_d_p_high.
+      WHEN 'M'. ADD 1 TO gv_d_p_med.
+      WHEN 'L'. ADD 1 TO gv_d_p_low.
+    ENDCASE.
+
+    " By Module
+    CASE <bug>-sap_module.
+      WHEN 'FI'.    ADD 1 TO gv_d_m_fi.
+      WHEN 'MM'.    ADD 1 TO gv_d_m_mm.
+      WHEN 'SD'.    ADD 1 TO gv_d_m_sd.
+      WHEN 'ABAP'.  ADD 1 TO gv_d_m_abap.
+      WHEN 'BASIS'. ADD 1 TO gv_d_m_basis.
+    ENDCASE.
+  ENDLOOP.
+ENDFORM.
+
+*&=====================================================================*
+*& VALIDATE STATUS TRANSITION (Screen 0370 popup)
+*&
+*& Validates the transition matrix before applying:
+*& 1. New status must be selected
+*& 2. Transition must be in allowed list
+*& 3. Role must be authorized
+*& 4. Required fields must be filled (dev_id, trans_note, evidence)
+*&
+*& Sets gv_trans_confirmed = abap_true if all checks pass.
+*& Called from PAI user_command_0370 → CONFIRM fcode.
+*&=====================================================================*
+FORM validate_status_transition.
+  gv_trans_confirmed = abap_false.
+
+  " 1. New status must be selected
+  IF gv_trans_new_status IS INITIAL.
+    MESSAGE 'Please select a new status.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 2. Validate allowed transition (matrix check)
+  DATA: lt_allowed TYPE TABLE OF zde_bug_status.
+  CASE gv_trans_cur_status.
+    WHEN gc_st_new.
+      APPEND gc_st_assigned TO lt_allowed.
+      APPEND gc_st_waiting  TO lt_allowed.
+    WHEN gc_st_waiting.
+      APPEND gc_st_assigned     TO lt_allowed.
+      APPEND gc_st_finaltesting TO lt_allowed.
+    WHEN gc_st_assigned.
+      APPEND gc_st_inprogress TO lt_allowed.
+      APPEND gc_st_rejected   TO lt_allowed.
+    WHEN gc_st_inprogress.
+      APPEND gc_st_fixed      TO lt_allowed.
+      APPEND gc_st_pending    TO lt_allowed.
+      APPEND gc_st_rejected   TO lt_allowed.
+    WHEN gc_st_pending.
+      APPEND gc_st_assigned   TO lt_allowed.
+    WHEN gc_st_finaltesting.
+      APPEND gc_st_resolved   TO lt_allowed.
+      APPEND gc_st_inprogress TO lt_allowed.
+  ENDCASE.
+
+  READ TABLE lt_allowed TRANSPORTING NO FIELDS
+    WITH KEY table_line = gv_trans_new_status.
+  IF sy-subrc <> 0.
+    MESSAGE |Invalid status transition: { gv_trans_cur_status } -> { gv_trans_new_status }| TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 3. Role authorization check (Manager does NOT auto-bypass — role matters)
+  DATA: lv_role_ok TYPE abap_bool VALUE abap_false.
+  CASE gv_trans_cur_status.
+    WHEN gc_st_new OR gc_st_waiting OR gc_st_pending.
+      " Only Manager can transition from New/Waiting/Pending
+      IF gv_role = 'M'. lv_role_ok = abap_true. ENDIF.
+    WHEN gc_st_assigned OR gc_st_inprogress.
+      " Dev (assigned to this bug) or Manager
+      IF gv_role = 'M' OR ( gv_role = 'D' AND gs_bug_detail-dev_id = sy-uname ).
+        lv_role_ok = abap_true.
+      ENDIF.
+    WHEN gc_st_finaltesting.
+      " Final Tester (assigned verify_tester_id) or Manager
+      IF gs_bug_detail-verify_tester_id = sy-uname OR gv_role = 'M'.
+        lv_role_ok = abap_true.
+      ENDIF.
+  ENDCASE.
+  IF lv_role_ok = abap_false.
+    MESSAGE 'You do not have permission to perform this transition.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 4. Required fields check
+
+  " 4a. DEVELOPER_ID required for → Assigned
+  IF gv_trans_new_status = gc_st_assigned AND gv_trans_dev_id IS INITIAL.
+    MESSAGE 'Developer ID is required for Assigned status.' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 4b. DEVELOPER_ID + FINAL_TESTER_ID required for Waiting → Final Testing
+  IF gv_trans_cur_status = gc_st_waiting AND gv_trans_new_status = gc_st_finaltesting.
+    IF gv_trans_dev_id IS INITIAL.
+      MESSAGE 'Developer ID is required.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
+    ENDIF.
+    IF gv_trans_ftester_id IS INITIAL.
+      MESSAGE 'Final Tester ID is required.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
+    ENDIF.
+  ENDIF.
+
+  " 4c. TRANS_NOTE required for → Rejected
+  IF gv_trans_new_status = gc_st_rejected.
+    DATA: lt_note_check TYPE TABLE OF char255.
+    IF go_edit_trans_note IS NOT INITIAL.
+      cl_gui_cfw=>flush( ).
+      go_edit_trans_note->get_text_as_r3table(
+        IMPORTING table = lt_note_check
+        EXCEPTIONS OTHERS = 3 ).
+    ENDIF.
+    IF lt_note_check IS INITIAL.
+      MESSAGE 'Rejection reason (note) is required.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
+    ENDIF.
+  ENDIF.
+
+  " 4d. Evidence required for → Fixed and → Resolved
+  IF gv_trans_new_status = gc_st_fixed OR gv_trans_new_status = gc_st_resolved.
+    DATA: lv_evd_count TYPE i.
+    SELECT COUNT(*) FROM zbug_evidence INTO @lv_evd_count
+      WHERE bug_id = @gv_current_bug_id.
+    IF lv_evd_count = 0.
+      IF gv_trans_new_status = gc_st_fixed.
+        MESSAGE 'Evidence file is required before marking as Fixed.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
+      ELSE.
+        MESSAGE 'Evidence file is required before marking as Resolved.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+  " 4e. TRANS_NOTE required for → Resolved (test result note)
+  IF gv_trans_new_status = gc_st_resolved.
+    DATA: lt_note_res TYPE TABLE OF char255.
+    IF go_edit_trans_note IS NOT INITIAL.
+      cl_gui_cfw=>flush( ).
+      go_edit_trans_note->get_text_as_r3table(
+        IMPORTING table = lt_note_res
+        EXCEPTIONS OTHERS = 3 ).
+    ENDIF.
+    IF lt_note_res IS INITIAL.
+      MESSAGE 'Test result note is required for Resolved.' TYPE 'S' DISPLAY LIKE 'E'. RETURN.
+    ENDIF.
+  ENDIF.
+
+  " All checks passed
+  gv_trans_confirmed = abap_true.
+ENDFORM.
+
+*&=====================================================================*
+*& APPLY STATUS TRANSITION (execute the actual change)
+*&
+*& Called from PAI user_command_0370 AFTER validate_status_transition
+*& passes (gv_trans_confirmed = abap_true).
+*&
+*& Actions:
+*& 1. Update gs_bug_detail fields (status, dev_id, verify_tester_id)
+*& 2. Save TRANS_NOTE to Dev Note (Z002) if → Rejected
+*& 3. Save TRANS_NOTE to Tester Note (Z003) if FinalTesting → Resolved/InProgress
+*& 4. UPDATE ZBUG_TRACKER
+*& 5. Log history via add_history_entry
+*& 6. Trigger auto_assign_tester if → Fixed
+*&
+*& NOTE: Uses save_long_text_direct (NOT save_long_text) because
+*& the text comes from go_edit_trans_note popup, not the main editors.
+*&=====================================================================*
+FORM apply_status_transition.
+  DATA: lv_old_status TYPE zde_bug_status.
+  lv_old_status = gs_bug_detail-status.
+
+  " Update bug detail in work area
+  gs_bug_detail-status = gv_trans_new_status.
+
+  " Update developer/tester if provided
+  IF gv_trans_dev_id IS NOT INITIAL.
+    gs_bug_detail-dev_id = gv_trans_dev_id.
+  ENDIF.
+  IF gv_trans_ftester_id IS NOT INITIAL.
+    gs_bug_detail-verify_tester_id = gv_trans_ftester_id.
+  ENDIF.
+
+  " Read transition note text ONCE (single flush + get_text call)
+  DATA: lt_trans_note TYPE gty_t_char255.
+  IF go_edit_trans_note IS NOT INITIAL.
+    cl_gui_cfw=>flush( ).
+    go_edit_trans_note->get_text_as_r3table(
+      IMPORTING table = lt_trans_note
+      EXCEPTIONS OTHERS = 3 ).
+  ENDIF.
+
+  " Save TRANS_NOTE → Dev Note (Z002) if → Rejected
+  IF gv_trans_new_status = gc_st_rejected AND lt_trans_note IS NOT INITIAL.
+    PERFORM save_long_text_direct USING 'Z002' lt_trans_note.
+  ENDIF.
+
+  " Save TRANS_NOTE → Tester Note (Z003) if FinalTesting → Resolved or → InProgress
+  IF gv_trans_cur_status = gc_st_finaltesting AND lt_trans_note IS NOT INITIAL.
+    PERFORM save_long_text_direct USING 'Z003' lt_trans_note.
+  ENDIF.
+
+  " Update timestamps
+  gs_bug_detail-aenam = sy-uname.
+  gs_bug_detail-aedat = sy-datum.
+  gs_bug_detail-aezet = sy-uzeit.
+
+  " Update database
+  UPDATE zbug_tracker FROM @gs_bug_detail.
+  IF sy-subrc = 0.
+    COMMIT WORK.
+
+    " Log history
+    DATA: lv_old_st TYPE string,
+          lv_new_st TYPE string.
+    lv_old_st = lv_old_status.
+    lv_new_st = gv_trans_new_status.
+    PERFORM add_history_entry USING gv_current_bug_id 'ST' lv_old_st lv_new_st 'Status changed'.
+    COMMIT WORK.
+
+    " Update snapshot to reflect new status
+    gs_bug_snapshot = gs_bug_detail.
+
+    " Trigger auto-assign tester if status → Fixed
+    IF gv_trans_new_status = gc_st_fixed.
+      PERFORM auto_assign_tester.
+    ENDIF.
+
+    MESSAGE |Status changed: { lv_old_status } -> { gv_trans_new_status }| TYPE 'S'.
+  ELSE.
+    ROLLBACK WORK.
+    " Revert work area on failure
+    gs_bug_detail-status = lv_old_status.
+    MESSAGE 'Failed to update bug status.' TYPE 'S' DISPLAY LIKE 'E'.
+  ENDIF.
+ENDFORM.
+
+*&=====================================================================*
+*& AUTO-ASSIGN DEVELOPER (New → Assigned/Waiting)
+*&
+*& Triggered after save_bug_detail in Create mode.
+*& Algorithm:
+*& 1. Find Developers in same project + same SAP module + active
+*& 2. Count active workload (status IN assigned/inprogress/pending/finaltesting)
+*& 3. Filter devs with workload < 5
+*& 4. Pick the one with least workload → Assigned
+*& 5. If no available dev → Waiting
+*&
+*& Uses add_history_entry. Uses comma-separated SET in UPDATE.
+*& Includes is_active check. Handles empty sap_module gracefully.
+*&=====================================================================*
+FORM auto_assign_developer.
+  " Only trigger for newly created bugs (status = New)
+  CHECK gs_bug_detail-status = gc_st_new.
+
+  TYPES: BEGIN OF ty_dev_workload,
+           user_id  TYPE zde_username,
+           workload TYPE i,
+         END OF ty_dev_workload.
+  DATA: lt_candidates TYPE TABLE OF ty_dev_workload,
+        ls_best       TYPE ty_dev_workload,
+        lv_assign_msg TYPE string.
+
+  " 1. Get Developers in same project + same module + active + not deleted
+  SELECT u~user_id
+    FROM zbug_user_projec AS u
+    INNER JOIN zbug_users AS usr ON u~user_id = usr~user_id
+    WHERE u~project_id = @gs_bug_detail-project_id
+      AND u~role = 'D'
+      AND usr~is_del <> 'X'
+      AND usr~is_active = 'X'
+      AND ( @gs_bug_detail-sap_module IS INITIAL
+            OR usr~sap_module = @gs_bug_detail-sap_module )
+    INTO TABLE @DATA(lt_devs).
+
+  IF lt_devs IS INITIAL.
+    " No available Dev → set to Waiting
+    gs_bug_detail-status = gc_st_waiting.
+    UPDATE zbug_tracker SET status = @gc_st_waiting
+      WHERE bug_id = @gs_bug_detail-bug_id.
+    COMMIT WORK.
+    PERFORM add_history_entry USING gs_bug_detail-bug_id 'AA' gc_st_new gc_st_waiting 'No developer available'.
+    COMMIT WORK.
+    MESSAGE 'No available developer. Bug set to Waiting.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  " 2. Calculate workload for each Dev
+  LOOP AT lt_devs INTO DATA(ls_dev).
+    DATA: ls_cand TYPE ty_dev_workload.
+    ls_cand-user_id = ls_dev-user_id.
+    SELECT COUNT(*) FROM zbug_tracker
+      WHERE dev_id = @ls_dev-user_id
+        AND status IN (@gc_st_assigned, @gc_st_inprogress, @gc_st_pending, @gc_st_finaltesting)
+        AND is_del <> 'X'.
+    ls_cand-workload = sy-dbcnt.
+    IF ls_cand-workload < 5.
+      APPEND ls_cand TO lt_candidates.
+    ENDIF.
+  ENDLOOP.
+
+  IF lt_candidates IS INITIAL.
+    " All Devs overloaded (workload >= 5) → Waiting
+    gs_bug_detail-status = gc_st_waiting.
+    UPDATE zbug_tracker SET status = @gc_st_waiting
+      WHERE bug_id = @gs_bug_detail-bug_id.
+    COMMIT WORK.
+    PERFORM add_history_entry USING gs_bug_detail-bug_id 'AA' gc_st_new gc_st_waiting 'All developers overloaded'.
+    COMMIT WORK.
+    MESSAGE 'All developers overloaded. Bug set to Waiting.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  " 3. Pick Dev with lowest workload
+  SORT lt_candidates BY workload ASCENDING.
+  READ TABLE lt_candidates INTO ls_best INDEX 1.
+
+  " 4. Assign developer + update status to Assigned
+  gs_bug_detail-dev_id = ls_best-user_id.
+  gs_bug_detail-status = gc_st_assigned.
+  UPDATE zbug_tracker
+    SET dev_id = @ls_best-user_id,
+        status = @gc_st_assigned
+    WHERE bug_id = @gs_bug_detail-bug_id.
+  COMMIT WORK.
+  lv_assign_msg = |Auto-assigned to { ls_best-user_id } (workload: { ls_best-workload })|.
+  PERFORM add_history_entry USING gs_bug_detail-bug_id 'AA' gc_st_new gc_st_assigned
+    lv_assign_msg.
+  COMMIT WORK.
+
+  " Update snapshot
+  gs_bug_snapshot = gs_bug_detail.
+
+  MESSAGE |Bug auto-assigned to { ls_best-user_id } (workload: { ls_best-workload })| TYPE 'S'.
+ENDFORM.
+
+*&=====================================================================*
+*& AUTO-ASSIGN TESTER (Fixed → Final Testing/Waiting)
+*&
+*& Triggered from apply_status_transition when status → Fixed.
+*& Algorithm:
+*& 1. Find Testers in same project + same SAP module + active
+*& 2. Count active workload (verify_tester_id with status = FinalTesting)
+*& 3. Filter testers with workload < 5
+*& 4. Pick the one with least workload → Final Testing
+*& 5. If no available tester → Waiting
+*&
+*& Uses add_history_entry. Uses comma-separated SET in UPDATE.
+*&=====================================================================*
+FORM auto_assign_tester.
+  " Only trigger when status = Fixed
+  CHECK gs_bug_detail-status = gc_st_fixed.
+
+  TYPES: BEGIN OF ty_tst_workload,
+           user_id  TYPE zde_username,
+           workload TYPE i,
+         END OF ty_tst_workload.
+  DATA: lt_candidates TYPE TABLE OF ty_tst_workload,
+        ls_best       TYPE ty_tst_workload,
+        lv_assign_msg TYPE string.
+
+  " 1. Get Testers in same project + same module + active + not deleted
+  SELECT u~user_id
+    FROM zbug_user_projec AS u
+    INNER JOIN zbug_users AS usr ON u~user_id = usr~user_id
+    WHERE u~project_id = @gs_bug_detail-project_id
+      AND u~role = 'T'
+      AND usr~is_del <> 'X'
+      AND usr~is_active = 'X'
+      AND ( @gs_bug_detail-sap_module IS INITIAL
+            OR usr~sap_module = @gs_bug_detail-sap_module )
+    INTO TABLE @DATA(lt_testers).
+
+  IF lt_testers IS INITIAL.
+    " No available Tester → Waiting
+    gs_bug_detail-status = gc_st_waiting.
+    UPDATE zbug_tracker SET status = @gc_st_waiting
+      WHERE bug_id = @gs_bug_detail-bug_id.
+    COMMIT WORK.
+    PERFORM add_history_entry USING gs_bug_detail-bug_id 'AA' gc_st_fixed gc_st_waiting 'No tester available'.
+    COMMIT WORK.
+    " Update snapshot
+    gs_bug_snapshot = gs_bug_detail.
+    MESSAGE 'No available tester. Bug set to Waiting.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  " 2. Calculate workload for each Tester
+  LOOP AT lt_testers INTO DATA(ls_tst).
+    DATA: ls_cand TYPE ty_tst_workload.
+    ls_cand-user_id = ls_tst-user_id.
+    SELECT COUNT(*) FROM zbug_tracker
+      WHERE verify_tester_id = @ls_tst-user_id
+        AND status = @gc_st_finaltesting
+        AND is_del <> 'X'.
+    ls_cand-workload = sy-dbcnt.
+    IF ls_cand-workload < 5.
+      APPEND ls_cand TO lt_candidates.
+    ENDIF.
+  ENDLOOP.
+
+  IF lt_candidates IS INITIAL.
+    " All Testers overloaded → Waiting
+    gs_bug_detail-status = gc_st_waiting.
+    UPDATE zbug_tracker SET status = @gc_st_waiting
+      WHERE bug_id = @gs_bug_detail-bug_id.
+    COMMIT WORK.
+    PERFORM add_history_entry USING gs_bug_detail-bug_id 'AA' gc_st_fixed gc_st_waiting 'All testers overloaded'.
+    COMMIT WORK.
+    gs_bug_snapshot = gs_bug_detail.
+    MESSAGE 'All testers overloaded. Bug set to Waiting.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  " 3. Pick Tester with lowest workload
+  SORT lt_candidates BY workload ASCENDING.
+  READ TABLE lt_candidates INTO ls_best INDEX 1.
+
+  " 4. Assign tester + update status to Final Testing
+  gs_bug_detail-verify_tester_id = ls_best-user_id.
+  gs_bug_detail-status = gc_st_finaltesting.
+  UPDATE zbug_tracker
+    SET verify_tester_id = @ls_best-user_id,
+        status = @gc_st_finaltesting
+    WHERE bug_id = @gs_bug_detail-bug_id.
+  COMMIT WORK.
+  lv_assign_msg = |Auto-assigned to tester { ls_best-user_id } (workload: { ls_best-workload })|.
+  PERFORM add_history_entry USING gs_bug_detail-bug_id 'AA' gc_st_fixed gc_st_finaltesting
+    lv_assign_msg.
+  COMMIT WORK.
+
+  " Update snapshot
+  gs_bug_snapshot = gs_bug_detail.
+
+  MESSAGE |Bug auto-assigned to tester { ls_best-user_id } for Final Testing| TYPE 'S'.
+ENDFORM.
+
+*&=====================================================================*
+*& EXECUTE BUG SEARCH (Screen 0210 → results in gt_search_results)
+*&
+*& Search filters: s_bug_id, s_title, s_status, s_prio, s_mod,
+*&                 s_reporter, s_dev
+*& Security: scoped to current project (gv_current_project_id).
+*& Results in gt_search_results (ty_bug_alv) with text mapping.
+*&
+*& NOTE: Title wildcard uses CP operator in a LOOP (not in SQL —
+*& CP not valid in Open SQL). Pattern: *term* for CP matching.
+*& Sets gv_search_executed = abap_true so PAI navigates to 0220
+*& after the modal dialog closes.
+*&=====================================================================*
+FORM execute_bug_search.
+  CLEAR gt_search_results.
+
+  " Build title pattern for CP operator: surround with *
+  DATA: lv_title_pattern TYPE string.
+  IF s_title IS NOT INITIAL.
+    lv_title_pattern = '*' && s_title && '*'.
+    TRANSLATE lv_title_pattern TO UPPER CASE.
+  ENDIF.
+
+  " SELECT into gt_search_results (ty_bug_alv via CORRESPONDING FIELDS)
+  SELECT * FROM zbug_tracker
+    WHERE is_del <> 'X'
+      AND project_id = @gv_current_project_id
+      AND ( @s_bug_id   IS INITIAL OR bug_id    = @s_bug_id )
+      AND ( @s_status   IS INITIAL OR status    = @s_status )
+      AND ( @s_prio     IS INITIAL OR priority  = @s_prio )
+      AND ( @s_mod      IS INITIAL OR sap_module = @s_mod )
+      AND ( @s_reporter IS INITIAL OR tester_id = @s_reporter )
+      AND ( @s_dev      IS INITIAL OR dev_id    = @s_dev )
+    INTO CORRESPONDING FIELDS OF TABLE @gt_search_results.
+
+  " Title wildcard filter (post-SELECT — CP operator not valid in SQL)
+  IF lv_title_pattern IS NOT INITIAL.
+    DATA: lt_keep TYPE TABLE OF ty_bug_alv.
+    LOOP AT gt_search_results ASSIGNING FIELD-SYMBOL(<sr>).
+      DATA: lv_title_upper TYPE string.
+      lv_title_upper = <sr>-title.
+      TRANSLATE lv_title_upper TO UPPER CASE.
+      IF lv_title_upper CP lv_title_pattern.
+        APPEND <sr> TO lt_keep.
+      ENDIF.
+    ENDLOOP.
+    gt_search_results = lt_keep.
+  ENDIF.
+
+  " Text mapping loop (same as select_bug_data)
+  LOOP AT gt_search_results ASSIGNING FIELD-SYMBOL(<bug>).
+    <bug>-status_text = SWITCH #( <bug>-status
+      WHEN gc_st_new          THEN 'New'
+      WHEN gc_st_assigned     THEN 'Assigned'
+      WHEN gc_st_inprogress   THEN 'In Progress'
+      WHEN gc_st_pending      THEN 'Pending'
+      WHEN gc_st_fixed        THEN 'Fixed'
+      WHEN gc_st_finaltesting THEN 'Final Testing'
+      WHEN gc_st_closed       THEN 'Closed'
+      WHEN gc_st_waiting      THEN 'Waiting'
+      WHEN gc_st_rejected     THEN 'Rejected'
+      WHEN gc_st_resolved     THEN 'Resolved'
+      ELSE <bug>-status ).
+
+    <bug>-priority_text = SWITCH #( <bug>-priority
+      WHEN 'H' THEN 'High'
+      WHEN 'M' THEN 'Medium'
+      WHEN 'L' THEN 'Low' ).
+
+    <bug>-severity_text = SWITCH #( <bug>-severity
+      WHEN '1' THEN 'Dump/Critical'
+      WHEN '2' THEN 'Very High'
+      WHEN '3' THEN 'High'
+      WHEN '4' THEN 'Normal'
+      WHEN '5' THEN 'Minor' ).
+
+    <bug>-bug_type_text = SWITCH #( <bug>-bug_type
+      WHEN '1' THEN 'Functional'
+      WHEN '2' THEN 'Performance'
+      WHEN '3' THEN 'UI/UX'
+      WHEN '4' THEN 'Integration'
+      WHEN '5' THEN 'Security' ).
+  ENDLOOP.
+
+  IF gt_search_results IS INITIAL.
+    MESSAGE 'No bugs found matching criteria.' TYPE 'S' DISPLAY LIKE 'W'.
+  ELSE.
+    MESSAGE |Found { lines( gt_search_results ) } bug(s).| TYPE 'S'.
+  ENDIF.
+ENDFORM.
+
+*&=====================================================================*
+*&=====================================================================*
+*& MODIFY SCREEN 0370 — PBO helper for field enable/disable
+*&
+*& Read-only fields: BUG_ID, TITLE, REPORTER, CURRENT_STATUS — always locked
+*& NEW_STATUS: always open (F4 will filter by allowed transitions)
+*& DEVELOPER_ID: open when current status = New/Waiting/Pending
+*& FINAL_TESTER_ID: open when current status = Waiting
+*& TRANS_NOTE editor: enabled for Assigned/InProgress/FinalTesting
+*&
+*& Called from PBO MODULE init_trans_popup.
+*&=====================================================================*
+FORM modify_screen_0370.
+  LOOP AT SCREEN.
+    " Read-only fields: always locked
+    IF screen-name CS 'GV_TRANS_BUG_ID' OR screen-name CS 'GV_TRANS_TITLE'
+       OR screen-name CS 'GV_TRANS_REPORTER' OR screen-name CS 'GV_TRANS_CUR_'.
+      screen-input = 0.
+      MODIFY SCREEN.
+      CONTINUE.
+    ENDIF.
+
+    " NEW_STATUS: always open (F4 enforces transition matrix)
+    IF screen-name CS 'GV_TRANS_NEW_STATUS'.
+      screen-input = 1.
+      MODIFY SCREEN.
+      CONTINUE.
+    ENDIF.
+
+    " DEVELOPER_ID: enable when Manager needs to assign dev
+    IF screen-name CS 'GV_TRANS_DEV_ID'.
+      CASE gv_trans_cur_status.
+        WHEN gc_st_new OR gc_st_waiting OR gc_st_pending.
+          screen-input = 1.   " Open
+        WHEN OTHERS.
+          screen-input = 0.   " Locked
+      ENDCASE.
+      MODIFY SCREEN.
+      CONTINUE.
+    ENDIF.
+
+    " FINAL_TESTER_ID: enable only when current status = Waiting
+    IF screen-name CS 'GV_TRANS_FTESTER_ID'.
+      CASE gv_trans_cur_status.
+        WHEN gc_st_waiting.
+          screen-input = 1.   " Open (Manager can manually assign tester)
+        WHEN OTHERS.
+          screen-input = 0.   " Locked
+      ENDCASE.
+      MODIFY SCREEN.
+      CONTINUE.
+    ENDIF.
+  ENDLOOP.
+
+  " Enable/disable TRANS_NOTE text editor based on current status
+  IF go_edit_trans_note IS NOT INITIAL.
+    CASE gv_trans_cur_status.
+      WHEN gc_st_assigned OR gc_st_inprogress OR gc_st_finaltesting.
+        go_edit_trans_note->set_readonly_mode( cl_gui_textedit=>false ). " Editable
+      WHEN OTHERS.
+        go_edit_trans_note->set_readonly_mode( cl_gui_textedit=>true ).  " Read-only
+    ENDCASE.
   ENDIF.
 ENDFORM.

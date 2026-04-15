@@ -1,9 +1,5 @@
 *&---------------------------------------------------------------------*
-*& Include Z_BUG_WS_F00 — ALV Setup & Event Classes (v4.0)
-*&---------------------------------------------------------------------*
-*& v4.0 changes (over v3.0):
-*&  - handle_double_click: NEW method for evidence ALV download on dblclick
-*&  - build_evidence_fieldcat: NEW FORM for evidence ALV columns
+*& Include Z_BUG_WS_F00 — ALV Setup & Event Classes
 *&---------------------------------------------------------------------*
 
 CLASS lcl_event_handler DEFINITION.
@@ -16,40 +12,56 @@ CLASS lcl_event_handler DEFINITION.
       handle_user_command FOR EVENT user_command OF cl_gui_alv_grid
         IMPORTING e_ucomm,
       handle_double_click FOR EVENT double_click OF cl_gui_alv_grid
-        IMPORTING e_row e_column es_row_no.            " v4.0: evidence download
+        IMPORTING e_row e_column es_row_no.
 ENDCLASS.
 
 CLASS lcl_event_handler IMPLEMENTATION.
   METHOD handle_hotspot_click.
-    " Bug List: click Bug ID → mở Bug Detail (Display mode)
+
+    " ===== BUG_ID hotspot — open Bug Detail =====
     IF e_column_id-fieldname = 'BUG_ID'.
-      READ TABLE gt_bugs INTO DATA(ls_bug) INDEX e_row_id-index.
-      IF sy-subrc = 0.
-        gv_current_bug_id   = ls_bug-bug_id.
-        gv_mode             = gc_mode_display.
-        gv_active_subscreen = '0310'.
-        gv_active_tab       = 'TAB_INFO'.      " v3.0: sync tab highlight
-        CLEAR gv_detail_loaded.                 " v3.0: force fresh load
-        CALL SCREEN 0300.
+      " Search Results screen (0220) reads from gt_search_results
+      IF sy-dynnr = '0220'.
+        READ TABLE gt_search_results INTO DATA(ls_search) INDEX e_row_id-index.
+        IF sy-subrc = 0.
+          gv_current_bug_id   = ls_search-bug_id.
+          gv_mode             = gc_mode_display.
+          gv_active_subscreen = '0310'.
+          gv_active_tab       = 'TAB_INFO'.
+          CLEAR gv_detail_loaded.
+          CALL SCREEN 0300.
+        ENDIF.
+      ELSE.
+        " Standard Bug List (Screen 0200)
+        READ TABLE gt_bugs INTO DATA(ls_bug) INDEX e_row_id-index.
+        IF sy-subrc = 0.
+          gv_current_bug_id   = ls_bug-bug_id.
+          gv_mode             = gc_mode_display.
+          gv_active_subscreen = '0310'.
+          gv_active_tab       = 'TAB_INFO'.
+          CLEAR gv_detail_loaded.
+          CALL SCREEN 0300.
+        ENDIF.
       ENDIF.
     ENDIF.
 
-    " ----- PROJECT LIST: click Project ID → Bug List (project context) -----
-    " NEW FLOW: Hotspot trên Project ALV → mở Bug List filtered by project
+    " ===== PROJECT_ID hotspot — context depends on which screen =====
     IF e_column_id-fieldname = 'PROJECT_ID'.
-      READ TABLE gt_projects INTO DATA(ls_prj) INDEX e_row_id-index.
-      IF sy-subrc = 0.
+      IF sy-dynnr = '0400'.
         " From Project List → open Bug List with project filter
-        gv_current_project_id = ls_prj-project_id.
-        gv_bug_filter_mode    = 'P'.  " Project mode — show ALL bugs of this project
-        CALL SCREEN 0200.
+        READ TABLE gt_projects INTO DATA(ls_prj) INDEX e_row_id-index.
+        IF sy-subrc = 0.
+          gv_current_project_id = ls_prj-project_id.
+          gv_bug_filter_mode    = 'P'.  " Project mode — show ALL bugs of this project
+          CALL SCREEN 0200.
+        ENDIF.
       ELSE.
-        " From Bug List → open Project Detail (display mode)
+        " From Bug List (0200/0220) → open Project Detail (display mode)
         READ TABLE gt_bugs INTO DATA(ls_bug2) INDEX e_row_id-index.
         IF sy-subrc = 0 AND ls_bug2-project_id IS NOT INITIAL.
           gv_current_project_id = ls_bug2-project_id.
           gv_mode               = gc_mode_display.
-          CLEAR gv_prj_detail_loaded.            " v3.0: force fresh load
+          CLEAR gv_prj_detail_loaded.
           CALL SCREEN 0500.
         ENDIF.
       ENDIF.
@@ -62,9 +74,8 @@ CLASS lcl_event_handler IMPLEMENTATION.
   METHOD handle_user_command.
   ENDMETHOD.
 
-  " v4.0: Double-click on Evidence ALV → download selected file
+  " Double-click on Evidence ALV → download selected file
   METHOD handle_double_click.
-    " Only fires for go_alv_evidence (registered below in PBO)
     DATA: ls_evidence TYPE ty_evidence_alv.
     READ TABLE gt_evidence INTO ls_evidence INDEX es_row_no-row_id.
     IF sy-subrc = 0.
@@ -100,17 +111,17 @@ FORM build_bug_fieldcat.
   add_fcat 'DEV_ID'           'Developer'       12.
   add_fcat 'CREATED_AT'       'Created'         10.
 
-  " Hotspot trên BUG_ID
+  " Hotspot on BUG_ID
   READ TABLE gt_fcat_bug ASSIGNING FIELD-SYMBOL(<fc>)
     WITH KEY fieldname = 'BUG_ID'.
   IF sy-subrc = 0. <fc>-hotspot = 'X'. ENDIF.
 
-  " Hotspot trên PROJECT_ID (click → Project Detail from Bug List)
+  " Hotspot on PROJECT_ID (click → Project Detail from Bug List)
   READ TABLE gt_fcat_bug ASSIGNING <fc>
     WITH KEY fieldname = 'PROJECT_ID'.
   IF sy-subrc = 0. <fc>-hotspot = 'X'. ENDIF.
 
-  " Ẩn raw code columns (hiển thị _TEXT thay thế)
+  " Hide raw code columns (display _TEXT instead)
   CLEAR ls_fcat. ls_fcat-tabname = 'GT_BUGS'.
   ls_fcat-fieldname = 'STATUS'.   ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_bug.
   CLEAR ls_fcat. ls_fcat-tabname = 'GT_BUGS'.
@@ -119,6 +130,50 @@ FORM build_bug_fieldcat.
   ls_fcat-fieldname = 'SEVERITY'. ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_bug.
   CLEAR ls_fcat. ls_fcat-tabname = 'GT_BUGS'.
   ls_fcat-fieldname = 'BUG_TYPE'. ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_bug.
+ENDFORM.
+
+*&--- SEARCH RESULTS FIELD CATALOG ---*
+*& Same columns as build_bug_fieldcat but tabname GT_SEARCH_RESULTS
+FORM build_search_fieldcat.
+  DATA: ls_fcat TYPE lvc_s_fcat.
+  CLEAR gt_fcat_search.
+
+  DEFINE add_sfcat.
+    CLEAR ls_fcat.
+    ls_fcat-tabname   = 'GT_SEARCH_RESULTS'.
+    ls_fcat-fieldname = &1.
+    ls_fcat-coltext   = &2.
+    ls_fcat-outputlen = &3.
+    APPEND ls_fcat TO gt_fcat_search.
+  END-OF-DEFINITION.
+
+  add_sfcat 'BUG_ID'           'Bug ID'          12.
+  add_sfcat 'TITLE'            'Title'           40.
+  add_sfcat 'PROJECT_ID'       'Project'         15.
+  add_sfcat 'STATUS_TEXT'      'Status'          15.
+  add_sfcat 'PRIORITY_TEXT'    'Priority'        10.
+  add_sfcat 'SEVERITY_TEXT'    'Severity'        15.
+  add_sfcat 'BUG_TYPE_TEXT'    'Type'            18.
+  add_sfcat 'SAP_MODULE'       'Module'          12.
+  add_sfcat 'TESTER_ID'        'Tester'          12.
+  add_sfcat 'VERIFY_TESTER_ID' 'Verify Tester'   12.
+  add_sfcat 'DEV_ID'           'Developer'       12.
+  add_sfcat 'CREATED_AT'       'Created'         10.
+
+  " Hotspot on BUG_ID (click → Bug Detail from search results)
+  READ TABLE gt_fcat_search ASSIGNING FIELD-SYMBOL(<fc>)
+    WITH KEY fieldname = 'BUG_ID'.
+  IF sy-subrc = 0. <fc>-hotspot = 'X'. ENDIF.
+
+  " Hide raw code columns
+  CLEAR ls_fcat. ls_fcat-tabname = 'GT_SEARCH_RESULTS'.
+  ls_fcat-fieldname = 'STATUS'.   ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_search.
+  CLEAR ls_fcat. ls_fcat-tabname = 'GT_SEARCH_RESULTS'.
+  ls_fcat-fieldname = 'PRIORITY'. ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_search.
+  CLEAR ls_fcat. ls_fcat-tabname = 'GT_SEARCH_RESULTS'.
+  ls_fcat-fieldname = 'SEVERITY'. ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_search.
+  CLEAR ls_fcat. ls_fcat-tabname = 'GT_SEARCH_RESULTS'.
+  ls_fcat-fieldname = 'BUG_TYPE'. ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_search.
 ENDFORM.
 
 *&--- PROJECT LIST FIELD CATALOG ---*
@@ -143,12 +198,12 @@ FORM build_pro_fieldcat.
   add_fcat_p 'PROJECT_MANAGER' 'Manager'        12.
   add_fcat_p 'NOTE'            'Note'           30.
 
-  " Hotspot trên PROJECT_ID — click → Bug List (project filter)
+  " Hotspot on PROJECT_ID — click → Bug List (project filter)
   READ TABLE gt_fcat_project ASSIGNING FIELD-SYMBOL(<fc>)
     WITH KEY fieldname = 'PROJECT_ID'.
   IF sy-subrc = 0. <fc>-hotspot = 'X'. ENDIF.
 
-  " Ẩn raw status code
+  " Hide raw status code
   CLEAR ls_fcat. ls_fcat-tabname = 'GT_PROJECTS'.
   ls_fcat-fieldname = 'PROJECT_STATUS'. ls_fcat-no_out = 'X'. APPEND ls_fcat TO gt_fcat_project.
 ENDFORM.
@@ -176,7 +231,7 @@ FORM build_history_fieldcat CHANGING pt_fcat TYPE lvc_t_fcat.
   add_hfcat 'REASON'       'Reason'      40.
 ENDFORM.
 
-*&--- v4.0: EVIDENCE FIELD CATALOG ---*
+*&--- EVIDENCE FIELD CATALOG ---*
 FORM build_evidence_fieldcat.
   DATA: ls_fcat TYPE lvc_s_fcat.
   CLEAR gt_fcat_evidence.

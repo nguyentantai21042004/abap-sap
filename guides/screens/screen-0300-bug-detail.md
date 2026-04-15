@@ -1,7 +1,15 @@
 # UI Guide: Screen 0300 — Bug Detail + 6 Subscreens (0310-0360)
 
-> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.2
+> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v5.0
 > **Screen phức tạp nhất — Tab Strip với 6 tabs, Subscreen Area, fields + editors**
+>
+> **v5.0 changes:**
+> - **STATUS field → screen group `STS`** — ALWAYS locked. User PHẢI click "Change Status" → mở popup Screen 0370
+> - **STATUS_CHG** → mở popup `CALL SCREEN 0370` thay vì `POPUP_GET_VALUES`
+> - **SAP_MODULE F4 Help** — thêm `FIELD gs_bug_detail-sap_module MODULE f4_bug_sapmodule.` vào POV
+> - **Bug 1+9 fix:** TRY-CATCH cho container creation, xóa STRING fields (DESC_TEXT, REASONS) khỏi screen layout
+> - **Bug 7 fix:** Tất cả `MESSAGE TYPE 'E'` → `TYPE 'S' DISPLAY LIKE 'E'` (tránh lock screen)
+> - **Bug 8 fix:** Sync `desc_text` sau save long text
 >
 > v4.2 changes:
 > - **Subscreen 0310 PBO:** Added `MODULE modify_screen_0300.` to fix Issue 1+2 (fields not disabling in Display mode, BUG_ID still editable)
@@ -69,7 +77,7 @@ PROCESS AFTER INPUT.
 | `modify_screen_0300` | PBO | Enable/disable fields theo mode (Display/Change/Create) + role |
 | `CALL SUBSCREEN ss_tab` | PBO | Load active subscreen vào Subscreen Area |
 | `CALL SUBSCREEN ss_tab` | PAI | Process PAI of active subscreen |
-| `user_command_0300` | PAI | Handle: SAVE, STATUS_CHG, UP_FILE, UP_REP, UP_FIX, tab switch, BACK/EXIT |
+| `user_command_0300` | PAI | Handle: SAVE, STATUS_CHG (**v5.0:** mở popup 0370), UP_FILE, UP_REP, UP_FIX, tab switch, BACK/EXIT |
 
 ### Tại sao cần `compute_bug_display_texts` riêng?
 
@@ -179,7 +187,15 @@ PROCESS ON VALUE-REQUEST.
   FIELD gs_bug_detail-tester_id          MODULE f4_bug_tester.
   FIELD gs_bug_detail-dev_id             MODULE f4_bug_dev.
   FIELD gs_bug_detail-verify_tester_id   MODULE f4_bug_verify.
+  FIELD gs_bug_detail-sap_module         MODULE f4_bug_sapmodule.
 ```
+
+> **v5.0 NEW — SAP_MODULE F4 Help:**
+> Thêm dòng `FIELD gs_bug_detail-sap_module MODULE f4_bug_sapmodule.` vào POV block.
+> Module `f4_bug_sapmodule` (CODE_PAI) gọi `PERFORM f4_sap_module` (CODE_F02) hiển thị danh sách: FI, MM, SD, ABAP, BASIS, PP, HR, QM.
+>
+> **v5.0 NOTE — STATUS field:**
+> Mặc dù STATUS vẫn có F4 entry trong POV, trong thực tế user KHÔNG bao giờ dùng F4 cho STATUS vì field luôn locked (screen group `STS`). Status thay đổi qua popup Screen 0370 (nút "Change Status").
 
 > **v3.0:** Module `init_desc_mini` tạo mini editor lazily + chỉ load text lần đầu (preserves user edits khi switch tab).
 >
@@ -252,7 +268,7 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 | `GS_BUG_DETAIL-BUG_ID` | **`BID`** | **v4.1:** ALWAYS display-only (auto-generated, shows "(Auto)" in Create) |
 | `GS_BUG_DETAIL-PROJECT_ID` | **`PRJ`** | Locked khi tạo bug từ project context |
 | `GS_BUG_DETAIL-TITLE` | **`EDT`** | Editable (disabled khi Display mode) |
-| `GS_BUG_DETAIL-STATUS` | **`EDT`** | Editable |
+| `GS_BUG_DETAIL-STATUS` | **`STS`** | **v5.0 NEW** — ALWAYS locked (`screen-input = 0`). Change via popup 0370 only |
 | `GS_BUG_DETAIL-PRIORITY` | **`FNC`** | **v4.0** — Dev cannot edit (Tester/Manager only) |
 | `GS_BUG_DETAIL-SEVERITY` | **`FNC`** | **v4.0** — Dev cannot edit (Tester/Manager only) |
 | `GS_BUG_DETAIL-BUG_TYPE` | **`FNC`** | **v4.0** — Dev cannot edit (Tester/Manager only) |
@@ -260,23 +276,27 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 | `GS_BUG_DETAIL-TESTER_ID` | **`TST`** | Chỉ Tester/Manager sửa được |
 | `GS_BUG_DETAIL-VERIFY_TESTER_ID` | **`TST`** | Chỉ Tester/Manager sửa được |
 | `GS_BUG_DETAIL-DEV_ID` | **`DEV`** | Chỉ Developer/Manager sửa được |
-| `GS_BUG_DETAIL-CREATED_AT` | *(none)* | Always display-only → **Set Input = OFF** |
+| `GS_BUG_DETAIL-CREATED_AT` | **`CRD`** | **Bug 6d FIX** — ALWAYS read-only (system-generated) |
 | `GV_STATUS_DISP` | *(none)* | Always display-only (Input = OFF) |
 | `GV_PRIORITY_DISP` | *(none)* | Always display-only |
 | `GV_SEVERITY_DISP` | *(none)* | Always display-only |
 | `GV_BUG_TYPE_DISP` | *(none)* | Always display-only |
 
-### Screen Group Logic (reference — CODE_PBO.md line 234-288):
+### Screen Group Logic (reference — CODE_PBO.md):
 
 | Group | Behavior |
 |-------|----------|
-| `EDT` | Disabled khi `gv_mode = 'D'` (Display) hoặc `status = Closed` |
+| `EDT` | Disabled khi `gv_mode = 'D'` (Display) hoặc `status = Closed/Resolved` |
 | `BID` | **v4.1 CHANGED:** ALWAYS `screen-input = 0` (auto-generated, never editable) |
 | `PRJ` | Disabled khi Create mode + `gv_current_project_id` đã set (pre-filled, locked) |
 | `TST` | Disabled khi `gv_role = 'D'` (Dev không sửa Tester fields) |
 | `DEV` | Disabled khi `gv_role = 'T'` (Tester không sửa Dev fields) |
 | `FNC` | **v4.0 NEW** — Disabled khi `gv_role = 'D'` (Dev không sửa), hoặc Display mode, hoặc Closed |
+| `STS` | **v5.0 NEW** — ALWAYS `screen-input = 0` — Status field LUÔN locked. Thay đổi status CHỈ qua nút "Change Status" → popup Screen 0370 |
+| `CRD` | **Bug 6d FIX** — ALWAYS `screen-input = 0` — Created fields (ERDAT/ERNAM/ERZET) LUÔN read-only |
 
+> **⚠️ v5.0 BREAKING CHANGE:** STATUS field chuyển từ Group `EDT` sang Group **`STS`**. Trước đây user có thể sửa trực tiếp STATUS trên screen → bây giờ PHẢI dùng popup 0370 (có matrix validation, transition note, evidence check).
+>
 > **⚠️ v4.0 CHANGE:** BUG_TYPE, PRIORITY, SEVERITY chuyển từ Group `EDT` sang Group `FNC`. Developer chỉ đọc các trường này — chỉ Tester/Manager mới sửa được.
 
 ### Bước 4: Thêm Group Boxes (optional — tăng UX)
@@ -294,7 +314,7 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 ### Bước 5: Thêm Description Mini Editor (Custom Control)
 
 1. Menu → Edit → Create Element → **Custom Control**
-2. Vẽ hình chữ nhật ở **phần dưới** screen (~60 chars wide x 4 lines high)
+2. Vẽ hình chữ nhật ở **phần dưới** screen (~60 chars wide x **8-10 lines high** — Bug 2 fix)
 3. Name: **`CC_DESC_MINI`**
    - ⚠️ Khớp code: `container_name = 'CC_DESC_MINI'` (CODE_PBO.md line 267)
 
@@ -343,7 +363,124 @@ Double-click label → sửa text:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-## 2.4 Save + Activate Screen 0310
+## 2.4 Bug Fix — SE51 Changes on Screen 0310
+
+> **Consolidated SE51 fixes for Bug 2, Bug 4, Bug 6b, Bug 6d.**
+> Mở SE51 → Screen **0310** → thực hiện tất cả changes bên dưới → Save + Activate.
+
+### Fix Bug 6b — Verify SAP Module F4 Help wiring (Flow Logic)
+
+**Vấn đề:** SAP Module field không có F4 search help khi user nhấn F4.
+
+**Cách verify + fix:**
+
+1. Mở Screen 0310 → tab **Flow Logic**
+2. Tìm block `PROCESS ON VALUE-REQUEST.`
+3. Verify dòng sau **có tồn tại** (dòng cuối cùng trong POV block):
+   ```
+   FIELD gs_bug_detail-sap_module         MODULE f4_bug_sapmodule.
+   ```
+4. Nếu **KHÔNG CÓ** → thêm dòng đó vào cuối POV block
+5. Flow logic hoàn chỉnh phải giống:
+   ```abap
+   PROCESS ON VALUE-REQUEST.
+     FIELD gs_bug_detail-status             MODULE f4_bug_status.
+     FIELD gs_bug_detail-priority           MODULE f4_bug_priority.
+     FIELD gs_bug_detail-severity           MODULE f4_bug_severity.
+     FIELD gs_bug_detail-bug_type           MODULE f4_bug_type.
+     FIELD gs_bug_detail-project_id         MODULE f4_bug_project.
+     FIELD gs_bug_detail-tester_id          MODULE f4_bug_tester.
+     FIELD gs_bug_detail-dev_id             MODULE f4_bug_dev.
+     FIELD gs_bug_detail-verify_tester_id   MODULE f4_bug_verify.
+     FIELD gs_bug_detail-sap_module         MODULE f4_bug_sapmodule.
+   ```
+
+---
+
+### Fix Bug 6d — ERDAT / ERNAM / ERZET always read-only
+
+**Vấn đề:** Created Date/By/Time fields cho phép user gõ vào → phải LUÔN read-only.
+
+**Kiểm tra trước:** Trong Layout Editor, xem Screen 0310 có những fields nào liên quan "Created":
+- Nếu có `GS_BUG_DETAIL-ERDAT`, `GS_BUG_DETAIL-ERNAM`, `GS_BUG_DETAIL-ERZET` → apply fix bên dưới
+- Nếu chỉ có `GS_BUG_DETAIL-CREATED_AT` → cũng apply fix cho field đó
+
+**Cách fix:**
+
+1. Double-click field `GS_BUG_DETAIL-ERDAT` → tab **Attributes**:
+   - **Group1**: đổi thành **`CRD`**
+   - (Nếu Input checkbox đang checked → uncheck)
+2. Lặp lại cho `GS_BUG_DETAIL-ERNAM`:
+   - **Group1**: đổi thành **`CRD`**
+3. Lặp lại cho `GS_BUG_DETAIL-ERZET`:
+   - **Group1**: đổi thành **`CRD`**
+4. Nếu có `GS_BUG_DETAIL-CREATED_AT` (field #15):
+   - **Group1**: đổi thành **`CRD`** (hoặc giữ Input = OFF nếu không cần group logic)
+
+> **Tại sao CRD?** CODE_PBO `modify_screen_0300` (line 270-275) có logic:
+> ```abap
+> IF screen-group1 = 'CRD'.
+>   screen-input = 0.
+>   MODIFY SCREEN.
+> ENDIF.
+> ```
+> → Group `CRD` = ALWAYS `screen-input = 0` (read-only) bất kể mode nào.
+
+---
+
+### Fix Bug 4 — Display text bị cắt (VIS LEN quá ngắn)
+
+**Vấn đề:** Các field hiển thị text như "In Progress", "Dump/Critical" bị cắt vì `VIS LEN` nhỏ hơn nội dung thực.
+
+**Cách fix — từng field:**
+
+| # | Field Name | Giá trị dài nhất | VIS LEN cần set | OUTPUT LEN cần set |
+|---|-----------|-----------------|-----------------|-------------------|
+| 1 | `GV_STATUS_DISP` | "Final Testing" = 13 | **20** | **20** |
+| 2 | `GV_PRIORITY_DISP` | "Medium" = 6 | **10** | **10** |
+| 3 | `GV_SEVERITY_DISP` | "Dump/Critical" = 14 | **20** | **20** |
+| 4 | `GV_BUG_TYPE_DISP` | "Integration" = 11 | **20** | **20** |
+
+**Thao tác cho mỗi field:**
+
+1. Double-click field (ví dụ `GV_STATUS_DISP`) trên Layout Editor
+2. Tab **Attributes** → tìm:
+   - **Vis. Length** (Visible Length) → sửa thành giá trị trong bảng trên
+   - **Output Len** (Output Length / Disp. Len) → sửa thành giá trị tương ứng
+3. Nhấn Enter để confirm
+4. Lặp lại cho 3 fields còn lại
+
+> **Tip:** Nếu field quá nhỏ trên layout sau khi tăng VIS LEN, kéo phải border của field để mở rộng cho khớp.
+
+---
+
+### Fix Bug 2 — CC_DESC_MINI quá nhỏ (3-4 dòng → 8-10 dòng)
+
+**Vấn đề:** Mini description editor chỉ hiện 3-4 dòng text, quá nhỏ để nhập mô tả.
+
+**Cách fix:**
+
+1. Click vào Custom Control **`CC_DESC_MINI`** trên Layout Editor
+2. Kéo **bottom border** xuống để tăng chiều cao:
+   - Trước: ~4 rows high
+   - Sau: **~8-10 rows high** (đủ để nhập mô tả vừa phải)
+3. Nếu CC_DESC_MINI bị chèn lên fields khác:
+   - Di chuyển các fields phía trên lên gần nhau hơn, hoặc
+   - Di chuyển CC_DESC_MINI xuống dưới cùng của subscreen
+
+> **Lưu ý:** Custom Control chỉ là container — chiều cao thực tế của editor phụ thuộc vào kích thước container. Tăng container = tăng vùng nhập text.
+
+---
+
+### Save + Activate
+
+1. **Save** (Ctrl+S)
+2. **Activate** (Ctrl+F3)
+3. Verify: Test `ZBUG_WS` → mở 1 bug → tab Bug Info → check:
+   - SAP Module field: nhấn F4 → popup hiện danh sách modules (FI, MM, SD, ABAP, ...) ✅
+   - ERDAT/ERNAM/ERZET luôn read-only ✅
+   - Status/Priority/Severity/Bug Type display text hiện đầy đủ, không bị cắt ✅
+   - Description mini editor cao hơn (~8-10 dòng) ✅
 
 ---
 
@@ -553,7 +690,7 @@ PROCESS AFTER INPUT.
 
 ---
 
-# PHẦN 8: TỔNG KẾT — Container Names (v3.0 VERIFIED)
+# PHẦN 8: TỔNG KẾT — Container Names (v5.0 VERIFIED)
 
 > **Bảng tham chiếu nhanh** — sử dụng bảng này để verify sau khi tạo screens.
 
@@ -573,16 +710,16 @@ PROCESS AFTER INPUT.
 
 # PHẦN 9: GUI Status Reference
 
-Screen 0300 dùng **STATUS_0300**. Xem `UI_FINAL_STEPS.md` để tạo.
+Screen 0300 dùng **STATUS_0300**. Xem `guides/deploy/final-steps.md` để tạo.
 
 ### Buttons trên STATUS_0300:
 
 | # | FCode | Text | Icon | Notes |
 |---|-------|------|------|-------|
 | 1 | `SAVE` | Save | `ICON_SYSTEM_SAVE` | Hidden: Display mode |
-| 2 | `STATUS_CHG` | Change Status | `ICON_CHANGE` | Hidden: Create mode |
+| 2 | `STATUS_CHG` | Change Status | `ICON_CHANGE` | Hidden: Create mode. **v5.0:** Mở popup Screen 0370 (transition popup) thay vì `POPUP_GET_VALUES` |
 | 3 | *(separator)* | | | |
-| 4 | `UP_FILE` | Upload Evidence | `ICON_IMPORT` | Hidden: Create mode |
+| 4 | `UP_FILE` | Upload Evidence | `ICON_IMPORT` | **v5.0 Bug 6:** Available in ALL modes (Create: auto-save bug first, then upload) |
 | 5 | `UP_REP` | Upload Report | `ICON_IMPORT` | Hidden: Dev role + Create mode |
 | 6 | `UP_FIX` | Upload Fix | `ICON_IMPORT` | Hidden: Tester role + Create mode |
 | 7 | *(separator)* | | | |
@@ -599,7 +736,106 @@ Screen này dùng **TITLE_BUGDETAIL** — text = `&1` (nhận "Create Bug" / "Ch
 
 ---
 
-# PHẦN 10: Activation Order
+# PHẦN 10: v5.0 — Status Transition Popup (Screen 0370)
+
+> Phần này mô tả **tích hợp** popup 0370 vào Screen 0300. Chi tiết Screen 0370 xem `guides/screens/screen-0370-status-transition.md`.
+
+### 10.1 STATUS_CHG Handler (CODE_PAI — `user_command_0300`)
+
+Khi user click "Change Status":
+
+```abap
+WHEN 'STATUS_CHG'.
+  " v5.0: Mở popup Screen 0370 (modal dialog)
+  " KHÔNG dùng POPUP_GET_VALUES như v4.x
+  CALL SCREEN 0370 STARTING AT 10 3 ENDING AT 90 20.
+  " Sau khi popup đóng:
+  " - Nếu CONFIRM → gs_bug_detail-status đã cập nhật, history đã ghi
+  " - Nếu CANCEL → không thay đổi gì
+```
+
+### 10.2 Tại sao đổi sang popup 0370?
+
+| Trước (v4.x) | Sau (v5.0) | Lý do |
+|---------------|-----------|-------|
+| `POPUP_GET_VALUES` — chỉ 1 field input (status mới) | Screen 0370 — full form | Cần thêm: Transition Note, Evidence check, Matrix validation |
+| User chọn bất kỳ status → save | Matrix check: chỉ hiển thị status được phép chuyển | Bug 10 fix: không cho chuyển ngược 3→1 |
+| Manager bypass transition rules | Manager tuân theo matrix | Bug 10+11 fix |
+| Không yêu cầu reason/note | Bắt buộc nhập Transition Note cho một số transition | Bug 11 fix: evidence + reason enforcement |
+
+### 10.3 Flow tích hợp
+
+```
+User trên Screen 0300 (Change mode)
+  → Click "Change Status" (STATUS_CHG)
+  → PAI: CALL SCREEN 0370 STARTING AT...
+  → Screen 0370 hiển thị:
+     - Current Status (readonly)
+     - Target Status dropdown (chỉ hiện statuses được phép theo matrix + role)
+     - Transition Note (text editor, bắt buộc cho một số transitions)
+     - Upload Evidence button (nếu transition yêu cầu evidence)
+  → User chọn target + nhập note → Click CONFIRM
+  → Code:
+     1. Validate transition (matrix check)
+     2. Validate evidence (nếu cần)
+     3. UPDATE ZBUG_TRACKER SET status = target
+     4. INSERT ZBUG_HISTORY (ghi log)
+     5. Auto-assign nếu applicable (New→Assigned, Fixed→FinalTesting)
+     6. LEAVE TO SCREEN 0 (đóng popup)
+  → Quay về Screen 0300 → PBO chạy lại → display texts update
+```
+
+---
+
+# PHẦN 11: v5.0 — Bug Fix Notes cho SE51
+
+> Các lưu ý quan trọng khi tạo/sửa screens trong SE51 cho v5.0.
+
+### 11.1 Bug 1+9: XÓA STRING fields khỏi Screen Layout
+
+> **CRITICAL:** Không đặt STRING fields trên SAP screen layout — gây short dump `CALL_FUNCTION_CONFLICT_TYPE`.
+
+**Fields KHÔNG ĐƯỢC có trên screen 0310:**
+- ❌ `GS_BUG_DETAIL-DESC_TEXT` (type STRING) — Description nằm trong `CC_DESC_MINI` editor
+- ❌ `GS_BUG_DETAIL-REASONS` (type STRING) — Reasons nằm trong Transition Note popup
+
+> Nếu đã đặt trên screen từ v4.x → **XÓA** bằng cách: Layout → click field → Delete (hoặc Ctrl+Y).
+
+### 11.2 Bug 1+9: TRY-CATCH cho Container Creation
+
+Code PBO v5.0 wrap tất cả `CREATE OBJECT go_cont_*` trong TRY-CATCH:
+```abap
+TRY.
+    CREATE OBJECT go_cont_desc EXPORTING container_name = 'CC_DESC'.
+    CREATE OBJECT go_edit_desc EXPORTING parent = go_cont_desc.
+  CATCH cx_root.
+    MESSAGE '...' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+ENDTRY.
+```
+→ Nếu Custom Control chưa tạo đúng trên SE51, user thấy warning message thay vì short dump.
+
+### 11.3 Bug 4: Verify Field Mapping
+
+Đảm bảo các fields sau **có trên screen 0310** và **map đúng biến global**:
+
+| Field cần hiện | Biến ABAP | Vấn đề nếu thiếu |
+|----------------|----------|-------------------|
+| SAP Module | `GS_BUG_DETAIL-SAP_MODULE` | Không thấy SAP Module trên Bug Info tab |
+| Severity (display) | `GV_SEVERITY_DISP` | Severity code hiện mà không có text |
+| Created Date | `GS_BUG_DETAIL-CREATED_AT` | Không thấy ngày tạo bug |
+
+### 11.4 Bug 7: Message Type
+
+Tất cả validation messages trong PAI **PHẢI** dùng:
+```abap
+MESSAGE 'Error text' TYPE 'S' DISPLAY LIKE 'E'.
+```
+**KHÔNG** dùng `TYPE 'E'` — sẽ lock tất cả screen fields khiến user không sửa được.
+
+---
+
+# PHẦN 12: Activation Order
 
 **Activate subscreens TRƯỚC, host screen SAU:**
 
@@ -615,7 +851,7 @@ Screen này dùng **TITLE_BUGDETAIL** — text = `&1` (nhận "Create Bug" / "Ch
 
 ---
 
-# PHẦN 11: Troubleshooting
+# PHẦN 13: Troubleshooting
 
 | Vấn đề | Nguyên nhân | Fix |
 |--------|-------------|-----|
@@ -628,3 +864,8 @@ Screen này dùng **TITLE_BUGDETAIL** — text = `&1` (nhận "Create Bug" / "Ch
 | Tab highlight sai sau switch | `ts_detail-activetab` chưa sync | v3.0 code đã fix: set `ts_detail-activetab = gv_active_tab` mỗi PBO |
 | User edits bị mất khi switch tab | PBO reload data từ DB | v3.0 code đã fix: `gv_detail_loaded` flag prevents re-read |
 | Stale data từ bug trước hiện lên | Editors không freed khi BACK | v3.0 code đã fix: `cleanup_detail_editors` called on BACK/CANC/EXIT |
+| **v5.0:** Short dump khi mở tab | STRING field (DESC_TEXT/REASONS) trên screen layout | **XÓA** STRING fields khỏi screen 0310 layout (xem PHẦN 11.1) |
+| **v5.0:** Status field vẫn editable | Screen group chưa đổi sang STS | Double-click STATUS field → Group1 = `STS` (KHÔNG phải `EDT`) |
+| **v5.0:** Change Status vẫn dùng popup cũ | Code PAI chưa update | Verify CODE_PAI v5.0 — STATUS_CHG → `CALL SCREEN 0370` thay vì `POPUP_GET_VALUES` |
+| **v5.0:** SAP Module không có F4 | POV entry thiếu | Screen 0310 Flow Logic → POV → thêm `FIELD gs_bug_detail-sap_module MODULE f4_bug_sapmodule.` |
+| **v5.0:** Fields lock sau validation error | Dùng `MESSAGE TYPE 'E'` | Đổi thành `MESSAGE ... TYPE 'S' DISPLAY LIKE 'E'.` + `RETURN.` (xem PHẦN 11.4) |

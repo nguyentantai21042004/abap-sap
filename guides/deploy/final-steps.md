@@ -1,7 +1,16 @@
 # UI Guide: Final Steps — GUI Status, Title Bars, SE93, Activation, Testing
 
-> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.0
+> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v5.0
 > **File này hướng dẫn tất cả bước còn lại sau khi đã tạo screens**
+>
+> **v5.0 changes:**
+> - **+4 new GUI Statuses:** STATUS_0410, STATUS_0370, STATUS_0210, STATUS_0220
+> - **+4 new Title Bars:** T_0410, T_0370, T_0210, T_0220
+> - **STATUS_0200:** +SEARCH button
+> - **+4 new Screens:** 0410 (initial), 0370 (popup), 0210 (popup), 0220 (full)
+> - **SE93:** initial screen đổi từ `0400` → `0410`
+> - **Testing checklist:** Updated cho 10-state lifecycle, auto-assign, dashboard, search, transition popup
+> - **STATUS_0400:** KHÔNG còn là initial screen
 >
 > v4.0 changes:
 > - STATUS_0200: +DN_TC, +DN_CONF, +DN_PROOF (template downloads)
@@ -15,16 +24,17 @@
 ## MỤC LỤC
 
 0. [Step 0: Tạo bảng ZBUG_EVIDENCE (SE11)](#step-0-tạo-bảng-zbug_evidence-se11) — **v4.0 NEW**
-1. [Step 1: Copy Code v4.0 vào SAP](#step-1-copy-code-v40-vào-sap)
-2. [Step 2: Tạo GUI Statuses (SE41)](#step-2-tạo-gui-statuses-se41)
-3. [Step 3: Tạo Title Bars (SE41)](#step-3-tạo-title-bars-se41)
-4. [Step 4: Tạo Screens (SE51)](#step-4-tạo-screens-se51)
-5. [Step 5: Đổi T-code Initial Screen (SE93)](#step-5-đổi-t-code-initial-screen-se93)
+1. [Step 1: Copy Code v5.0 vào SAP](#step-1-copy-code-v50-vào-sap)
+2. [Step 2: Tạo GUI Statuses (SE41)](#step-2-tạo-gui-statuses-se41) — **v5.0: 9 statuses (5 existing + 4 new)**
+3. [Step 3: Tạo Title Bars (SE41)](#step-3-tạo-title-bars-se41) — **v5.0: 9 title bars (5 existing + 4 new)**
+4. [Step 4: Tạo Screens (SE51)](#step-4-tạo-screens-se51) — **v5.0: 15 screens (11 existing + 4 new)**
+5. [Step 5: Đổi T-code Initial Screen (SE93)](#step-5-đổi-t-code-initial-screen-se93) — **v5.0: 0400 → 0410**
 6. [Step 6: Activation Order](#step-6-activation-order)
 7. [Step 7: Screen 0100 (Deprecated)](#step-7-screen-0100-deprecated)
-8. [Step 8: Testing Checklist](#step-8-testing-checklist)
-9. [Phase D: SMW0 Template Upload](#step-9-phase-d-smw0-template-upload)
+8. [Step 8: Testing Checklist](#step-8-testing-checklist) — **v5.0: updated**
+9. [Phase D: SMW0 Template Upload](#step-9-phase-d-smw0-template-upload) — **v5.0: template rename**
 10. [Phase D: Orphan Bug Cleanup](#step-10-phase-d-orphan-bug-cleanup)
+11. [Step 11: v5.0 Status Data Migration](#step-11-v50-status-data-migration) — **v5.0 NEW**
 
 ---
 
@@ -63,7 +73,7 @@
 
 ---
 
-## Step 1: Copy Code v4.0 vào SAP
+## Step 1: Copy Code v5.0 vào SAP
 
 ### Thứ tự INCLUDE bắt buộc trong Main Program:
 
@@ -79,14 +89,16 @@ INCLUDE z_bug_ws_f02.    " 6. Helpers
 
 ### Quy trình copy:
 
-| Step | Include | Copy từ file | Lines (v4.0) |
+| Step | Include | Copy từ file | Lines (v5.0 est.) |
 |------|---------|-------------|-------|
-| 1 | `Z_BUG_WS_TOP` | `CODE_TOP.md` | ~180 |
-| 2 | `Z_BUG_WS_F00` | `CODE_F00.md` | ~210 |
-| 3 | `Z_BUG_WS_PBO` | `CODE_PBO.md` | ~530 |
-| 4 | `Z_BUG_WS_PAI` | `CODE_PAI.md` | ~290 |
-| 5 | `Z_BUG_WS_F01` | `CODE_F01.md` | ~1150 |
-| 6 | `Z_BUG_WS_F02` | `CODE_F02.md` | ~490 |
+| 1 | `Z_BUG_WS_TOP` | `CODE_TOP.md` | ~250 |
+| 2 | `Z_BUG_WS_F00` | `CODE_F00.md` | ~280 |
+| 3 | `Z_BUG_WS_PBO` | `CODE_PBO.md` | ~700 |
+| 4 | `Z_BUG_WS_PAI` | `CODE_PAI.md` | ~450 |
+| 5 | `Z_BUG_WS_F01` | `CODE_F01.md` | ~1800 |
+| 6 | `Z_BUG_WS_F02` | `CODE_F02.md` | ~650 |
+
+> **v5.0 NOTE:** Code lớn hơn đáng kể so với v4.0 do: 4 new screens, dashboard, search engine, status matrix, auto-assign.
 
 ### Cách copy từng include:
 
@@ -164,12 +176,15 @@ Save + Activate.
 | 4 | `DELETE` | Delete | `ICON_DELETE` | Excluded: Dev + Tester + My Bugs mode |
 | 5 | *(separator)* | | | Click ô trống giữa 2 nút, để trống FCode |
 | 6 | `REFRESH` | Refresh | `ICON_REFRESH` | |
-| 7 | *(separator)* | | | |
-| 8 | `DN_TC` | Download TestCase | `ICON_EXPORT` | **v4.0** — Download ZTEMPLATE_TESTCASE |
-| 9 | `DN_CONF` | Download Confirm | `ICON_EXPORT` | **v4.0** — Download ZTEMPLATE_CONFIRM |
-| 10 | `DN_PROOF` | Download BugProof | `ICON_EXPORT` | **v4.0** — Download ZTEMPLATE_BUGPROOF |
+| 7 | **`SEARCH`** | **Search Bug** | **`ICON_SEARCH`** | **v5.0 NEW** — Mở popup Screen 0210 |
+| 8 | *(separator)* | | | |
+| 9 | `DN_TC` | Download TestCase | `ICON_EXPORT` | v4.0 — Download ZBT_TMPL_01 |
+| 10 | `DN_CONF` | Download Confirm | `ICON_EXPORT` | v4.0 — Download ZBT_TMPL_03 |
+| 11 | `DN_PROOF` | Download BugProof | `ICON_EXPORT` | v4.0 — Download ZBT_TMPL_02 |
 
 **Cách thêm icon:** Khi tạo button, column "Icon Name" → nhập tên icon (vd `ICON_CREATE`). Hoặc click icon picker.
+
+> **v5.0 NOTE:** Nếu STATUS_0200 đã tạo rồi (v4.0), chỉ cần mở lại → thêm SEARCH button sau REFRESH.
 
 **Function Keys:** BACK (F3), EXIT (Shift+F3), CANC (F12)
 
@@ -188,23 +203,25 @@ Save + Activate.
 | 1 | `SAVE` | Save | `ICON_SYSTEM_SAVE` | Excluded: Display mode |
 | 2 | `STATUS_CHG` | Change Status | `ICON_CHANGE` | Excluded: Create mode |
 | 3 | *(separator)* | | | |
-| 4 | `UP_FILE` | Upload Evidence | `ICON_IMPORT` | Excluded: Create mode |
+| 4 | `UP_FILE` | Upload Evidence | `ICON_IMPORT` | **v5.0:** Available in ALL modes (Create: auto-save first) |
 | 5 | `UP_REP` | Upload Report | `ICON_IMPORT` | Excluded: Dev role + Create mode |
 | 6 | `UP_FIX` | Upload Fix | `ICON_IMPORT` | Excluded: Tester role + Create mode |
 | 7 | *(separator)* | | | |
-| 8 | `DL_EVD` | Download Evidence | `ICON_EXPORT` | **v4.0** — Download selected evidence file |
+| 8 | `DL_EVD` | Delete Evidence | `ICON_DELETE` | **v5.0** — Delete selected evidence row |
 | 9 | `SENDMAIL` | Send Email | `ICON_MAIL` | **v4.0** — Send bug info via BCS API |
 
 **Function Keys:** BACK (F3), EXIT (Shift+F3), CANC (F12)
 
 > **CRITICAL:** Fcode `SAVE` **BẮT BUỘC** phải có trong status. Thiếu = nút Save không hiện kể cả ở Change mode.
-> **v4.0:** `DL_EVD` downloads selected evidence row (binary → GUI_DOWNLOAD). `SENDMAIL` triggers `cl_bcs` email with bug summary.
+> **v5.0:** `DL_EVD` deletes selected evidence row (with confirmation popup). `SENDMAIL` triggers `cl_bcs` email with bug summary.
 
 Save + Activate.
 
 ---
 
-### STATUS_0400 — Project List (INITIAL SCREEN)
+### STATUS_0400 — Project List
+
+> **v5.0:** Screen 0400 KHÔNG còn là initial screen. Initial screen là 0410 (Project Search).
 
 **Short Description:** `Project List`
 
@@ -250,6 +267,87 @@ Save + Activate.
 
 ---
 
+### STATUS_0410 — Project Search (v5.0 NEW)
+
+> **v5.0:** Screen mới — initial screen thay thế 0400.
+
+**Short Description:** `Project Search`
+
+**Application Toolbar buttons:**
+
+| # | FCode | Text on Button | Icon | Notes |
+|---|-------|---------------|------|-------|
+| 1 | `EXECUTE` | Execute | `ICON_EXECUTE_OBJECT` | Search projects + CALL SCREEN 0400 |
+
+**Function Keys:** BACK (F3), EXIT (Shift+F3), CANC (F12)
+
+> **BACK/EXIT/CANCEL** đều → `LEAVE PROGRAM` (vì đây là initial screen).
+
+Save + Activate.
+
+---
+
+### STATUS_0370 — Status Transition Popup (v5.0 NEW)
+
+> **v5.0:** Modal dialog popup — thay thế `POPUP_GET_VALUES` cho status changes.
+
+**Short Description:** `Change Bug Status`
+
+**Application Toolbar buttons:**
+
+| # | FCode | Text on Button | Icon | Notes |
+|---|-------|---------------|------|-------|
+| 1 | `CONFIRM` | Confirm | `ICON_OKAY` | Validate + save transition |
+| 2 | `UP_TRANS` | Upload Evidence | `ICON_IMPORT` | Upload evidence cho transition |
+
+**Function Keys:** CANC (F12 — mapped to `CANCEL`)
+
+> **LƯU Ý:** Modal dialogs thường KHÔNG có BACK/EXIT — chỉ có CANCEL (F12) để đóng popup.
+> FCode `CANCEL` → `LEAVE TO SCREEN 0` (đóng popup, quay về calling screen).
+
+Save + Activate.
+
+---
+
+### STATUS_0210 — Bug Search Input (v5.0 NEW)
+
+> **v5.0:** Modal dialog popup — nhập search criteria.
+
+**Short Description:** `Bug Search`
+
+**Application Toolbar buttons:**
+
+| # | FCode | Text on Button | Icon | Notes |
+|---|-------|---------------|------|-------|
+| 1 | `EXECUTE` | Search | `ICON_SEARCH` | Execute search + CALL SCREEN 0220 |
+
+**Function Keys:** CANC (F12 — mapped to `CANCEL`)
+
+> **LƯU Ý:** Modal dialog — chỉ có EXECUTE + CANCEL.
+
+Save + Activate.
+
+---
+
+### STATUS_0220 — Bug Search Results (v5.0 NEW)
+
+> **v5.0:** Full screen — hiển thị kết quả search (ALV Grid, KHÔNG có dashboard).
+
+**Short Description:** `Search Results`
+
+**Application Toolbar buttons:**
+
+| # | FCode | Text on Button | Icon | Notes |
+|---|-------|---------------|------|-------|
+| 1 | `CHANGE` | Change | `ICON_CHANGE` | Mở Bug Detail (Change mode) |
+| 2 | `DISPLAY` | Display | `ICON_DISPLAY` | Mở Bug Detail (Display mode) |
+
+**Function Keys:** BACK (F3), EXIT (Shift+F3), CANC (F12)
+
+Save + Activate.
+
+---
+
 ## Step 3: Tạo Title Bars (SE41)
 
 ### Cách tạo:
@@ -259,7 +357,7 @@ Save + Activate.
 3. Nhập tên title → **Create**
 4. Nhập text (có `&1` placeholder) → **Save** + **Activate**
 
-### 5 Title Bars cần tạo:
+### 9 Title Bars cần tạo:
 
 | Title Name | Text | Mô tả |
 |------------|------|-------|
@@ -268,6 +366,12 @@ Save + Activate.
 | `TITLE_BUGDETAIL` | `&1` | Screen 0300 — nhận "Create Bug" / "Change Bug: BUG0001" |
 | `TITLE_PROJLIST` | `&1` | Screen 0400 — nhận "Project List" |
 | `TITLE_PRJDET` | `&1` | Screen 0500 — nhận "Create Project" / "Change Project: {name}" |
+| **`T_0410`** | **`Project Search`** | **v5.0 NEW** — Screen 0410 (static text, no placeholder) |
+| **`T_0370`** | **`Change Bug Status`** | **v5.0 NEW** — Screen 0370 (static text) |
+| **`T_0210`** | **`Bug Search`** | **v5.0 NEW** — Screen 0210 (static text) |
+| **`T_0220`** | **`Search Results`** | **v5.0 NEW** — Screen 0220 (static text) |
+
+> **v5.0 NOTE:** 4 title bars mới dùng **static text** (không cần `&1` placeholder) vì title không thay đổi dynamically.
 
 > **`&1` là placeholder:** Khi code viết `SET TITLEBAR 'TITLE_BUGLIST' WITH lv_title`, SAP thay `&1` bằng giá trị của `lv_title`. Chỉ cần `&1` — không cần text khác.
 
@@ -277,30 +381,40 @@ Save + Activate tất cả.
 
 ## Step 4: Tạo Screens (SE51)
 
-Tạo screens theo thứ tự sau (subscreens trước, host screens sau):
+Tạo screens theo thứ tự sau (subscreens trước, host screens sau, new screens cuối):
 
 | Order | Screen | Guide File | Complexity |
 |-------|--------|-----------|------------|
-| 1 | **0400** | `UI_SCREEN_0400.md` | Simple — 1 Custom Control |
-| 2 | **0200** | `UI_SCREEN_0200.md` | Simple — 1 Custom Control |
-| 3 | **0310** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 2 | Complex — 12+ fields + groups + mini editor |
-| 4 | **0320** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 3 | Simple — 1 Custom Control |
-| 5 | **0330** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 4 | Simple — 1 Custom Control (**CC_DEVNOTE**!) |
-| 6 | **0340** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 5 | Simple — 1 Custom Control (**CC_TSTRNOTE**!) |
-| 7 | **0350** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 6 | Simple — 1 Custom Control (placeholder) |
-| 8 | **0360** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 7 | Simple — 1 Custom Control |
-| 9 | **0300** | `UI_SCREEN_0300_SUBSCREENS.md` Phần 1 | Complex — Tab Strip + Subscreen Area |
-| 10 | **0500** | `UI_SCREEN_0500.md` | Complex — Fields + Table Control |
-| 11 | **0100** | Below (Step 7) | Simple — deprecated screen |
+| 1 | **0410** | `screens/screen-0410-project-search.md` | **v5.0 NEW** — 3 input fields + 3 F4 |
+| 2 | **0400** | `screens/screen-0400-project-list.md` | Simple — 1 Custom Control |
+| 3 | **0200** | `screens/screen-0200-bug-list.md` | **v5.0 UPDATED** — 18 output fields (Dashboard) + 1 Custom Control |
+| 4 | **0310** | `screens/screen-0300-bug-detail.md` Phần 2 | Complex — 12+ fields + groups + mini editor. **v5.0:** STATUS→STS group, +SAP_MODULE F4 |
+| 5 | **0320** | `screens/screen-0300-bug-detail.md` Phần 3 | Simple — 1 Custom Control |
+| 6 | **0330** | `screens/screen-0300-bug-detail.md` Phần 4 | Simple — 1 Custom Control (**CC_DEVNOTE**!) |
+| 7 | **0340** | `screens/screen-0300-bug-detail.md` Phần 5 | Simple — 1 Custom Control (**CC_TSTRNOTE**!) |
+| 8 | **0350** | `screens/screen-0300-bug-detail.md` Phần 6 | Simple — 1 Custom Control (Evidence ALV) |
+| 9 | **0360** | `screens/screen-0300-bug-detail.md` Phần 7 | Simple — 1 Custom Control |
+| 10 | **0300** | `screens/screen-0300-bug-detail.md` Phần 1 | Complex — Tab Strip + Subscreen Area |
+| 11 | **0370** | `screens/screen-0370-status-transition.md` | **v5.0 NEW** — Modal Dialog, fields + Custom Control |
+| 12 | **0210** | `screens/screen-0210-bug-search.md` | **v5.0 NEW** — Modal Dialog, search input fields |
+| 13 | **0220** | `screens/screen-0220-search-results.md` | **v5.0 NEW** — Normal, 1 Custom Control (ALV) |
+| 14 | **0500** | `screens/screen-0500-project-detail.md` | Complex — Fields + Table Control |
+| 15 | **0100** | Below (Step 7) | Simple — deprecated screen |
 
-> **Quan trọng:** Tạo subscreens 0310-0360 **TRƯỚC** host 0300. Nếu tạo 0300 trước, `CALL SUBSCREEN` sẽ warning.
+> **v5.0 NOTE:**
+> - Tạo **Screen 0410 ĐẦU TIÊN** (vì nó là initial screen mới)
+> - Tạo **Screen 0370, 0210, 0220** sau khi host screens xong
+> - Subscreens 0310-0360 vẫn phải tạo **TRƯỚC** host 0300
+> - **Tổng:** 15 screens (11 existing + 4 new)
 
 ---
 
 ## Step 5: Đổi T-code Initial Screen (SE93)
 
+> **v5.0 CHANGE:** Initial screen đổi từ `0400` → `0410` (Project Search).
+
 1. Gõ **SE93** → nhập `ZBUG_WS` → **Change**
-2. Field **"Screen number"**: đổi từ `0100` → **`0400`**
+2. Field **"Screen number"**: đổi từ `0400` → **`0410`**
 3. Program name vẫn là `Z_BUG_WORKSPACE_MP`
 4. **Save**
 
@@ -308,10 +422,10 @@ Tạo screens theo thứ tự sau (subscreens trước, host screens sau):
 > 1. SE93 → `ZBUG_WS` → **Create**
 > 2. Transaction Type: **Dialog transaction** (Type T)
 > 3. Program: `Z_BUG_WORKSPACE_MP`
-> 4. Screen: `0400`
+> 4. Screen: **`0410`**
 > 5. Save → assign to package `ZBUGTRACK`
 
-**Verify:** Gõ `ZBUG_WS` → phải mở thẳng Screen 0400 (Project List).
+**Verify:** Gõ `ZBUG_WS` → phải mở thẳng **Screen 0410** (Project Search), KHÔNG còn mở 0400.
 
 ---
 
@@ -332,24 +446,28 @@ Tạo screens theo thứ tự sau (subscreens trước, host screens sau):
 
 Sau includes:
 ```
-8.  Screen 0310 (subscreen)
-9.  Screen 0320 (subscreen)
-10. Screen 0330 (subscreen)
-11. Screen 0340 (subscreen)
-12. Screen 0350 (subscreen)
-13. Screen 0360 (subscreen)
-14. Screen 0300 (host — SAU subscreens)
-15. Screen 0400 (initial)
-16. Screen 0200
-17. Screen 0500
-18. Screen 0100 (deprecated)
+8.  Screen 0410 (v5.0 NEW — initial screen)
+9.  Screen 0310 (subscreen)
+10. Screen 0320 (subscreen)
+11. Screen 0330 (subscreen)
+12. Screen 0340 (subscreen)
+13. Screen 0350 (subscreen)
+14. Screen 0360 (subscreen)
+15. Screen 0300 (host — SAU subscreens)
+16. Screen 0370 (v5.0 NEW — popup)
+17. Screen 0210 (v5.0 NEW — popup)
+18. Screen 0220 (v5.0 NEW — full screen)
+19. Screen 0400
+20. Screen 0200
+21. Screen 0500
+22. Screen 0100 (deprecated)
 ```
 
 Sau screens:
 ```
-19. GUI Statuses (SE41) — nếu chưa activate
-20. Title Bars (SE41) — nếu chưa activate
-21. T-code ZBUG_WS (SE93)
+23. GUI Statuses (SE41) — 9 total (5 existing + 4 new)
+24. Title Bars (SE41) — 9 total (5 existing + 4 new)
+25. T-code ZBUG_WS (SE93) — initial screen = 0410
 ```
 
 > **Tip:** Dùng **Ctrl+Shift+F3** trong SE80 để activate tất cả objects cùng lúc.
@@ -393,16 +511,21 @@ Save + Activate.
 
 | # | Test | Expected | ✓ |
 |---|------|----------|---|
-| 1 | Gõ `ZBUG_WS` | Mở Screen 0400 (Project List) | ☐ |
-| 2 | Click project hotspot (PROJECT_ID) | Mở Screen 0200 (Bug List, all bugs of project) | ☐ |
-| 3 | Click "My Bugs" button | Mở Screen 0200 (filtered by role, cross-project) | ☐ |
-| 4 | BACK từ Bug List | Quay về Screen 0400 | ☐ |
-| 5 | BACK từ Project List | LEAVE PROGRAM | ☐ |
-| 6 | Create Bug từ project | Screen 0300, PROJECT_ID pre-filled + locked | ☐ |
-| 7 | Create Bug button ẩn ở My Bugs mode | Nút CREATE không hiện | ☐ |
-| 8 | BACK từ Bug Detail | Quay về Screen 0200 | ☐ |
-| 9 | Create/Change/Display Project | Screen 0500 mở đúng mode | ☐ |
-| 10 | BACK từ Project Detail | Quay về Screen 0400 | ☐ |
+| 1 | Gõ `ZBUG_WS` | **v5.0:** Mở Screen 0410 (Project Search) | ☐ |
+| 2 | Nhập filter trên 0410 → Execute | Mở Screen 0400 (Project List, filtered) | ☐ |
+| 3 | Click project hotspot (PROJECT_ID) | Mở Screen 0200 (ALL bugs + Dashboard, gv_bug_filter_mode='P') | ☐ |
+| 4 | Click "My Bugs" button | Mở Screen 0200 (filtered by role, cross-project) | ☐ |
+| 5 | BACK từ Bug List | Quay về Screen 0400 | ☐ |
+| 6 | BACK từ Project List | Quay về Screen 0410 | ☐ |
+| 7 | BACK từ Project Search | LEAVE PROGRAM | ☐ |
+| 8 | Create Bug từ project | Screen 0300, PROJECT_ID pre-filled + locked | ☐ |
+| 9 | Create Bug button ẩn ở My Bugs mode | Nút CREATE không hiện | ☐ |
+| 10 | BACK từ Bug Detail | Quay về Screen 0200 | ☐ |
+| 11 | Create/Change/Display Project | Screen 0500 mở đúng mode | ☐ |
+| 12 | BACK từ Project Detail | Quay về Screen 0400 | ☐ |
+| 13 | **v5.0:** Click SEARCH trên Bug List | Mở popup Screen 0210 | ☐ |
+| 14 | **v5.0:** Nhập search criteria → Execute | Mở Screen 0220 (Search Results) | ☐ |
+| 15 | **v5.0:** BACK từ Search Results | Quay về Screen 0200 | ☐ |
 
 ### 8.2 Bug CRUD Tests:
 
@@ -460,7 +583,8 @@ Save + Activate.
 |---|-----------------|----------|---|
 | 1 | Full access to all buttons | All visible | ☐ |
 | 2 | Can create/change/delete projects | Buttons visible | ☐ |
-| 3 | Can change bug status to any state | All transitions allowed | ☐ |
+| 3 | **v5.0:** Manager CANNOT bypass transition rules | Must follow matrix like Tester/Dev | ☐ |
+| 4 | **v5.0:** Manager can see broader transition options | More targets than Dev/Tester, but NOT arbitrary | ☐ |
 
 ### 8.6 Tab Strip Tests:
 
@@ -476,17 +600,41 @@ Save + Activate.
 | 8 | Active tab highlight correct | Tab button highlighted matches active subscreen | ☐ |
 | 9 | Open bug A → BACK → open bug B | Bug B data shown (not stale bug A data) | ☐ |
 
-### 8.7 Status Transition Tests:
+### 8.7 Status Transition Tests (v5.0 — 10-state lifecycle):
+
+> **v5.0 BREAKING CHANGE:** `6` = Final Testing (không phải Resolved), `V` = Resolved (mới). Manager KHÔNG bypass.
+> Status change qua popup **Screen 0370** (không sửa trực tiếp trên screen).
 
 | From Status | Tester Can → | Developer Can → | Manager Can → |
 |-------------|-------------|----------------|---------------|
-| New (1) | Assigned, Waiting | — | Any |
-| Assigned (2) | — | In Progress | Any |
-| In Progress (3) | — | Pending, Fixed, Rejected | Any |
-| Pending (4) | — | In Progress | Any |
-| Fixed (5) | Resolved, Rejected | — | Any |
-| Resolved (6) | Closed | — | Any |
-| Closed (7) | — | — | Any |
+| New (1) | Assigned(2), Waiting(W) | — | Assigned(2), Waiting(W), Rejected(R) |
+| Assigned (2) | — | InProgress(3) | InProgress(3) |
+| InProgress (3) | — | Pending(4), Fixed(5) | Pending(4), Fixed(5) |
+| Pending (4) | — | Assigned(2) | Assigned(2) |
+| Fixed (5) | — | — | FinalTesting(6), Waiting(W) |
+| FinalTesting (6) | Resolved(V), InProgress(3) | — | Resolved(V), InProgress(3) |
+| Resolved (V) | — | — | — *(TERMINAL)* |
+| Rejected (R) | — | — | — *(TERMINAL)* |
+| Waiting (W) | Assigned(2) | — | Assigned(2) |
+| Closed (7) | — | — | — *(LEGACY)* |
+
+> **Auto-assign triggers:**
+> - New(1) → Assigned(2): auto-assign Developer (least loaded, same module, <5 bugs)
+> - Fixed(5) → FinalTesting(6): auto-assign Tester (least loaded)
+> - If no available Dev/Tester → status goes to Waiting(W) instead
+
+| # | v5.0 Specific Transition Test | Expected | ✓ |
+|---|------|----------|---|
+| 1 | Status field trên Bug Info tab | ALWAYS locked (screen group STS) | ☐ |
+| 2 | Click "Change Status" button | Mở popup Screen 0370 | ☐ |
+| 3 | Popup hiển thị target status dropdown | Chỉ hiện statuses được phép theo matrix + role | ☐ |
+| 4 | Transition New→Assigned | Auto-assign Developer (check DEV_ID filled) | ☐ |
+| 5 | Transition Fixed→FinalTesting | Auto-assign Tester (check VERIFY_TESTER_ID filled) | ☐ |
+| 6 | Transition to Fixed | Yêu cầu evidence (COUNT > 0 trong ZBUG_EVIDENCE) | ☐ |
+| 7 | Transition to Resolved | Yêu cầu Transition Note (bắt buộc nhập) | ☐ |
+| 8 | Manager cố chuyển 3→1 (ngược) | BLOCKED — không có trong matrix | ☐ |
+| 9 | Tester cố chuyển InProgress→Fixed | BLOCKED — chỉ Dev được | ☐ |
+| 10 | Cancel popup 0370 | Không thay đổi status | ☐ |
 
 ### 8.8 v4.0 Feature Tests — Evidence:
 
@@ -495,7 +643,7 @@ Save + Activate.
 | 1 | Upload Evidence (UP_FILE) | File dialog → upload → evidence ALV refresh | ☐ |
 | 2 | Upload Report (UP_REP) | Same + sets ATT_REPORT field | ☐ |
 | 3 | Upload Fix (UP_FIX) | Same + sets ATT_FIX field | ☐ |
-| 4 | Download Evidence (DL_EVD) | Select row on Evidence ALV → download binary file → auto-open | ☐ |
+| 4 | Delete Evidence (DL_EVD) | Select row on Evidence ALV → confirm popup → DELETE from ZBUG_EVIDENCE → ALV refresh | ☐ |
 | 5 | Delete Evidence (via code) | Confirm popup → DELETE from ZBUG_EVIDENCE → ALV refresh | ☐ |
 | 6 | Evidence ALV shows metadata | EVD_ID, File Name, MIME Type, Size, By, Date — no CONTENT | ☐ |
 
@@ -523,15 +671,75 @@ Save + Activate.
 | 1 | Unsaved changes — change field then BACK | Popup "Save before leaving?" | ☐ |
 | 2 | Bug type Dump + Priority not High | Validation error: must set Priority=High | ☐ |
 | 3 | Close project with open bugs | Validation error: resolve all bugs first | ☐ |
-| 4 | Transition to Fixed without BUGPROOF_ file | Validation error: upload BUGPROOF_ evidence | ☐ |
-| 5 | Transition to Resolved without TESTCASE_ file | Validation error: upload TESTCASE_ evidence | ☐ |
-| 6 | Transition to Closed without CONFIRM_ file | Validation error: upload CONFIRM_ evidence | ☐ |
+| 4 | Transition to Fixed without evidence | **v5.0:** Validation error in popup 0370 | ☐ |
+| 5 | **v5.0:** Validation error shows `TYPE 'S' DISPLAY LIKE 'E'` | Screen fields NOT locked after error | ☐ |
+
+### 8.12 v5.0 Feature Tests — Dashboard:
+
+| # | Test | Expected | ✓ |
+|---|------|----------|---|
+| 1 | Screen 0200 hiển thị Dashboard phía trên | Total Bugs, By Status, By Priority, By Module | ☐ |
+| 2 | Total Bugs = số bugs trong ALV | Khớp chính xác | ☐ |
+| 3 | Sum of By Status = Total Bugs | Tổng tất cả status counts = Total | ☐ |
+| 4 | Dashboard update khi ALV data thay đổi | Sau REFRESH → metrics update | ☐ |
+| 5 | My Bugs mode cũng hiện Dashboard | Dashboard tính từ gt_bug_list (filtered) | ☐ |
+
+### 8.13 v5.0 Feature Tests — Bug Search:
+
+| # | Test | Expected | ✓ |
+|---|------|----------|---|
+| 1 | Click SEARCH trên Screen 0200 | Popup Screen 0210 hiện lên | ☐ |
+| 2 | Nhập Bug ID → Execute | Screen 0220 hiện với bug tìm được | ☐ |
+| 3 | Nhập keyword trong Title → Execute | Screen 0220 hiện bugs có keyword trong title | ☐ |
+| 4 | Nhập không khớp gì → Execute | Screen 0220 hiện ALV trống hoặc message "No results" | ☐ |
+| 5 | Screen 0220 KHÔNG có Dashboard | Chỉ có ALV Grid, không có metrics | ☐ |
+| 6 | Click Display trên 0220 | Mở Bug Detail (Display mode) | ☐ |
+| 7 | BACK từ 0220 | Quay về Screen 0200 | ☐ |
+
+### 8.14 v5.0 Feature Tests — Project Search:
+
+| # | Test | Expected | ✓ |
+|---|------|----------|---|
+| 1 | Screen 0410 là initial screen | Gõ ZBUG_WS → mở 0410 | ☐ |
+| 2 | F4 trên Project ID | Hiện danh sách projects | ☐ |
+| 3 | F4 trên Manager | Hiện danh sách Managers | ☐ |
+| 4 | F4 trên Status | Hiện 4 statuses (Opening/InProcess/Done/Cancelled) | ☐ |
+| 5 | Execute không nhập gì | Screen 0400 hiện ALL projects (mà user có quyền) | ☐ |
+| 6 | Execute với filter Project ID | Screen 0400 chỉ hiện matching projects | ☐ |
+| 7 | BACK từ 0410 | LEAVE PROGRAM | ☐ |
+
+### 8.15 v5.0 Feature Tests — Auto-Assign:
+
+| # | Test | Expected | ✓ |
+|---|------|----------|---|
+| 1 | Transition New→Assigned | DEV_ID tự động fill = least-loaded Dev (cùng module, <5 bugs) | ☐ |
+| 2 | Transition Fixed→FinalTesting | VERIFY_TESTER_ID tự động fill = least-loaded Tester | ☐ |
+| 3 | No available Dev (all ≥5 bugs) | Status chuyển sang Waiting(W) thay vì Assigned | ☐ |
+| 4 | No available Tester | Status chuyển sang Waiting(W) thay vì FinalTesting | ☐ |
+
+### 8.16 v5.0 Bug Fix Verification:
+
+| # | Bug # | Test | Expected | ✓ |
+|---|-------|------|----------|---|
+| 1 | Bug 1+9 | Mở tab Description/DevNote/TesterNote | KHÔNG short dump | ☐ |
+| 2 | Bug 4 | Bug Info tab hiện SAP Module, Severity, Created Date | Fields visible | ☐ |
+| 3 | Bug 5 | Click Remove User không chọn row | Warning message, KHÔNG xóa | ☐ |
+| 4 | Bug 6 | Create Bug → Status = 1 (New), Created Date auto | Auto-fill | ☐ |
+| 5 | Bug 6 | F4 trên SAP Module | Hiện: FI, MM, SD, ABAP, BASIS, PP, HR, QM | ☐ |
+| 6 | Bug 7 | Validation error → fields NOT locked | User có thể sửa lại ngay | ☐ |
+| 7 | Bug 8 | Save bug → view detail lại | Description KHÔNG biến mất | ☐ |
+| 8 | Bug 10 | Manager cố chuyển status 3→1 | BLOCKED | ☐ |
+| 9 | Bug 11 | Chuyển status mà chưa có evidence (khi cần) | BLOCKED | ☐ |
 
 ---
 
 ## Step 9: Phase D — SMW0 Template Upload
 
 > Cần làm **trước** khi "Download Template" buttons hoạt động.
+> **v5.0 NOTE:** Template download filenames đổi tên (xem bảng F4 trong Phase F guide):
+> - `ZBT_TMPL_01` → download name: `Bug_report.xlsx`
+> - `ZBT_TMPL_02` → download name: `fix_report.xlsx`
+> - `ZBT_TMPL_03` → download name: `confirm_report.xlsx`
 
 ### 9.1 Project Template (existing from v3.0)
 
@@ -603,6 +811,41 @@ Save + Activate.
 
 ---
 
+## Step 11: v5.0 Status Data Migration — NEW
+
+> **CRITICAL:** Chạy **sau** khi deploy code v5.0 và **trước** khi test.
+> Status `6` đổi ý nghĩa từ "Resolved" (v4.x) sang "Final Testing" (v5.0).
+
+### 11.1 Migration Script
+
+Chạy trong SE38 (tạo report tạm hoặc chạy trực tiếp):
+
+```abap
+" Migrate existing status '6' (old Resolved) → 'V' (new Resolved)
+UPDATE zbug_tracker SET status = 'V' WHERE status = '6'.
+IF sy-subrc = 0.
+  WRITE: / 'Migrated', sy-dbcnt, 'bugs from status 6 (old Resolved) to V (new Resolved).'.
+ELSE.
+  WRITE: / 'No bugs with status 6 found. Migration not needed.'.
+ENDIF.
+COMMIT WORK.
+```
+
+### 11.2 Verify Migration
+
+```sql
+" SE16 → ZBUG_TRACKER → Execute
+" Check: Không còn bugs nào có STATUS = '6' mà nghĩa là "Resolved"
+" STATUS = '6' bây giờ = "Final Testing" (chỉ có bugs mới tạo sau v5.0)
+" STATUS = 'V' = "Resolved" (bugs đã migrate)
+```
+
+### 11.3 Test Data Population (Optional)
+
+Xem Phase F guide `docs/phases/phase-f-v5-enhancement.md` Bước F8 — tạo 20 mock Developers + 10 mock Testers cho auto-assign testing.
+
+---
+
 ## TROUBLESHOOTING CHUNG
 
 | Vấn đề | Nguyên nhân | Fix |
@@ -616,25 +859,33 @@ Save + Activate.
 | Tab buttons không react khi click | FCode chưa set cho tab buttons | Double-click tab button → Attributes → FctCode |
 | Buttons trên toolbar disabled (grey) | GUI Status chưa tạo hoặc fcode thiếu | SE41 → verify status + fcode list |
 | `SET TITLEBAR ... WITH |...|` syntax error | String template không dùng trực tiếp trong SET TITLEBAR | Code v3.0 đã fix: dùng biến trung gian (DATA(lv_xxx) = ...) |
+| **v5.0:** Screen 0410 không hiện | SE93 chưa đổi initial screen | SE93 → ZBUG_WS → Change → Screen = 0410 |
+| **v5.0:** Status vẫn sửa trực tiếp được | Screen group chưa đổi STS | SE51 → Screen 0310 → STATUS field → Group1 = `STS` |
+| **v5.0:** Status `6` bugs hiện sai text | Chưa chạy migration script | Step 11 — UPDATE status '6' → 'V' |
+| **v5.0:** Dashboard toàn 0 | `calculate_dashboard` chưa gọi | Verify PBO `status_0200` → `PERFORM calculate_dashboard` |
+| **v5.0:** SEARCH button không hiện | Chưa thêm vào STATUS_0200 | SE41 → STATUS_0200 → thêm SEARCH fcode |
 
 ---
 
-## TỔNG KẾT — FULL WORKFLOW
+## TỔNG KẾT — FULL WORKFLOW (v5.0)
 
 ```
-0. Tạo bảng ZBUG_EVIDENCE (SE11)       (Step 0 — v4.0 NEW)
-1. Copy 6 CODE files (v4.0) vào SAP    (Step 1)
-2. Activate All includes               (Step 1)
-3. Tạo 5 GUI Statuses trong SE41       (Step 2)
-4. Tạo 5 Title Bars trong SE41         (Step 3)
-5. Tạo 11 Screens trong SE51           (Step 4)
-   → Subscreens 0310-0360 trước
-   → Host screens 0300, 0400, 0200, 0500, 0100 sau
-6. Activate tất cả screens             (Step 6)
-7. Đổi SE93 ZBUG_WS → Screen 0400    (Step 5)
-8. Test toàn bộ flow                   (Step 8)
-9. (Phase D) Upload 4 SMW0 templates   (Step 9 — 1 project + 3 bug workflow)
-10. (Phase D) Chạy orphan cleanup      (Step 10)
+0.  Tạo bảng ZBUG_EVIDENCE (SE11)        (Step 0 — v4.0, nếu chưa tạo)
+1.  Copy 6 CODE files (v5.0) vào SAP     (Step 1)
+2.  Activate All includes                (Step 1)
+3.  Tạo 9 GUI Statuses trong SE41        (Step 2 — 5 existing + 4 new)
+4.  Tạo 9 Title Bars trong SE41          (Step 3 — 5 existing + 4 new)
+5.  Tạo 15 Screens trong SE51            (Step 4 — 11 existing + 4 new)
+    → Screen 0410 đầu tiên (initial screen mới)
+    → Subscreens 0310-0360 trước host 0300
+    → Screens 0370, 0210, 0220 sau
+6.  Activate tất cả screens              (Step 6)
+7.  Đổi SE93 ZBUG_WS → Screen 0410      (Step 5 — v5.0 change)
+8.  Chạy Status Migration (6→V)          (Step 11 — v5.0 NEW)
+9.  (Optional) Populate test data        (Step 11.3)
+10. Test toàn bộ flow                    (Step 8 — v5.0 updated checklist)
+11. (Phase D) Upload 4 SMW0 templates    (Step 9 — renamed in v5.0)
+12. (Phase D) Chạy orphan cleanup        (Step 10)
 ```
 
-**Estimated time:** ~3-4 giờ cho toàn bộ (screen creation + GUI Status + testing).
+**Estimated time:** ~5-6 giờ cho toàn bộ (15 screens + 9 GUI Statuses + 9 Title Bars + migration + testing).
