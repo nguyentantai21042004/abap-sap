@@ -95,6 +95,12 @@ DATA: go_desc_mini_cont TYPE REF TO cl_gui_custom_container,
 DATA: go_cont_trans_note TYPE REF TO cl_gui_custom_container,
       go_edit_trans_note TYPE REF TO cl_gui_textedit.
 
+" === PROJECT DETAIL EDITORS (Screen 0500 — Description + Note) ===
+DATA: go_cont_prj_desc TYPE REF TO cl_gui_custom_container,
+      go_edit_prj_desc TYPE REF TO cl_gui_textedit,
+      go_cont_prj_note TYPE REF TO cl_gui_custom_container,
+      go_edit_prj_note TYPE REF TO cl_gui_textedit.
+
 " === FIELD CATALOGS ===
 DATA: gt_fcat_bug      TYPE lvc_t_fcat,
       gt_fcat_project  TYPE lvc_t_fcat,

@@ -415,9 +415,12 @@ MODULE user_command_0500 INPUT.
           RETURN.  " User cancelled — stay on screen
         ENDIF.
       ENDIF.
+      " Free project editors before leaving
+      PERFORM cleanup_prj_editors.
       " LEAVE TO SCREEN 0 → returns to caller (Screen 0400)
       LEAVE TO SCREEN 0.
     WHEN 'EXIT'.
+      PERFORM cleanup_prj_editors.
       LEAVE PROGRAM.
     WHEN 'SAVE'.
       IF gv_mode = gc_mode_display.

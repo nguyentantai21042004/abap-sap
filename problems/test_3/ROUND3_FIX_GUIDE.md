@@ -225,3 +225,79 @@ ENDIF.
 ```abap
 " Tương tự — thêm sy-subrc check + warning message
 ```
+
+---
+
+## PHẦN 4: NEW FEATURE — Project Description/Note Editors (Screen 0500)
+
+### Mô tả
+
+Thay thế I/O fields `GS_PROJECT-DESCRIPTION` và `GS_PROJECT-NOTE` trên Screen 0500 bằng **CL_GUI_TEXTEDIT** multi-line editors. Giống như Bug Description trên Screen 0310.
+
+> **DB limit vẫn CHAR 255** — editors chỉ cải thiện UX (multi-line typing), không thay đổi storage.
+
+### Code changes (đã sửa trong 4 files):
+
+| File | Thay đổi |
+|------|----------|
+| `CODE_TOP.md` | +4 global vars: `go_cont_prj_desc`, `go_edit_prj_desc`, `go_cont_prj_note`, `go_edit_prj_note` |
+| `CODE_PBO.md` | +`MODULE init_prj_editors` (tạo editors, load text, set readonly). `modify_screen_0500` thêm hide old I/O fields |
+| `CODE_F01.md` | +`FORM read_prj_editor_to_field` (đọc text từ editors → work area). +`FORM cleanup_prj_editors` (free containers). `save_project_detail` gọi read trước validate. `check_unsaved_prj` gọi read trước compare |
+| `CODE_PAI.md` | `user_command_0500` BACK/CANC/EXIT gọi `cleanup_prj_editors` trước leave |
+
+### SE51 changes cần làm trên Screen 0500:
+
+**A. Thêm 2 Custom Controls:**
+
+1. SE51 → Program `Z_BUG_WORKSPACE_MP` → Screen `0500` → Change → Layout
+2. Tạo Custom Control → Name: **`CC_PRJ_DESC`** → đặt ở vị trí Description field
+3. Tạo Custom Control → Name: **`CC_PRJ_NOTE`** → đặt ở vị trí Note field
+4. I/O fields `GS_PROJECT-DESCRIPTION` và `GS_PROJECT-NOTE` **giữ nguyên** (code tự hide)
+5. Save + Activate
+
+**B. Thêm module `init_prj_editors` vào Flow Logic PBO:**
+
+Flow Logic cuối cùng phải là:
+```abap
+PROCESS BEFORE OUTPUT.
+  MODULE status_0500.
+  MODULE init_project_detail.
+  MODULE compute_prj_display_texts.
+  MODULE modify_screen_0500.
+  MODULE init_prj_editors.
+  LOOP AT gt_user_project INTO gs_user_project WITH CONTROL tc_users.
+  ENDLOOP.
+
+PROCESS AFTER INPUT.
+  LOOP AT gt_user_project.
+    MODULE tc_users_modify.
+  ENDLOOP.
+  MODULE user_command_0500.
+```
+
+> Chi tiết hướng dẫn SE51: xem `guides/screens/screen-0500-project-detail.md` section 3.
+
+### Deploy order (bao gồm cả bug fixes):
+
+```
+1. SE75  → Tạo text object ZBUG + 3 Text IDs (nếu chưa xong)
+2. SE38  → Paste CODE_TOP  (Z_BUG_WS_TOP)   → Save → Activate
+3. SE38  → Paste CODE_F02  (Z_BUG_WS_F02)   → Save → Activate
+4. SE38  → Paste CODE_F01  (Z_BUG_WS_F01)   → Save → Activate
+5. SE38  → Paste CODE_PBO  (Z_BUG_WS_PBO)   → Save → Activate
+6. SE38  → Paste CODE_PAI  (Z_BUG_WS_PAI)   → Save → Activate
+7. SE38  → Z_BUG_WORKSPACE_MP               → Activate
+8. SE51  → Screen 0500 Flow Logic            → Sửa (add init_prj_editors + remove ON CHAIN-REQUEST)
+9. SE51  → Screen 0500 Layout                → Tạo CC_PRJ_DESC + CC_PRJ_NOTE
+10. SE51 → Save + Activate Screen 0500
+```
+
+### Test mới (sau deploy):
+
+| # | Test case | Expected |
+|---|-----------|----------|
+| 7 | Screen 0500 (Change mode) | Thấy 2 multi-line editors cho Description + Note |
+| 8 | Gõ text vào Description editor → Save → BACK → mở lại | Text **còn nguyên** |
+| 9 | Gõ text vào Note editor → Save → BACK → mở lại | Text **còn nguyên** |
+| 10 | Non-Manager vào Display Project | Editors hiện text nhưng **readonly** (không gõ được) |
+| 11 | Create Project → gõ Name + Description + Note → Save | Project tạo thành công, text lưu đúng |
