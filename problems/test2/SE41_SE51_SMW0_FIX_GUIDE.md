@@ -7,13 +7,14 @@
 
 ## Bug 7: SE41 — Fix DL_EVD Label + Add DW_EVD Button (STATUS_0300)
 
-### Vấn đề:
+### Vấn đề
 
 Nút `DL_EVD` hiện tại có label "Delete Evidence" nhưng user nhầm với Download. Cần:
+
 1. Giữ `DL_EVD` = Delete Evidence (chỉ verify label đúng)
 2. Thêm nút MỚI `DW_EVD` = Download Evidence
 
-### Bước thực hiện:
+### Bước thực hiện
 
 1. **SE41** → Program: `Z_BUG_WORKSPACE_MP` → Status: `STATUS_0300` → **Change** (bút chì)
 
@@ -51,7 +52,7 @@ Nút `DL_EVD` hiện tại có label "Delete Evidence" nhưng user nhầm với 
 
 5. **Save** (Ctrl+S) → **Activate** (Ctrl+F3)
 
-### Verify:
+### Verify
 
 - Mở Bug Detail ở **Change mode** → toolbar phải hiện cả "Delete Evidence" và "Download Evidence"
 - Mở Bug Detail ở **Create mode** → `DW_EVD` phải bị ẩn (code trong CODE_PBO đã exclude)
@@ -61,11 +62,11 @@ Nút `DL_EVD` hiện tại có label "Delete Evidence" nhưng user nhầm với 
 
 ## Bug 4: SE51 — Add CANCEL Pushbutton on Screen 0370
 
-### Vấn đề:
+### Vấn đề
 
 Popup 0370 chỉ có nút trên toolbar (STATUS_0370 có CANCEL fcode) nhưng không có nút visible trên layout. User khó thoát vì không thấy nút Cancel rõ ràng.
 
-### Bước thực hiện:
+### Bước thực hiện
 
 1. **SE51** → Program: `Z_BUG_WORKSPACE_MP` → Screen: `0370` → **Layout** (click nút Layout)
 
@@ -96,7 +97,7 @@ Popup 0370 chỉ có nút trên toolbar (STATUS_0370 có CANCEL fcode) nhưng kh
 
 6. **Quay lại SE51** main → **Activate** screen (Ctrl+F3)
 
-### Layout Preview (sau khi sửa):
+### Layout Preview (sau khi sửa)
 
 ```
 ┌──── Change Bug Status ──────────────────────────────────────┐
@@ -120,14 +121,14 @@ Popup 0370 chỉ có nút trên toolbar (STATUS_0370 có CANCEL fcode) nhưng kh
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### Verify:
+### Verify
 
 1. Mở Bug Detail (Change mode) → nhấn nút "Change Status"
 2. Popup 0370 mở → phải thấy nút **Cancel** rõ ràng trên layout
 3. Nhấn Cancel → popup đóng, không thay đổi gì
 4. Nhấn Fn+F12 (Mac) → cũng phải đóng popup (F12 → fcode CANCEL)
 
-### Lưu ý:
+### Lưu ý
 
 - PAI đã xử lý `WHEN 'CANCEL'` rồi — chỉ cần thêm pushbutton trên layout
 - OK Code field của Screen 0370 = `GV_OK_CODE` (đã fix trước đó)
@@ -137,15 +138,16 @@ Popup 0370 chỉ có nút trên toolbar (STATUS_0370 có CANCEL fcode) nhưng kh
 
 ## Bug 5: SMW0 — Upload 3 Excel Templates
 
-### Vấn đề:
+### Vấn đề
 
 3 nút download template trên Project List không hoạt động vì chưa upload template files vào SMW0. Code logic đã kiểm tra template tồn tại → nếu không có → hiện error message. Cần upload 3 files.
 
-### Chuẩn bị — Tạo 3 file Excel template:
+### Chuẩn bị — Tạo 3 file Excel template
 
 Trước khi vào SMW0, cần tạo 3 file Excel (.xlsx hoặc .xls) trên máy tính:
 
 #### Template 1: `ZBT_TMPL_01` — Bug Report Template
+
 Tạo file Excel tên `ZBT_TMPL_01.xlsx` với các cột header:
 
 | Bug ID | Title | Priority | Severity | SAP Module | Description | Steps to Reproduce |
@@ -154,6 +156,7 @@ Tạo file Excel tên `ZBT_TMPL_01.xlsx` với các cột header:
 > Sheet name: `Bug Report`. Để trống data rows (chỉ có header).
 
 #### Template 2: `ZBT_TMPL_02` — Test Case Template
+
 Tạo file Excel tên `ZBT_TMPL_02.xlsx` với các cột header:
 
 | Test Case ID | Bug ID | Test Step | Expected Result | Actual Result | Status | Tester |
@@ -162,6 +165,7 @@ Tạo file Excel tên `ZBT_TMPL_02.xlsx` với các cột header:
 > Sheet name: `Test Cases`. Để trống data rows.
 
 #### Template 3: `ZBT_TMPL_03` — User List Template
+
 Tạo file Excel tên `ZBT_TMPL_03.xlsx` với các cột header:
 
 | User ID | Full Name | Role (M/D/T) | SAP Module | Email | Is Active |
@@ -171,7 +175,7 @@ Tạo file Excel tên `ZBT_TMPL_03.xlsx` với các cột header:
 
 > **LƯU Ý:** Template content/columns có thể tùy chỉnh theo nhu cầu thực tế. Quan trọng là file tồn tại trong SMW0 với đúng Object Name.
 
-### Bước thực hiện:
+### Bước thực hiện
 
 1. **Mở T-code SMW0**
 
@@ -200,7 +204,7 @@ Tạo file Excel tên `ZBT_TMPL_03.xlsx` với các cột header:
    - Description: `User List Template`
    - File: `ZBT_TMPL_03.xlsx`
 
-### Verify:
+### Verify
 
 1. Trong SMW0 → search `ZBT_TMPL*` → phải thấy 3 entries:
 
@@ -218,7 +222,7 @@ Tạo file Excel tên `ZBT_TMPL_03.xlsx` với các cột header:
    - Mỗi lần phải hiện dialog "Save As" → chọn nơi lưu → file Excel tải về thành công
    - Mở file Excel vừa tải → phải thấy đúng header columns
 
-### Troubleshooting:
+### Troubleshooting
 
 | Vấn đề | Nguyên nhân | Fix |
 |--------|-------------|-----|
