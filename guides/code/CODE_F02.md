@@ -530,7 +530,14 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
   " Resolve editor reference from text_id
   DATA: lr_editor TYPE REF TO cl_gui_textedit.
   CASE pv_text_id.
-    WHEN 'Z001'. lr_editor = go_edit_desc.
+    WHEN 'Z001'.
+      " Prefer full editor (tab 0320). If user never opened Description tab,
+      " fall back to mini editor (tab 0310) to avoid losing desc_text.
+      IF go_edit_desc IS NOT INITIAL.
+        lr_editor = go_edit_desc.
+      ELSE.
+        lr_editor = go_desc_mini_edit.
+      ENDIF.
     WHEN 'Z002'. lr_editor = go_edit_dev_note.
     WHEN 'Z003'. lr_editor = go_edit_tstr_note.
   ENDCASE.

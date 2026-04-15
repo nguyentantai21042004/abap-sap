@@ -208,7 +208,8 @@ Save + Activate.
 | 6 | `UP_FIX` | Upload Fix | `ICON_IMPORT` | Excluded: Tester role + Create mode |
 | 7 | *(separator)* | | | |
 | 8 | `DL_EVD` | Delete Evidence | `ICON_DELETE` | **v5.0** — Delete selected evidence row |
-| 9 | `SENDMAIL` | Send Email | `ICON_MAIL` | **v4.0** — Send bug info via BCS API |
+| 9 | `DW_EVD` | Download Evidence | `ICON_EXPORT` | **v5.0** — Download selected evidence file |
+| 10 | `SENDMAIL` | Send Email | `ICON_MAIL` | **v4.0** — Send bug info via BCS API |
 
 **Function Keys:** BACK (F3), EXIT (Shift+F3), CANC (F12)
 

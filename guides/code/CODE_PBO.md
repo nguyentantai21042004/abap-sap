@@ -112,10 +112,11 @@ ENDMODULE.
 *&=====================================================================*
 MODULE status_0300 OUTPUT.
   CLEAR gm_excl.
-  " Display mode: hide SAVE + upload buttons + email + delete evidence
+  " Display mode: hide SAVE + upload buttons + email + delete evidence + status change
   IF gv_mode = gc_mode_display.
-    APPEND 'SAVE'     TO gm_excl.
-    APPEND 'SENDMAIL' TO gm_excl.
+    APPEND 'SAVE'       TO gm_excl.
+    APPEND 'SENDMAIL'   TO gm_excl.
+    APPEND 'STATUS_CHG' TO gm_excl.
   ENDIF.
   " Tester cannot upload fix
   IF gv_role = 'T'.
@@ -133,6 +134,7 @@ MODULE status_0300 OUTPUT.
     APPEND 'UP_FIX'     TO gm_excl.
     APPEND 'SENDMAIL'   TO gm_excl.    " No email for unsaved bug
     APPEND 'DL_EVD'     TO gm_excl.    " No delete evidence before save
+    APPEND 'DW_EVD'     TO gm_excl.    " No download evidence before save
   ENDIF.
   " Display mode: hide upload + delete evidence
   IF gv_mode = gc_mode_display.

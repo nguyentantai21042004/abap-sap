@@ -191,6 +191,9 @@ MODULE user_command_0300 INPUT.
     " Delete evidence
     WHEN 'DL_EVD'.
       PERFORM delete_evidence.
+    " Download evidence (selected row via button)
+    WHEN 'DW_EVD'.
+      PERFORM download_evidence_selected.
     " Send email notification
     WHEN 'SENDMAIL'.
       PERFORM send_mail_notification.
