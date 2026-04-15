@@ -7,7 +7,7 @@
 | 1 | Upload Excel dump → ẩn nút | CODE_PBO (code) |
 | 2 | Notes/Description không lưu | CODE_F02 (code) + **SE75** (config) |
 | 3 | Project list filter reset | CODE_PBO (code) |
-| 4 | Delete User không chọn được | CODE_F01 (code) |
+| 4 | Delete User không chọn được | CODE_F01 (code) + **SE51** Screen 0500 Flow Logic |
 | 5 | Description/Note giới hạn ký tự | Liên quan Bug 2 — fix SE75 là xong |
 | 6 | UP_REP + UP_FIX dump → ẩn | CODE_PBO + CODE_F01 (code) |
 
@@ -16,7 +16,9 @@
 - `guides/code/CODE_F01.md`
 - `guides/code/CODE_F02.md`
 
-**Ngoài code, cần làm thêm 1 việc**: Tạo Text Object ZBUG trong **SE75** (Bug 2 + 5).
+**Ngoài code, cần làm thêm 2 việc**:
+1. Tạo Text Object ZBUG trong **SE75** (Bug 2 + 5)
+2. Sửa Flow Logic Screen 0500 trong **SE51** (Bug 4)
 
 ---
 
@@ -65,6 +67,54 @@
 
 Sau khi tạo xong, có thể check bằng cách:
 - SE75 → chọn `ZBUG` → xem Text IDs → phải thấy Z001, Z002, Z003
+
+---
+
+## PHẦN 2: SE51 — Sửa Flow Logic Screen 0500 (Bug 4)
+
+### Tại sao cần làm?
+
+Screen 0500 PAI Flow Logic hiện tại dùng `ON CHAIN-REQUEST`:
+```abap
+LOOP AT gt_user_project.
+  MODULE tc_users_modify ON CHAIN-REQUEST.
+ENDLOOP.
+```
+
+`ON CHAIN-REQUEST` = module chỉ fire khi user **sửa giá trị field** trong table control.
+Nhưng table control fields là **output-only** → module **không bao giờ fire** → `tc_users-current_line` không cập nhật → Remove User luôn xóa dòng đầu hoặc báo lỗi.
+
+### Các bước:
+
+1. **SE51** → Program: `Z_BUG_WORKSPACE_MP` → Screen number: `0500` → nhấn **Change**
+
+2. Nhấn tab **"Flow Logic"** (hoặc nút Flow Logic trên toolbar)
+
+3. Tìm đoạn **PROCESS AFTER INPUT**:
+   ```abap
+   PROCESS AFTER INPUT.
+     LOOP AT gt_user_project.
+       MODULE tc_users_modify ON CHAIN-REQUEST.
+     ENDLOOP.
+     MODULE user_command_0500.
+   ```
+
+4. **Xóa** `ON CHAIN-REQUEST` → sửa thành:
+   ```abap
+   PROCESS AFTER INPUT.
+     LOOP AT gt_user_project.
+       MODULE tc_users_modify.
+     ENDLOOP.
+     MODULE user_command_0500.
+   ```
+
+5. **Ctrl+S** (Save) → **Ctrl+F3** (Activate)
+
+### Kết quả:
+
+- Module `tc_users_modify` sẽ fire **mỗi lần PAI chạy** (khi user bấm bất kỳ nút nào)
+- `tc_users-current_line` cập nhật đúng dòng user đang click
+- Remove User sẽ xóa đúng user được chọn
 
 ---
 

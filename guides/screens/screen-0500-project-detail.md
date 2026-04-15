@@ -41,7 +41,7 @@ PROCESS BEFORE OUTPUT.
 
 PROCESS AFTER INPUT.
   LOOP AT gt_user_project.
-    MODULE tc_users_modify ON CHAIN-REQUEST.
+    MODULE tc_users_modify.
   ENDLOOP.
   MODULE user_command_0500.
 
