@@ -562,16 +562,9 @@ FORM add_user_to_project.
 ENDFORM.
 
 *&=== PROJECT USER MANAGEMENT: REMOVE (selected row from Table Control) ===*
-*& Guard: tc_users-current_line defaults to 1 even without a click.
-*& Uses gv_tc_user_selected flag (set in tc_users_modify) to confirm
-*& the user actually interacted with the table control.
+*& Uses tc_users-current_line to determine which row to delete.
+*& Range check guards against invalid row index.
 FORM remove_user_from_project.
-  " Require explicit user interaction before allowing remove
-  IF gv_tc_user_selected = abap_false.
-    MESSAGE 'Please click on a user row to select it first.' TYPE 'S' DISPLAY LIKE 'W'.
-    RETURN.
-  ENDIF.
-
   DATA: lv_line TYPE i.
   lv_line = tc_users-current_line.
 
@@ -910,12 +903,12 @@ FORM upload_evidence USING pv_att_field TYPE char3.
     " 9. Set ATT_ field if applicable
     CASE pv_att_field.
       WHEN 'REP'.
-        gs_bug_detail-att_report = lv_fname_only(100).  " Truncate to CHAR 100
+        gs_bug_detail-att_report = lv_fname_only.  " Auto-truncated to CHAR 100
         UPDATE zbug_tracker SET att_report = @gs_bug_detail-att_report
           WHERE bug_id = @gv_current_bug_id.
         COMMIT WORK.
       WHEN 'FIX'.
-        gs_bug_detail-att_fix = lv_fname_only(100).     " Truncate to CHAR 100
+        gs_bug_detail-att_fix = lv_fname_only.     " Auto-truncated to CHAR 100
         UPDATE zbug_tracker SET att_fix = @gs_bug_detail-att_fix
           WHERE bug_id = @gv_current_bug_id.
         COMMIT WORK.

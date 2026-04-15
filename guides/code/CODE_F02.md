@@ -583,7 +583,11 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
       lines           = lt_lines
     EXCEPTIONS
       OTHERS          = 4.
-  " Note: SAVE_TEXT performs its own internal COMMIT
+  IF sy-subrc <> 0.
+    DATA: lv_save_msg TYPE string.
+    lv_save_msg = |Long text { pv_text_id } save failed (RC={ sy-subrc }). Check text object ZBUG in SE75.|.
+    MESSAGE lv_save_msg TYPE 'S' DISPLAY LIKE 'W'.
+  ENDIF.
 ENDFORM.
 
 *&=====================================================================*
@@ -630,6 +634,11 @@ FORM save_long_text_direct USING pv_text_id TYPE thead-tdid
       lines           = lt_lines
     EXCEPTIONS
       OTHERS          = 4.
+  IF sy-subrc <> 0.
+    DATA: lv_save_msg TYPE string.
+    lv_save_msg = |Long text { pv_text_id } save failed (RC={ sy-subrc }). Check text object ZBUG in SE75.|.
+    MESSAGE lv_save_msg TYPE 'S' DISPLAY LIKE 'W'.
+  ENDIF.
 ENDFORM.
 
 *&=====================================================================*

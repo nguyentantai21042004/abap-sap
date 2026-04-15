@@ -112,26 +112,19 @@ ENDMODULE.
 *&=====================================================================*
 MODULE status_0300 OUTPUT.
   CLEAR gm_excl.
+  " UP_REP + UP_FIX hidden for ALL roles/modes (feature disabled — causes dump)
+  APPEND 'UP_REP' TO gm_excl.
+  APPEND 'UP_FIX' TO gm_excl.
   " Display mode: hide SAVE + upload buttons + email + delete evidence + status change
   IF gv_mode = gc_mode_display.
     APPEND 'SAVE'       TO gm_excl.
     APPEND 'SENDMAIL'   TO gm_excl.
     APPEND 'STATUS_CHG' TO gm_excl.
   ENDIF.
-  " Tester cannot upload fix
-  IF gv_role = 'T'.
-    APPEND 'UP_FIX' TO gm_excl.
-  ENDIF.
-  " Developer cannot upload report
-  IF gv_role = 'D'.
-    APPEND 'UP_REP' TO gm_excl.
-  ENDIF.
   " Create mode: hide status change + some uploads + email + delete evidence
   " UP_FILE is allowed in create mode (auto-save before upload)
   IF gv_mode = gc_mode_create.
     APPEND 'STATUS_CHG' TO gm_excl.
-    APPEND 'UP_REP'     TO gm_excl.
-    APPEND 'UP_FIX'     TO gm_excl.
     APPEND 'SENDMAIL'   TO gm_excl.    " No email for unsaved bug
     APPEND 'DL_EVD'     TO gm_excl.    " No delete evidence before save
     APPEND 'DW_EVD'     TO gm_excl.    " No download evidence before save
@@ -139,8 +132,6 @@ MODULE status_0300 OUTPUT.
   " Display mode: hide upload + delete evidence
   IF gv_mode = gc_mode_display.
     APPEND 'UP_FILE' TO gm_excl.
-    APPEND 'UP_REP'  TO gm_excl.
-    APPEND 'UP_FIX'  TO gm_excl.
     APPEND 'DL_EVD'  TO gm_excl.
   ENDIF.
   SET PF-STATUS 'STATUS_0300' EXCLUDING gm_excl.
@@ -583,13 +574,14 @@ ENDMODULE.
 *&=====================================================================*
 MODULE status_0400 OUTPUT.
   CLEAR gm_excl.
-  " Only Manager can create/change/delete projects + upload/download
+  " Excel upload/download hidden for ALL roles (feature disabled)
+  APPEND 'UPLOAD'   TO gm_excl.
+  APPEND 'DN_TMPL'  TO gm_excl.
+  " Only Manager can create/change/delete projects
   IF gv_role <> 'M'.
     APPEND 'CREA_PRJ' TO gm_excl.
     APPEND 'CHNG_PRJ' TO gm_excl.
     APPEND 'DEL_PRJ'  TO gm_excl.
-    APPEND 'UPLOAD'   TO gm_excl.
-    APPEND 'DN_TMPL'  TO gm_excl.
   ENDIF.
   SET PF-STATUS 'STATUS_0400' EXCLUDING gm_excl.
   SET TITLEBAR 'TITLE_PROJLIST' WITH 'Project List'.
@@ -597,12 +589,11 @@ ENDMODULE.
 
 MODULE init_project_list OUTPUT.
   " If coming from Screen 0410 search, data already loaded
-  " (gv_from_search flag set by search_projects FORM in CODE_F01)
   IF gv_from_search = abap_true.
     " Skip select_project_data — gt_projects already populated by search_projects
     CLEAR gv_from_search.
-  ELSE.
-    " Normal reload (BACK from 0200, REFRESH button, etc.)
+  ELSEIF go_alv_project IS INITIAL.
+    " First load only — subsequent returns from 0200/0500 keep existing data
     PERFORM select_project_data.
   ENDIF.
 
