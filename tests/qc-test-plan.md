@@ -93,7 +93,7 @@
 ### Buoc 4: Setup Auto-Assign test data (v5.0)
 
 > **De test Auto-Assign** (TC-09), can them mock users vao ZBUG_USERS va ZBUG_USER_PROJEC.
-> Chi can cho 1 project test. Xem `update/New_Requirements.md` Part 7.
+> Chi can cho 1 project test. Xem `docs/requirements.md` Part 7.
 
 ---
 

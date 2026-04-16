@@ -234,7 +234,7 @@ SE80 → double-click Screen 0200 → tab **Element List**:
 
 ## 6. GUI Status Reference
 
-Screen này dùng **STATUS_0200**. Xem `guides/deploy/final-steps.md` để tạo.
+Screen này dùng **STATUS_0200**. Xem `docs/final-steps.md` để tạo.
 
 ### Buttons trên STATUS_0200:
 
@@ -330,8 +330,8 @@ WHEN 'SEARCH'.
 ```
 
 > **Xem thêm:**
-> - `guides/screens/screen-0210-bug-search.md` — Popup nhập criteria
-> - `guides/screens/screen-0220-search-results.md` — Full screen kết quả tìm kiếm
+> - `screens/screen-0210-bug-search.md` — Popup nhập criteria
+> - `screens/screen-0220-search-results.md` — Full screen kết quả tìm kiếm
 
 ---
 

@@ -41,7 +41,7 @@
 ## Step 0: Tạo bảng ZBUG_EVIDENCE (SE11) — v4.0 NEW
 
 > **Bắt buộc trước khi paste code v4.0** — Code references bảng `ZBUG_EVIDENCE` cho evidence upload/download.
-> Chi tiết đầy đủ xem `SE11_ZBUG_EVIDENCE.md`.
+> Chi tiết đầy đủ xem `database/zbug-evidence.md`.
 
 ### Quick Reference — Table Fields:
 
@@ -843,7 +843,7 @@ COMMIT WORK.
 
 ### 11.3 Test Data Population (Optional)
 
-Xem Phase F guide `docs/phases/phase-f-v5-enhancement.md` Bước F8 — tạo 20 mock Developers + 10 mock Testers cho auto-assign testing.
+Xem Phase F guide `docs/phase-f-v5-enhancement.md` Bước F8 — tạo 20 mock Developers + 10 mock Testers cho auto-assign testing.
 
 ---
 
