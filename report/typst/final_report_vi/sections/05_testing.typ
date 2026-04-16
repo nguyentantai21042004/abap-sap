@@ -67,7 +67,7 @@ Kiểm thử được thực hiện ở bốn cấp độ:
   align: (center, left, left, left, left),
   [*STT*], [*Loại*], [*Mục tiêu*], [*Kỹ thuật*], [*Tiêu chí Hoàn thành*],
   [1], [Kiểm thử Chức năng], [Xác minh từng màn hình, nút và quy tắc nghiệp vụ hoạt động theo đặc tả yêu cầu], [Black-box: cung cấp đầu vào, xác minh đầu ra mong đợi; chuyển đổi giữa 3 tài khoản vai trò để kiểm thử RBAC], [Tất cả ca kiểm thử qua 20 TC suite đạt với không có lỗi nghiêm trọng (chặn)],
-  [2], [Kiểm thử Hồi quy], [Xác nhận các bản sửa lỗi v4.x và nâng cao v5.0 không tái phát các lỗi đã giải quyết trước đó], [Thực thi lại TC-19 (19 ca: 8 lỗi v4.x + 11 lỗi UAT v5.0) sau triển khai], [Tất cả 19 ca hồi quy đạt; không có lỗi nào tái xuất trong bản dựng v5.0],
+  [2], [Kiểm thử Hồi quy], [Xác nhận các tính năng v5.0 không gây tái phát các lỗi đã giải quyết trước đó], [Thực thi TC-19 (19 ca hồi quy) sau triển khai], [Tất cả 19 ca hồi quy đạt; không có lỗi nào tái xuất trong bản dựng v5.0],
   [3], [Kiểm thử Chấp thuận (UAT)], [Xác thực hệ thống triển khai đáp ứng yêu cầu luồng làm việc nghiệp vụ từ góc độ người dùng cuối], [Walkthrough happy-case bởi cả 3 vai trò theo script UAT (64 ca qua 14 danh mục)], [Tất cả 64 ca UAT đạt; không còn chặn nghiêm trọng; cả 3 thành viên vai trò ký xác nhận],
 )
 
@@ -133,9 +133,9 @@ Kiểm thử được thực hiện ở bốn cấp độ:
 #table(
   columns: (auto, 3.5cm, 2cm, 2cm, 1fr),
   align: (center, left, center, center, left),
-  [*STT*], [*Mốc*], [*Ngày bắt đầu*], [*Ngày kết thúc*], [*Sản phẩm bàn giao*],
+  [*STT*], [*Mốc*], [*Ngày bắt đầu*], [*Ngày kết thúc*], [*Kết quả*],
   [1], [Thiết lập Môi trường Kiểm thử], [01/04/2026], [11/04/2026], [Phân công vai trò `ZBUG_USERS` đã xác minh; tài khoản kiểm thử đã xác nhận; ảnh chụp màn hình SE16N đã chụp],
-  [2], [UAT Vòng 1 (bản dựng v4.2)], [11/04/2026], [13/04/2026], [64 ca UAT happy case đã thực thi; 11 lỗi được xác định và ghi lại trong tài liệu Phân tích Lỗi v5.0],
+  [2], [UAT Vòng 1], [11/04/2026], [13/04/2026], [64 ca UAT happy case đã thực thi; 11 lỗi được xác định và ghi lại],
   [3], [Phân tích & Thiết kế Lỗi v5.0], [13/04/2026], [14/04/2026], [Phân tích nguyên nhân gốc và đề xuất sửa lỗi cho tất cả 11 lỗi UAT; kiến trúc v5.0 Giai đoạn F đã hoàn thiện],
   [4], [Phát triển Code v5.0 (F10)], [14/04/2026], [16/04/2026], [Tất cả 6 include ABAP (`Z_BUG_WS_TOP` đến `Z_BUG_WS_F02`) đã cập nhật lên v5.0; xác minh hoàn tất ngày 16/04/2026],
   [5], [Triển khai v5.0 lên SAP (F11--F17)], [Sau 16/04/2026], [TBD], [4 màn hình mới (SE51), 4 GUI Status + 4 Title Bar (SE41), cập nhật màn hình ban đầu SE93, bảng `ZBUG_EVIDENCE`, script migration, mẫu SMW0],
@@ -171,7 +171,7 @@ Ca kiểm thử được tổ chức thành 20 suite (TC-01 đến TC-20), tổn
   [16], [TC-16], [Xác thực Trường và Quy tắc Nghiệp vụ], [Quy tắc nhất quán Severity/Priority; trường bắt buộc; duy trì long text; thông báo lỗi không khóa trường], [9],
   [17], [TC-17], [Phát hiện Thay đổi Chưa lưu], [Popup Lưu/Hủy/Cancel; so sánh snapshot; đồng bộ văn bản trình soạn thảo mini trước khi so sánh], [9],
   [18], [TC-18], [F4 Search Help], [Tất cả F4 helper trên màn hình 0300 (9 trường), 0410 (3 trường), 0370 (3 trường); điền lại giá trị], [16],
-  [19], [TC-19], [Hồi quy -- Lỗi đã sửa v4.x + v5.0], [8 lỗi v4.x + 11 lỗi UAT v5.0: xác minh không tái xuất trong bản dựng v5.0], [19],
+  [19], [TC-19], [Hồi quy -- Xác minh không tái phát], [19 ca kiểm thử hồi quy: xác minh không tái xuất sau triển khai v5.0], [19],
   [20], [TC-20], [Trường hợp Biên và Kiểm thử Ranh giới], [DB trống; trường độ dài tối đa; tải lên file lớn; memory leak khi Back; xử lý người dùng chưa đăng ký], [20],
   [], [], [*Tổng cộng (ước tính)*], [], [*~210*],
 )
@@ -180,7 +180,7 @@ Ca kiểm thử được tổ chức thành 20 suite (TC-01 đến TC-20), tổn
 
 === 5.1 UAT Vòng 1 --- Kết quả Giai đoạn E (11--13 tháng 4 năm 2026)
 
-UAT Vòng 1 được thực hiện trong Giai đoạn E trên bản dựng v4.2 đã triển khai (SAP System S40, Client 324). Cả ba thành viên dự án tham gia theo vai trò được chỉ định của mình, theo script UAT happy-case (64 ca qua 14 danh mục).
+UAT Vòng 1 được thực hiện trong Giai đoạn E trên SAP System S40, Client 324. Cả ba thành viên dự án tham gia theo vai trò được chỉ định của mình, theo script UAT happy-case (64 ca qua 14 danh mục).
 
 *Tóm tắt:*
 
@@ -205,7 +205,7 @@ UAT Vòng 1 được thực hiện trong Giai đoạn E trên bản dựng v4.2 
   [6], [UAT-06], [F4 help trên trường `SAP_MODULE` không hiển thị popup -- thiếu entry flow logic POV cho trường đó trên màn hình 0310], [Trung bình],
   [7], [UAT-07], [Thông báo lỗi validation sử dụng `TYPE 'E'` khóa tất cả trường màn hình -- người dùng không thể sửa đầu vào mà không điều hướng đi], [Cao],
   [8], [UAT-08], [Văn bản mô tả biến mất sau khi mở lại lỗi đã lưu -- long text không được tải lại đúng trong PBO khi lỗi được mở lại], [Cao],
-  [9], [UAT-09], [Cho phép chuyển đổi trạng thái ngược (ví dụ: Fixed → In Progress) -- không có ma trận chuyển đổi được thực thi trong v4.2], [Nghiêm trọng],
+  [9], [UAT-09], [Cho phép chuyển đổi trạng thái ngược (ví dụ: Fixed → In Progress) -- không có ma trận chuyển đổi được thực thi], [Nghiêm trọng],
   [10], [UAT-10], [Không kiểm tra file bằng chứng trước khi đánh dấu lỗi là Fixed -- chuyển đổi tiến hành ngay cả khi `ZBUG_EVIDENCE` trống], [Cao],
   [11], [UAT-11], [Manager có thể bypass ma trận chuyển đổi -- gán trạng thái trực tiếp trong `save_bug_detail` ghi đè bất kỳ trạng thái nào mà không cần xác thực], [Nghiêm trọng],
 )

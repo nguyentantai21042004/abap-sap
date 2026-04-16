@@ -5,14 +5,14 @@
 
 = VI. Gói Phát hành & Hướng dẫn Sử dụng
 
-== 1. Gói Sản phẩm Bàn giao
+== 1. Gói Sản phẩm Phát hành
 
-Tất cả sản phẩm bàn giao dưới đây thuộc phiên bản v5.0 của Hệ thống Quản lý Theo dõi Lỗi SAP (`ZBUG_WS`), được triển khai dưới dạng chương trình Module Pool `Z_BUG_WORKSPACE_MP` trong gói SAP `ZBUGTRACK`.
+Các thành phần sau đây thuộc phiên bản v5.0 của Hệ thống Quản lý Theo dõi Lỗi SAP (`ZBUG_WS`), được triển khai dưới dạng chương trình Module Pool `Z_BUG_WORKSPACE_MP` trong gói SAP `ZBUGTRACK`.
 
 #table(
   columns: (auto, 3.5cm, 1fr, 1.5cm),
   align: (center, left, left, center),
-  [*STT*], [*Sản phẩm Bàn giao*], [*Mô tả*], [*Phiên bản*],
+  [*STT*], [*Sản phẩm*], [*Mô tả*], [*Phiên bản*],
   [1], [ABAP Include `Z_BUG_WS_TOP`], [Khai báo toàn cục, kiểu dữ liệu, hằng số cho vòng đời 10 trạng thái (`gc_st_new` đến `gc_st_resolved`), toàn bộ đối tượng ALV/GUI container, biến số liệu dashboard, biến trường màn hình 0370/0410/0210/0220], [v5.0],
   [2], [ABAP Include `Z_BUG_WS_F00`], [Định nghĩa field catalog ALV cho 5 lưới ALV; lớp `LCL_EVENT_HANDLER` cài đặt sự kiện hotspot-click và double-click cho Danh sách Lỗi và Danh sách Dự án], [v5.0],
   [3], [ABAP Include `Z_BUG_WS_PBO`], [Module Process Before Output cho tất cả 9 màn hình; lệnh gọi tính toán dashboard trong `status_0200`; logic nhóm màn hình qua `LOOP AT SCREEN` để kiểm soát trường theo vai trò], [v5.0],
@@ -30,7 +30,7 @@ Tất cả sản phẩm bàn giao dưới đây thuộc phiên bản v5.0 của 
   [15], [Tài liệu Báo cáo Cuối kỳ], [Tài liệu này (Báo cáo Capstone FPT) --- bao gồm các phần Giới thiệu, Quản lý Dự án, Yêu cầu, Thiết kế, Kiểm thử và Phát hành], [v5.0],
   [16], [Mẫu SMW0 (3 tệp)], [`ZBT_TMPL_01` → `Bug_report.xlsx` (mẫu báo cáo lỗi của Tester); `ZBT_TMPL_02` → `fix_report.xlsx` (bằng chứng sửa lỗi của Developer); `ZBT_TMPL_03` → `confirm_report.xlsx` (xác nhận cuối cùng của Tester)], [v5.0],
   [17], [Báo cáo Dữ liệu Kiểm thử], [`Z_BUG_POPULATE_TESTDATA` --- báo cáo thực thi SE38 tạo 20 Developer mô phỏng + 10 Tester mô phỏng trong các module FI/MM/SD/ABAP với phân công dự án để kiểm thử thuật toán tự động phân công], [v5.0],
-  [18], [Script Di chuyển Trạng thái], [ABAP di chuyển một lần: cập nhật tất cả bản ghi có `STATUS = '6'` (Đã giải quyết trong v4.x) thành `STATUS = 'V'` (Đã giải quyết trong v5.0) bằng `UPDATE zbug_tracker SET status = 'V' WHERE status = '6' AND is_del <> 'X'` rồi `COMMIT WORK`], [v5.0],
+  [18], [Script Di chuyển Trạng thái], [ABAP di chuyển một lần: cập nhật tất cả bản ghi có `STATUS = '6'` (mã trạng thái cũ) thành `STATUS = 'V'` (Resolved) bằng `UPDATE zbug_tracker SET status = 'V' WHERE status = '6' AND is_del <> 'X'` rồi `COMMIT WORK`], [v5.0],
 )
 
 == 2. Hướng dẫn Cài đặt

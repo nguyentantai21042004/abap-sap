@@ -67,7 +67,7 @@ Testing is conducted at four levels:
   align: (center, left, left, left, left),
   [*No.*], [*Type*], [*Objective*], [*Technique*], [*Completion Criteria*],
   [1], [Functional Testing], [Verify each screen, button, and business rule behaves per the requirements specification], [Black-box: provide input, verify expected output; switch between 3 role accounts to test RBAC], [All test cases across 20 TC suites pass with no critical (blocking) failures],
-  [2], [Regression Testing], [Confirm that v4.x bug fixes and v5.0 enhancements do not reintroduce previously resolved defects], [Re-execute TC-19 (19 cases: 8 v4.x bugs + 11 v5.0 UAT bugs) after deployment], [All 19 regression cases pass; no prior defect reappears in the v5.0 build],
+  [2], [Regression Testing], [Confirm that v5.0 features do not reintroduce previously resolved defects], [Execute TC-19 (19 regression cases) after deployment], [All 19 regression cases pass; no prior defect reappears in the v5.0 build],
   [3], [Acceptance Testing (UAT)], [Validate that the deployed system meets business workflow requirements from an end-user perspective], [Happy-case walkthrough by all 3 roles following the UAT happy-case script (64 cases across 14 categories)], [All 64 UAT cases pass; no critical blockers remain; all 3 role members sign off],
 )
 
@@ -133,9 +133,9 @@ Testing is conducted at four levels:
 #table(
   columns: (auto, 3.5cm, 2cm, 2cm, 1fr),
   align: (center, left, center, center, left),
-  [*No.*], [*Milestone*], [*Start Date*], [*End Date*], [*Deliverable*],
+  [*No.*], [*Milestone*], [*Start Date*], [*End Date*], [*Outcome*],
   [1], [Test Environment Setup], [01/04/2026], [11/04/2026], [`ZBUG_USERS` role assignments verified; test accounts confirmed; SE16N screenshots captured],
-  [2], [UAT Round 1 (v4.2 build)], [11/04/2026], [13/04/2026], [64 UAT happy cases executed; 11 defects identified and documented in the v5.0 Defect Analysis document],
+  [2], [UAT Round 1], [11/04/2026], [13/04/2026], [64 UAT happy cases executed; 11 defects identified and documented],
   [3], [v5.0 Bug Analysis & Design], [13/04/2026], [14/04/2026], [Root-cause analysis and fix proposals for all 11 UAT defects; Phase F v5.0 architecture finalized],
   [4], [v5.0 Code Development (F10)], [14/04/2026], [16/04/2026], [All 6 ABAP includes (`Z_BUG_WS_TOP` through `Z_BUG_WS_F02`) updated to v5.0; verified complete on 16/04/2026],
   [5], [v5.0 Deployment to SAP (F11--F17)], [Post 16/04/2026], [TBD], [4 new screens (SE51), 4 GUI Statuses + 4 Title Bars (SE41), SE93 initial screen update, `ZBUG_EVIDENCE` table, migration script, SMW0 templates],
@@ -171,7 +171,7 @@ Test cases are organized into 20 suites (TC-01 to TC-20), totaling approximately
   [16], [TC-16], [Field Validation and Business Rules], [Severity/Priority consistency rule; required fields; long text persistence; error message does not lock fields], [9],
   [17], [TC-17], [Unsaved Changes Detection], [Save/Discard/Cancel popup; snapshot comparison; mini editor text sync before compare], [9],
   [18], [TC-18], [F4 Search Help], [All F4 helpers on screens 0300 (9 fields), 0410 (3 fields), 0370 (3 fields); value fill-back], [16],
-  [19], [TC-19], [Regression -- Fixed Bugs v4.x + v5.0], [8 v4.x bugs + 11 v5.0 UAT bugs: verify none reappear in the v5.0 build], [19],
+  [19], [TC-19], [Regression -- Verify no defect reappears], [19 regression test cases: verify no prior defect reappears after v5.0 deployment], [19],
   [20], [TC-20], [Edge Cases and Boundary Testing], [Empty DB; max-length fields; large file upload; memory leak on Back; unregistered user handling], [20],
   [], [], [*Total (estimated)*], [], [*~210*],
 )
@@ -180,7 +180,7 @@ Test cases are organized into 20 suites (TC-01 to TC-20), totaling approximately
 
 === 5.1 UAT Round 1 --- Phase E Results (11--13 April 2026)
 
-UAT Round 1 was conducted in Phase E on the v4.2 deployed build (SAP System S40, Client 324). All three project members participated as their designated roles, following the UAT happy-case script (64 cases across 14 categories).
+UAT Round 1 was conducted in Phase E on SAP System S40, Client 324. All three project members participated as their designated roles, following the UAT happy-case script (64 cases across 14 categories).
 
 *Summary:*
 
@@ -205,7 +205,7 @@ UAT Round 1 was conducted in Phase E on the v4.2 deployed build (SAP System S40,
   [6], [UAT-06], [F4 help on `SAP_MODULE` field shows no popup -- POV flow logic entry missing for that field on screen 0310], [Medium],
   [7], [UAT-07], [Validation error message using `TYPE 'E'` locks all screen fields -- user cannot correct input without navigating away], [High],
   [8], [UAT-08], [Description text disappears after reopening a saved bug -- long text not re-loaded correctly on PBO when bug is re-entered], [High],
-  [9], [UAT-09], [Backward status transition allowed (e.g., Fixed → In Progress) -- no transition matrix enforced in v4.2], [Critical],
+  [9], [UAT-09], [Backward status transition allowed (e.g., Fixed → In Progress) -- no transition matrix was enforced], [Critical],
   [10], [UAT-10], [No evidence file check before marking bug as Fixed -- transition proceeds even with empty `ZBUG_EVIDENCE`], [High],
   [11], [UAT-11], [Manager can bypass transition matrix -- direct status assignment in `save_bug_detail` overwrites any status without validation], [Critical],
 )

@@ -5,14 +5,14 @@
 
 = VI. Release Package & User Guides
 
-== 1. Deliverable Package
+== 1. Release Package
 
-All deliverables below pertain to version v5.0 of the SAP Bug Tracking Management System (`ZBUG_WS`), implemented as Module Pool program `Z_BUG_WORKSPACE_MP` in SAP package `ZBUGTRACK`.
+The components below pertain to version v5.0 of the SAP Bug Tracking Management System (`ZBUG_WS`), implemented as Module Pool program `Z_BUG_WORKSPACE_MP` in SAP package `ZBUGTRACK`.
 
 #table(
   columns: (auto, 3.5cm, 1fr, 1.5cm),
   align: (center, left, left, center),
-  [*No.*], [*Deliverable Item*], [*Description*], [*Version*],
+  [*No.*], [*Item*], [*Description*], [*Version*],
   [1], [ABAP Include `Z_BUG_WS_TOP`], [Global declarations, types, constants for the 10-state lifecycle (`gc_st_new` through `gc_st_resolved`), all ALV/GUI container objects, dashboard metric variables, Screen 0370/0410/0210/0220 field variables], [v5.0],
   [2], [ABAP Include `Z_BUG_WS_F00`], [ALV field catalog definitions for 5 ALV grids; `LCL_EVENT_HANDLER` class implementing hotspot-click and double-click events for Bug List and Project List], [v5.0],
   [3], [ABAP Include `Z_BUG_WS_PBO`], [Process Before Output modules for all 9 screens; dashboard calculation call in `status_0200`; screen group logic via `LOOP AT SCREEN` for role-based field control], [v5.0],
@@ -30,7 +30,7 @@ All deliverables below pertain to version v5.0 of the SAP Bug Tracking Managemen
   [15], [Final Report Document], [This document (FPT Capstone Final Report) --- covers Introduction, Project Management, Requirements, Design, Testing, and Release sections], [v5.0],
   [16], [SMW0 Templates (3 files)], [`ZBT_TMPL_01` → `Bug_report.xlsx` (Tester bug report); `ZBT_TMPL_02` → `fix_report.xlsx` (Developer fix evidence); `ZBT_TMPL_03` → `confirm_report.xlsx` (Final Tester sign-off)], [v5.0],
   [17], [Test Data Report], [`Z_BUG_POPULATE_TESTDATA` --- SE38 executable report creating 20 mock Developers + 10 mock Testers across FI/MM/SD/ABAP modules with project assignments for auto-assign algorithm testing], [v5.0],
-  [18], [Status Migration Script], [One-time ABAP migration: updates all records with `STATUS = '6'` (Resolved in v4.x) to `STATUS = 'V'` (Resolved in v5.0) via `UPDATE zbug_tracker SET status = 'V' WHERE status = '6' AND is_del <> 'X'` followed by `COMMIT WORK`], [v5.0],
+  [18], [Status Migration Script], [One-time ABAP migration: updates all records with `STATUS = '6'` (legacy status code) to `STATUS = 'V'` (Resolved) via `UPDATE zbug_tracker SET status = 'V' WHERE status = '6' AND is_del <> 'X'` followed by `COMMIT WORK`], [v5.0],
 )
 
 == 2. Installation Guides

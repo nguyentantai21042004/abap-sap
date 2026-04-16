@@ -42,8 +42,8 @@ SAP ERP implementations involve simultaneous development across multiple modules
 
 This project was initiated by FPT University to build a *centralized bug tracking system* running natively inside SAP, accessible via a single T-code (`ZBUG_WS`). The system was developed on SAP system S40 (Client 324) using ABAP 7.70, from March to April 2026, across six structured phases (A through F).
 
-The v5.0 enhancement (Phase F) introduced the following major improvements over the initial v4.2 release:
-- A 10-state bug lifecycle replacing the previous 9-state model
+The current system (v5.0) provides the following features:
+- A 10-state bug lifecycle enforced per role
 - A dedicated status transition popup (Screen 0370) that enforces role-based transition rules
 - An auto-assign engine for both developers and testers (based on workload and SAP module)
 - A bug search engine with cross-field filtering (Screens 0210/0220)

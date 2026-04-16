@@ -31,7 +31,7 @@ The following table categorizes each major software function by complexity and e
 
 === 1.2 Project Objectives
 
-*Overall objective:* Deliver a production-ready, role-based bug tracking system running natively on SAP, surpassing the reference system (`ZPG_BUGTRACKING_*`) in all dimensions, within the 10-day sprint window (24 March – 03 April 2026) plus the Phase F enhancement (April 2026).
+*Overall objective:* Build a production-ready, role-based bug tracking system running natively on SAP, surpassing the reference system (`ZPG_BUGTRACKING_*`) in all dimensions.
 
 *Specific targets:*
 
@@ -67,13 +67,13 @@ The project followed an *incremental waterfall* model divided into six phases, e
 #table(
   columns: (1.5cm, 3cm, 1fr, 2.5cm),
   align: (center, left, left, center),
-  [*Phase*], [*Name*], [*Deliverables*], [*Status*],
+  [*Phase*], [*Name*], [*Output*], [*Status*],
   [A], [Database Hardening],         [5 custom tables, domains, data elements, number ranges (`ZNRO_BUG`)], [Done],
   [B], [Business Logic (FMs)],       [6 Function Modules: Create, AutoAssign, Permission, History, Email, Evidence], [Done],
-  [C], [Module Pool UI (v4.x)],      [Program `Z_BUG_WORKSPACE_MP`, 8 screens, GUI Statuses, ALV grids, tab strips], [Done],
-  [D], [Advanced Features (v4.x)],   [SmartForms, Excel upload/download, message class, F4 helpers, unsaved-changes detection], [Done],
-  [E], [Testing (v4.x)],             [QC Test Plan (140 cases), UAT (43 cases), UAT Round 1 results (11 bugs found)], [Done],
-  [F], [v5.0 Enhancement],           [10-state lifecycle, Screen 0370/0410/0210/0220, auto-assign v2, bug search, dashboard], [CODE done; deploy pending],
+  [C], [Module Pool UI],             [Program `Z_BUG_WORKSPACE_MP`, 8 screens, GUI Statuses, ALV grids, tab strips], [Done],
+  [D], [Advanced Features],          [SmartForms, Excel upload/download, message class, F4 helpers, unsaved-changes detection], [Done],
+  [E], [Testing],                    [QC Test Plan (140 cases), UAT (43 cases), UAT Round 1 results (11 bugs found)], [Done],
+  [F], [v5.0 Enhancement],           [10-state lifecycle, Screen 0370/0410/0210/0220, enhanced auto-assign, bug search, dashboard], [CODE done; deploy pending],
 )
 
 === 2.2 Quality Management
@@ -101,9 +101,9 @@ No formal training was required — all team members had prior SAP ABAP exposure
   [Long Text API (READ\_TEXT / SAVE\_TEXT)], [SAP Help + ZBUG\_NOTE text object setup guide],           [`DEV-242`],
 )
 
-== 3. Project Deliverables
+== 3. Project Artifacts
 
-*Internal deliverables (development artifacts):*
+*Internal development artifacts:*
 
 #table(
   columns: (auto, 3cm, 1fr),
@@ -118,7 +118,7 @@ No formal training was required — all team members had prior SAP ABAP exposure
   [7], [Phase F Enhancement Guide],        [Step-by-step deployment instructions F11--F17 for all v5.0 additions],
 )
 
-*External deliverables (submitted to FPT University):*
+*Documents submitted to FPT University:*
 
 #table(
   columns: (auto, 3cm, 1fr),
@@ -204,10 +204,7 @@ No formal training was required — all team members had prior SAP ABAP exposure
 
 === 6.1 Document Management
 
-All project documents are maintained across development phases and carry a version header indicating the last-updated date. The versioning convention used throughout this project is:
-
-- `v4.x` --- pre-Phase F documents (initial delivery, Phases A--E)
-- `v5.0` --- Phase F enhancement documents (current version)
+All project documents are maintained across development phases and carry a version header indicating the last-updated date. All documents are at version `v5.0` (Phase F).
 
 Key document types maintained: Business Blueprint, Final Report, screen layout guides (one per screen), QC Test Plan, UAT Happy Case Script, Database Schema, Status Lifecycle Specification, and Phase F Enhancement Guide.
 

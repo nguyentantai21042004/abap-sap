@@ -42,8 +42,8 @@ Việc triển khai SAP ERP liên quan đến phát triển đồng thời trên
 
 Dự án này được Đại học FPT khởi xướng nhằm xây dựng một *hệ thống theo dõi lỗi tập trung* chạy ngay bên trong SAP, truy cập qua một T-code duy nhất (`ZBUG_WS`). Hệ thống được phát triển trên hệ thống SAP S40 (Client 324) sử dụng ABAP 7.70, từ tháng 3 đến tháng 4 năm 2026, qua sáu giai đoạn có cấu trúc (A đến F).
 
-Phiên bản v5.0 (Giai đoạn F) đã giới thiệu các cải tiến lớn so với phiên bản v4.2 ban đầu:
-- Vòng đời lỗi 10 trạng thái thay thế mô hình 9 trạng thái trước đó
+Hệ thống hiện tại (v5.0) cung cấp các tính năng:
+- Vòng đời lỗi 10 trạng thái được thực thi theo vai trò
 - Popup chuyển đổi trạng thái chuyên dụng (Màn hình 0370) thực thi quy tắc chuyển đổi theo vai trò
 - Engine tự động phân công cho cả lập trình viên và kiểm thử viên (dựa trên khối lượng công việc và module SAP)
 - Engine tìm kiếm lỗi với bộ lọc đa trường (Màn hình 0210/0220)
