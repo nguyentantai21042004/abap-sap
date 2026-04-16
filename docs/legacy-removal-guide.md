@@ -186,11 +186,9 @@ Các file đã OUTDATED — có thể archive hoặc đánh dấu:
 
 | File | Lý do | Action |
 |------|-------|--------|
-| `docs/phases/phase-c-module-pool.md` | v2.0, OUTDATED — thay bằng `guides/screens/` | Đánh dấu "OUTDATED" ở đầu file |
-| `docs/phases/phase-e-testing.md` | Partially outdated — test checklist mới ở `guides/deploy/final-steps.md` | Đánh dấu "PARTIALLY OUTDATED" |
-| `docs/phases/phase-d-advanced-features.md` | Code đã integrate vào CODE files | Đánh dấu "INTEGRATED — see guides/code/" |
-| `guides/ui-design/status-snapshot.md` | Pre-refactor snapshot — historical only | Giữ nguyên, đánh dấu "HISTORICAL" |
-| `guides/ui-design/refactor-plan.md` | 16-item plan, completed (Item 10 CANCELLED) | Giữ nguyên, đánh dấu "COMPLETED" |
+| `docs/phases/phase-c-module-pool.md` | v2.0, OUTDATED — thay bằng `screens/` | Đánh dấu "OUTDATED" ở đầu file |
+| `docs/phases/phase-e-testing.md` | Partially outdated — test checklist mới ở `docs/final-steps.md` | Đánh dấu "PARTIALLY OUTDATED" |
+| `docs/phases/phase-d-advanced-features.md` | Code đã integrate vào CODE files | Đánh dấu "INTEGRATED — see src/" |
 
 ### Không xoá:
 

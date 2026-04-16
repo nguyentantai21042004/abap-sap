@@ -1,7 +1,7 @@
 # Bug Analysis v5.0 — Phân tích 11 lỗi từ UAT Testing
 
 > **Ngày:** 13/04/2026
-> **Nguồn:** `update/BUG_Report.md` + screenshots trong `update/`
+> **Nguồn:** `update/BUG_Report.md` + screenshots trong `update/` *(file gốc đã xoá — tài liệu này là bản phân tích lưu trữ)*
 > **Phạm vi:** Tất cả bugs chưa nhắc tới = PASS. Chỉ 11 bugs dưới đây cần fix.
 
 ---

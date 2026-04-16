@@ -1,6 +1,6 @@
 # CONTEXT & STATUS — Z_BUG_WORKSPACE_MP
 
-> **Cập nhật lần cuối:** 13/04/2026 (v5.0 — 11 bug fixes + 8 new requirements consolidated)
+> **Cập nhật lần cuối:** 16/04/2026 (repo restructured — professional layout)
 > **Mục đích:** File này dùng để handoff giữa các agent/session. Đọc file này trước khi làm bất cứ thứ gì với dự án.
 
 ---
@@ -49,12 +49,8 @@ Dự án đang ở **Phase F v5.0: Enhancement** — planning documents hoàn th
 
 ## 2. CHƯƠNG TRÌNH MẪU THAM CHIẾU
 
-| Thư mục | Program | Vai trò |
-|---------|---------|---------|
-| `references/ZPG_BUGTRACKING_MAIN/` | `ZPG_BUGTRACKING_MAIN` | Bug List + Project List ALV, Selection Screen |
-| `references/ZPG_BUGTRACKING_DETAIL/` | `ZPG_BUGTRACKING_DETAIL` | Bug/Project Detail + Tab Strip + Evidence upload |
-
-**Mục tiêu:** `Z_BUG_WORKSPACE_MP` phải **ngang hàng hoặc tốt hơn** 2 chương trình mẫu. ✅ v4.0 đã đạt, v5.0 vượt xa.
+> Thư mục `references/` đã bị xoá — không còn cần thiết.
+> `Z_BUG_WORKSPACE_MP` đã **vượt xa** cả 2 chương trình mẫu (ZPG_BUGTRACKING_MAIN / DETAIL). ✅ v4.0 đạt, v5.0 vượt xa.
 
 ---
 
@@ -175,12 +171,12 @@ Screen 0410 → Back → LEAVE PROGRAM
 
 | Table | Status | Fields | Source of Truth |
 |-------|--------|--------|-----------------|
-| `ZBUG_TRACKER` | Updated (+13 fields) | 29 fields total | `verification/table-fields.md` |
-| `ZBUG_USERS` | Updated (+4 fields) | 12 fields total | `verification/table-fields.md` |
-| `ZBUG_PROJECT` | Created | 16 fields | `verification/table-fields.md` |
-| `ZBUG_USER_PROJEC` | Created | 10 fields (M:N User↔Project, có ROLE) | `verification/table-fields.md` |
-| `ZBUG_HISTORY` | Unchanged | 10 fields (Change log) | `verification/table-fields.md` |
-| `ZBUG_EVIDENCE` | v4.0 | 11 fields (binary file storage) | `guides/database/zbug-evidence.md` |
+| `ZBUG_TRACKER` | Updated (+13 fields) | 29 fields total | `database/table-fields.md` |
+| `ZBUG_USERS` | Updated (+4 fields) | 12 fields total | `database/table-fields.md` |
+| `ZBUG_PROJECT` | Created | 16 fields | `database/table-fields.md` |
+| `ZBUG_USER_PROJEC` | Created | 10 fields (M:N User↔Project, có ROLE) | `database/table-fields.md` |
+| `ZBUG_HISTORY` | Unchanged | 10 fields (Change log) | `database/table-fields.md` |
+| `ZBUG_EVIDENCE` | v4.0 | 11 fields (binary file storage) | `database/zbug-evidence.md` |
 
 ### Critical Type Mappings (from SE11 verification):
 
@@ -234,7 +230,7 @@ New(1) → Auto-assign → Assigned(2) → InProgress(3) → Fixed(5) → Auto-a
 | Bước | Nội dung | Status |
 |------|---------|--------|
 | A1-A8 | Domains, Data Elements, Tables, Migration | ✅ Xong |
-| A9 | Bảng `ZBUG_EVIDENCE` (11 fields) | ❌ Chưa tạo (guide: `guides/database/zbug-evidence.md`) |
+| A9 | Bảng `ZBUG_EVIDENCE` (11 fields) | ❌ Chưa tạo (guide: `database/zbug-evidence.md`) |
 
 ### PHASE B — BUSINESS LOGIC UPDATE ❓ CHƯA XÁC NHẬN
 
@@ -260,7 +256,7 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 |------|---------|--------|
 | F0 | Bug Fixes (11 bugs from UAT) | ✅ Analyzed, fix proposals ready |
 | F1 | Status Lifecycle v5.0 (breaking change) | ✅ Designed → `docs/status-lifecycle.md` |
-| F2 | Screen 0410 — Project Search | ✅ Designed → `docs/phases/phase-f-v5-enhancement.md` |
+| F2 | Screen 0410 — Project Search | ✅ Designed → `docs/phase-f-v5-enhancement.md` |
 | F3 | Dashboard Header (Screen 0200) | ✅ Designed |
 | F4 | Template Rename (SMW0) | ✅ Designed |
 | F5 | Status Transition Popup (Screen 0370) | ✅ Designed |
@@ -304,38 +300,35 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 
 ## 7. CODE & UI GUIDES — VỊ TRÍ & CÁCH DÙNG
 
-> **Repo structure (v5.0):**
+> **Repo structure (v5.0 — restructured 16/04/2026):**
 > ```
 > abap-sap/
-> ├── docs/           ← Documentation & planning
-> │   ├── CONTEXT.md          ← THIS FILE (v5.0)
+> ├── README.md
+> ├── src/            ← ABAP source code (6 includes)
+> ├── screens/        ← SE51 screen layout guides (8 screens)
+> ├── database/       ← DB table schemas (table-fields.md, zbug-evidence.md)
+> ├── docs/           ← Project documentation + deployment guide
+> │   ├── CONTEXT.md          ← THIS FILE
 > │   ├── status-lifecycle.md ← v5.0 lifecycle source of truth
 > │   ├── v5-bug-analysis.md  ← 11 bugs analysis
 > │   ├── requirements.md
-> │   ├── reference-analysis.md
-> │   └── phases/             ← Phase guides A-F
-> ├── guides/         ← Implementation guides
-> │   ├── code/       ← CODE files (v4.2, to be updated to v5.0)
-> │   ├── screens/    ← Screen layout guides
-> │   ├── database/   ← DB table creation guides
-> │   ├── deploy/     ← Deployment checklist
-> │   └── ui-design/  ← UI flow & refactor docs
-> ├── references/     ← Reference SAP programs (readonly)
-> ├── update/         ← Input: bugs + new requirements
-> ├── verification/   ← Source of truth for DB fields
-> └── tests/          ← QC test plans + UAT cases
+> │   ├── legacy-removal-guide.md
+> │   └── phase-f-v5-enhancement.md
+> ├── tests/          ← QC test plans + UAT cases
+> └── verification/   ← Screenshots as proof of current state
+>     └── screenshots/
 > ```
 
 ### Code Files (v4.2 — cần upgrade lên v5.0):
 
 | File guide | SAP include | Current | Target |
 |-----------|------------|---------|--------|
-| `guides/code/CODE_TOP.md` | `Z_BUG_WS_TOP` | v4.0 | **v5.0** |
-| `guides/code/CODE_F00.md` | `Z_BUG_WS_F00` | v4.0 | **v5.0** |
-| `guides/code/CODE_PBO.md` | `Z_BUG_WS_PBO` | v4.1 | **v5.0** |
-| `guides/code/CODE_PAI.md` | `Z_BUG_WS_PAI` | v4.1 | **v5.0** |
-| `guides/code/CODE_F01.md` | `Z_BUG_WS_F01` | v4.2 | **v5.0** |
-| `guides/code/CODE_F02.md` | `Z_BUG_WS_F02` | v4.1 | **v5.0** |
+| `src/CODE_TOP.md` | `Z_BUG_WS_TOP` | v4.0 | **v5.0** |
+| `src/CODE_F00.md` | `Z_BUG_WS_F00` | v4.0 | **v5.0** |
+| `src/CODE_PBO.md` | `Z_BUG_WS_PBO` | v4.1 | **v5.0** |
+| `src/CODE_PAI.md` | `Z_BUG_WS_PAI` | v4.1 | **v5.0** |
+| `src/CODE_F01.md` | `Z_BUG_WS_F01` | v4.2 | **v5.0** |
+| `src/CODE_F02.md` | `Z_BUG_WS_F02` | v4.1 | **v5.0** |
 
 ### Key Planning Documents:
 
@@ -343,18 +336,7 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 |------|---------|---------|
 | **`docs/status-lifecycle.md`** | Bug + Project lifecycle, role matrix, transition table, auto-assign | **v5.0** |
 | **`docs/v5-bug-analysis.md`** | 11 bugs from UAT with root causes and fix proposals | **v5.0** |
-| **`docs/phases/phase-f-v5-enhancement.md`** | Phase F implementation guide (all 10 steps) | **v5.0** |
-
-### Phase Implementation Guides:
-
-| File | Purpose |
-|------|---------|
-| `docs/phases/phase-a-database.md` | SE11/SE91/SE75 steps (v1.0) |
-| `docs/phases/phase-b-business-logic.md` | SE37 FM updates (v1.0) |
-| `docs/phases/phase-c-module-pool.md` | Old SE51/SE41 guide (v2.0 — OUTDATED) |
-| `docs/phases/phase-d-advanced-features.md` | Phase D design (v6.0) |
-| `docs/phases/phase-e-testing.md` | T-code + UAT (v1.0) |
-| **`docs/phases/phase-f-v5-enhancement.md`** | **v5.0 Enhancement (NEW)** |
+| **`docs/phase-f-v5-enhancement.md`** | Phase F implementation guide (all 10 steps) | **v5.0** |
 
 > **Thứ tự include bắt buộc trong main program:**
 >
@@ -384,7 +366,7 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 
 | # | Issue | Severity | Notes |
 |---|-------|----------|-------|
-| 1 | ZBUG_EVIDENCE table chưa tạo trong SAP | HIGH | Guide ready: `guides/database/zbug-evidence.md` |
+| 1 | ZBUG_EVIDENCE table chưa tạo trong SAP | HIGH | Guide ready: `database/zbug-evidence.md` |
 | 2 | Status migration `6` → `V` chưa chạy | HIGH | Script in Phase F1.3 |
 
 ---
@@ -410,7 +392,7 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 Viết lại toàn bộ 6 CODE files, incorporate:
 - 11 bug fixes (từ `docs/v5-bug-analysis.md`)
 - 10-state lifecycle (từ `docs/status-lifecycle.md`)
-- 8 new features (từ `docs/phases/phase-f-v5-enhancement.md`)
+- 8 new features (từ `docs/phase-f-v5-enhancement.md`)
 
 **Thứ tự viết:**
 1. `CODE_TOP.md` v5.0 — new constants, new vars
@@ -443,4 +425,4 @@ Viết lại toàn bộ 6 CODE files, incorporate:
 
 ---
 
-*File này được tạo bởi OpenCode agent. Cập nhật lần cuối: 13/04/2026 (v5.0 — consolidated 11 bugs + 8 new requirements).*
+*File này được tạo bởi OpenCode agent. Cập nhật lần cuối: 16/04/2026 (repo restructured — professional layout).*
