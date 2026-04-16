@@ -307,8 +307,7 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 > ├── src/            ← ABAP source code (6 includes)
 > ├── screens/        ← SE51 screen layout guides (8 screens)
 > ├── database/       ← DB table schemas (table-fields.md, zbug-evidence.md)
-> ├── deploy/         ← Deployment checklist (final-steps.md)
-> ├── docs/           ← Project documentation
+> ├── docs/           ← Project documentation + deployment guide
 > │   ├── CONTEXT.md          ← THIS FILE
 > │   ├── status-lifecycle.md ← v5.0 lifecycle source of truth
 > │   ├── v5-bug-analysis.md  ← 11 bugs analysis

@@ -234,7 +234,7 @@ SE80 → double-click Screen 0200 → tab **Element List**:
 
 ## 6. GUI Status Reference
 
-Screen này dùng **STATUS_0200**. Xem `deploy/final-steps.md` để tạo.
+Screen này dùng **STATUS_0200**. Xem `docs/final-steps.md` để tạo.
 
 ### Buttons trên STATUS_0200:
 

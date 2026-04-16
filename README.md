@@ -39,11 +39,9 @@ abap-sap/
 │   ├── table-fields.md            ← Source of truth cho tất cả DB fields
 │   └── zbug-evidence.md           ← ZBUG_EVIDENCE guide (⚠️ chưa tạo trong SAP!)
 │
-├── deploy/
-│   └── final-steps.md             ← Deployment checklist
-│
 ├── docs/                          ← Project documentation
 │   ├── CONTEXT.md                 ← START HERE — master context cho mọi session
+│   ├── final-steps.md             ← Deployment checklist (SE41/SE93/SMW0)
 │   ├── status-lifecycle.md        ← v5.0 bug lifecycle + role matrix (source of truth)
 │   ├── status-lifecycle.pdf
 │   ├── requirements.md            ← Feature requirements spec

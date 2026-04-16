@@ -710,7 +710,7 @@ PROCESS AFTER INPUT.
 
 # PHẦN 9: GUI Status Reference
 
-Screen 0300 dùng **STATUS_0300**. Xem `deploy/final-steps.md` để tạo.
+Screen 0300 dùng **STATUS_0300**. Xem `docs/final-steps.md` để tạo.
 
 ### Buttons trên STATUS_0300:
 
