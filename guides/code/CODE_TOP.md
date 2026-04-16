@@ -51,6 +51,9 @@ DATA: gv_from_search     TYPE abap_bool.
 " gv_search_executed: set in user_command_0210 when EXECUTE pressed;
 "   checked in user_command_0200 to navigate to 0220 after modal closes.
 DATA: gv_search_executed TYPE abap_bool.
+" gv_prj_list_dirty: set after save/delete project → tells PBO to reload
+"   project list via search_projects (preserving filters) on next 0400 PBO.
+DATA: gv_prj_list_dirty  TYPE abap_bool.
 
 " === DISPLAY TEXT VARIABLES (mapped from raw codes for Screen fields) ===
 DATA: gv_status_disp     TYPE char20,

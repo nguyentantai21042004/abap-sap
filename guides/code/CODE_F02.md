@@ -579,6 +579,7 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
   CALL FUNCTION 'SAVE_TEXT'
     EXPORTING
       header          = ls_header
+      savemode_direct = 'X'
     TABLES
       lines           = lt_lines
     EXCEPTIONS
@@ -630,6 +631,7 @@ FORM save_long_text_direct USING pv_text_id TYPE thead-tdid
   CALL FUNCTION 'SAVE_TEXT'
     EXPORTING
       header          = ls_header
+      savemode_direct = 'X'
     TABLES
       lines           = lt_lines
     EXCEPTIONS

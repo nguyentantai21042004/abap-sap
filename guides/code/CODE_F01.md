@@ -171,10 +171,11 @@ FORM save_bug_detail.
     COMMIT WORK.
     " Set current bug id BEFORE saving long texts
     gv_current_bug_id = gs_bug_detail-bug_id.
-    " Save long text tabs (SAVE_TEXT performs its own COMMIT internally)
+    " Save long text tabs (SAVE_TEXT buffers changes — needs explicit COMMIT)
     PERFORM save_long_text USING 'Z001'.  " Description
     PERFORM save_long_text USING 'Z002'.  " Dev Note
     PERFORM save_long_text USING 'Z003'.  " Tester Note
+    COMMIT WORK.                          " Flush SAVE_TEXT buffer to DB
 
     " Sync desc_text from editor after save_long_text
     IF go_edit_desc IS NOT INITIAL.
@@ -319,6 +320,8 @@ FORM save_project_detail.
     gv_mode = gc_mode_change.
     " Update snapshot after successful save
     gs_prj_snapshot = gs_project.
+    " Signal project list to reload on next PBO (Bug 2 fix)
+    gv_prj_list_dirty = abap_true.
   ELSE.
     ROLLBACK WORK.
     MESSAGE 'Project save failed. Project ID may already exist.' TYPE 'S' DISPLAY LIKE 'E'.
@@ -432,6 +435,8 @@ FORM delete_project.
   IF sy-subrc = 0.
     COMMIT WORK.
     MESSAGE |Project { gv_current_project_id } deleted.| TYPE 'S'.
+    " Signal project list to reload on next PBO (Bug 2 fix)
+    gv_prj_list_dirty = abap_true.
     PERFORM select_project_data.
     IF go_alv_project IS NOT INITIAL.
       go_alv_project->refresh_table_display( ).
@@ -564,37 +569,74 @@ FORM add_user_to_project.
   ENDIF.
 ENDFORM.
 
-*&=== PROJECT USER MANAGEMENT: REMOVE (selected row from Table Control) ===*
-*& Uses tc_users-current_line to determine which row to delete.
-*& Range check guards against invalid row index.
+*&=== PROJECT USER MANAGEMENT: REMOVE (F4 popup selection) ===*
+*& Uses F4IF_INT_TABLE_VALUE_REQUEST popup to let user pick which user
+*& to remove — avoids tc_users-current_line unreliability (Bug 4 fix).
 FORM remove_user_from_project.
-  DATA: lv_line TYPE i.
-  lv_line = tc_users-current_line.
+  " Build value table from current project users
+  TYPES: BEGIN OF ty_up_f4,
+           user_id TYPE zde_username,
+           role    TYPE zde_bug_role,
+         END OF ty_up_f4.
+  DATA: lt_val TYPE TABLE OF ty_up_f4,
+        lt_ret TYPE TABLE OF ddshretval,
+        ls_val TYPE ty_up_f4.
 
-  " Validate range — prevent deleting wrong row
-  IF lv_line <= 0 OR lv_line > lines( gt_user_project ).
-    MESSAGE 'Invalid row selection.' TYPE 'S' DISPLAY LIKE 'W'.
+  IF gt_user_project IS INITIAL.
+    MESSAGE 'No users assigned to this project.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  READ TABLE gt_user_project INTO gs_user_project INDEX lv_line.
-  IF sy-subrc <> 0. RETURN. ENDIF.
+  " Populate F4 value table from gt_user_project
+  LOOP AT gt_user_project INTO gs_user_project.
+    ls_val-user_id = gs_user_project-user_id.
+    ls_val-role    = gs_user_project-role.
+    APPEND ls_val TO lt_val.
+  ENDLOOP.
 
+  " Show F4 popup — user picks which user to remove
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield    = 'USER_ID'
+      value_org   = 'S'
+      window_title = 'Select User to Remove'
+    TABLES
+      value_tab   = lt_val
+      return_tab  = lt_ret
+    EXCEPTIONS
+      OTHERS      = 1.
+
+  " Check if user made a selection
+  IF lt_ret IS INITIAL.
+    RETURN.  " User cancelled
+  ENDIF.
+
+  DATA: lv_sel_user TYPE zde_username.
+  READ TABLE lt_ret INTO DATA(ls_ret) INDEX 1.
+  lv_sel_user = ls_ret-fieldval.
+
+  IF lv_sel_user IS INITIAL.
+    RETURN.  " Empty selection
+  ENDIF.
+
+  " Confirm deletion
   DATA: lv_confirmed TYPE abap_bool,
         lv_msg       TYPE string.
-  lv_msg = |Remove user { gs_user_project-user_id } from project?|.
+  lv_msg = |Remove user { lv_sel_user } from project?|.
   PERFORM confirm_action USING lv_msg CHANGING lv_confirmed.
   CHECK lv_confirmed = abap_true.
 
+  " Delete from DB
   DELETE FROM zbug_user_projec
     WHERE project_id = @gv_current_project_id
-      AND user_id    = @gs_user_project-user_id.
+      AND user_id    = @lv_sel_user.
   IF sy-subrc = 0.
     COMMIT WORK.
-    DELETE gt_user_project INDEX lv_line.
-    " Reset flag after successful remove
+    " Remove from internal table
+    DELETE gt_user_project WHERE user_id = lv_sel_user.
+    tc_users-lines = lines( gt_user_project ).
     CLEAR gv_tc_user_selected.
-    MESSAGE |User { gs_user_project-user_id } removed.| TYPE 'S'.
+    MESSAGE |User { lv_sel_user } removed.| TYPE 'S'.
   ELSE.
     ROLLBACK WORK.
     MESSAGE 'Remove failed.' TYPE 'S' DISPLAY LIKE 'E'.

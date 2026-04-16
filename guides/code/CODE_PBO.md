@@ -592,6 +592,10 @@ MODULE init_project_list OUTPUT.
   IF gv_from_search = abap_true.
     " Skip select_project_data — gt_projects already populated by search_projects
     CLEAR gv_from_search.
+  ELSEIF gv_prj_list_dirty = abap_true.
+    " Project was saved/deleted — reload with current search filters preserved
+    PERFORM search_projects.
+    CLEAR gv_prj_list_dirty.
   ELSEIF go_alv_project IS INITIAL.
     " First load only — subsequent returns from 0200/0500 keep existing data
     PERFORM select_project_data.
@@ -711,8 +715,14 @@ MODULE modify_screen_0500 OUTPUT.
       MODIFY SCREEN.
     ENDIF.
 
-    " Hide old Description/Note I/O fields (replaced by CL_GUI_TEXTEDIT editors)
-    IF screen-name = 'GS_PROJECT-DESCRIPTION' OR screen-name = 'GS_PROJECT-NOTE'.
+    " Hide old Description/Note I/O fields ONLY when editors were created successfully.
+    " Fallback: if Custom Controls missing (e.g., Mac alphanumeric Screen Painter),
+    " old I/O fields remain visible + editable so user can still enter text.
+    IF screen-name = 'GS_PROJECT-DESCRIPTION' AND go_edit_prj_desc IS NOT INITIAL.
+      screen-active = 0.
+      MODIFY SCREEN.
+    ENDIF.
+    IF screen-name = 'GS_PROJECT-NOTE' AND go_edit_prj_note IS NOT INITIAL.
       screen-active = 0.
       MODIFY SCREEN.
     ENDIF.

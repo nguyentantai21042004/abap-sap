@@ -389,7 +389,8 @@ MODULE user_command_0400 INPUT.
         MESSAGE 'Please select a project to delete.' TYPE 'W'.
       ENDIF.
     WHEN 'REFRESH'.
-      PERFORM select_project_data.
+      " Reload with search filters preserved (Bug 2 fix)
+      PERFORM search_projects.
       IF go_alv_project IS NOT INITIAL.
         go_alv_project->refresh_table_display( ).
       ENDIF.
