@@ -1,0 +1,91 @@
+// ============================================================
+// template.typ — Business Blueprint
+// Mirrors: Blueprint_Template.docx
+// ============================================================
+
+#let blueprint(
+  project-name: "",
+  module: "",
+  created-by: "",
+  version: "1.0",
+  date: "",
+  body,
+) = {
+
+  // ── Page setup ──────────────────────────────────────────
+  set page(
+    paper: "a4",
+    margin: (top: 2.5cm, bottom: 2.5cm, left: 3cm, right: 2cm),
+    numbering: "1",
+    number-align: center,
+    header: context {
+      if counter(page).get().first() > 1 {
+        grid(
+          columns: (1fr, 1fr),
+          align(left)[
+            #text(size: 9pt, weight: "bold")[BUSINESS BLUEPRINT]
+          ],
+          align(right)[
+            #text(size: 9pt)[#project-name | #module | v#version]
+          ],
+        )
+        line(length: 100%, stroke: 0.4pt)
+      }
+    },
+  )
+
+  // ── Base text ────────────────────────────────────────────
+  set text(
+    font: ("Times New Roman", "Georgia"),
+    size: 12pt,
+    lang: "en",
+  )
+
+  set par(
+    justify: true,
+    leading: 1em,
+    spacing: 1.2em,
+  )
+
+  // ── Heading styles ───────────────────────────────────────
+  show heading.where(level: 1): it => {
+    pagebreak(weak: true)
+    v(0.8em)
+    text(size: 14pt, weight: "bold", it.body)
+    v(0.4em)
+    line(length: 100%, stroke: 0.5pt)
+    v(0.2em)
+  }
+
+  show heading.where(level: 2): it => {
+    v(0.6em)
+    text(size: 13pt, weight: "bold", it.body)
+    v(0.2em)
+  }
+
+  show heading.where(level: 3): it => {
+    v(0.4em)
+    text(size: 12pt, weight: "bold", it.body)
+    v(0.1em)
+  }
+
+  // ── Table style ──────────────────────────────────────────
+  set table(
+    stroke: 0.5pt + black,
+    inset: 6pt,
+  )
+
+  show table.cell.where(y: 0): set text(weight: "bold")
+
+  // ── Figure caption ───────────────────────────────────────
+  set figure(gap: 0.8em)
+  show figure.caption: set text(size: 10pt, style: "italic")
+
+  body
+}
+
+// ── Reusable helpers ─────────────────────────────────────────
+
+#let placeholder(msg) = text(style: "italic", fill: gray, [\[#msg\]])
+
+#let hline() = line(length: 100%, stroke: 0.5pt)
