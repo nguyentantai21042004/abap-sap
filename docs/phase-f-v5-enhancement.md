@@ -8,8 +8,8 @@
 **Tài liệu tham chiếu:**
 - `docs/status-lifecycle.md` — Source of truth cho lifecycle v5.0
 - `docs/v5-bug-analysis.md` — 11 bugs cần fix
-- `update/New_Requirements.md` — 8 phần yêu cầu mới
-- `verification/table-fields.md` — Source of truth cho DB fields
+- `docs/requirements.md` — 8 phần yêu cầu mới (New_Requirements đã merge vào đây)
+- `database/table-fields.md` — Source of truth cho DB fields
 
 ---
 
