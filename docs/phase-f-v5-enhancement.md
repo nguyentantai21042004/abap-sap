@@ -271,7 +271,7 @@ COMMIT WORK.
 
 **Mục tiêu:** Thêm màn hình lọc trước khi vào danh sách dự án (Screen 0400).
 
-**Nguồn:** `update/New_Requirements.md` Phần 1.
+**Nguồn:** `docs/requirements.md` Phần 1.
 
 ### F2.1. Screen Architecture
 
@@ -496,7 +496,7 @@ T-code `ZBUG_WS` → initial screen đổi từ `0400` sang `0410`.
 
 **Mục tiêu:** Thêm phần thống kê (Dashboard) phía trên ALV Bug List.
 
-**Nguồn:** `update/New_Requirements.md` Phần 2.
+**Nguồn:** `docs/requirements.md` Phần 2.
 
 ### F3.1. Screen Layout Design
 
@@ -627,7 +627,7 @@ Thêm output fields phía trên Custom Control `CC_BUG_LIST`:
 
 **Mục tiêu:** Đổi tên 3 templates cho phù hợp quy trình nghiệp vụ.
 
-**Nguồn:** `update/New_Requirements.md` Phần 3.
+**Nguồn:** `docs/requirements.md` Phần 3.
 
 ### F4.1. Mapping cũ → mới
 
@@ -670,7 +670,7 @@ ENDFORM.
 
 **Mục tiêu:** Popup chuyển trạng thái thay thế `POPUP_GET_VALUES` hiện tại.
 
-**Nguồn:** `update/New_Requirements.md` Phần 4.
+**Nguồn:** `docs/requirements.md` Phần 4.
 
 ### ⚠️ DESIGN DECISION: Screen Number
 
@@ -865,7 +865,7 @@ WHEN 'STATUS_CHG'.
 
 **Mục tiêu:** Implement bảng chuyển trạng thái chi tiết cho popup Screen 0370.
 
-**Nguồn:** `update/New_Requirements.md` Phần 5 + `docs/status-lifecycle.md` Section 2.3/2.4.
+**Nguồn:** `docs/requirements.md` Phần 5 + `docs/status-lifecycle.md` Section 2.3/2.4.
 
 ### F6.1. modify_screen_0370 — Enable/Disable fields theo current status
 
@@ -1173,7 +1173,7 @@ ENDFORM.
 
 **Mục tiêu:** Tự động gán Developer/Tester khi chuyển trạng thái.
 
-**Nguồn:** `update/New_Requirements.md` Phần 6 + `docs/status-lifecycle.md` Section 2.5.
+**Nguồn:** `docs/requirements.md` Phần 6 + `docs/status-lifecycle.md` Section 2.5.
 
 ### F7.1. Phase A: Auto-Assign Developer (New → Assigned/Waiting)
 
@@ -1344,7 +1344,7 @@ Gọi `auto_assign_tester`:
 
 **Mục tiêu:** Tạo dữ liệu test cho auto-assign algorithm.
 
-**Nguồn:** `update/New_Requirements.md` Phần 7.
+**Nguồn:** `docs/requirements.md` Phần 7.
 
 ### F8.1. Report tạo test data (SE38)
 
@@ -1439,7 +1439,7 @@ COMMIT WORK.
 
 **Mục tiêu:** Tìm kiếm bug nâng cao với popup nhập điều kiện + full screen kết quả.
 
-**Nguồn:** `update/New_Requirements.md` Phần 8.
+**Nguồn:** `docs/requirements.md` Phần 8.
 
 ### F9.1. Flow
 

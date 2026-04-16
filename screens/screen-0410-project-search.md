@@ -191,7 +191,7 @@ User role = D hoặc T   → Chỉ thấy projects mà user có record trong ZBU
 " Non-Manager: INNER JOIN ZBUG_USER_PROJEC WHERE user_id = sy-uname
 ```
 
-> Xem chi tiết code trong `docs/phases/phase-f-v5-enhancement.md` Step F2.6.
+> Xem chi tiết code trong `docs/phase-f-v5-enhancement.md` Step F2.6.
 
 ---
 

@@ -171,11 +171,11 @@ Screen 0410 → Back → LEAVE PROGRAM
 
 | Table | Status | Fields | Source of Truth |
 |-------|--------|--------|-----------------|
-| `ZBUG_TRACKER` | Updated (+13 fields) | 29 fields total | `verification/table-fields.md` |
-| `ZBUG_USERS` | Updated (+4 fields) | 12 fields total | `verification/table-fields.md` |
-| `ZBUG_PROJECT` | Created | 16 fields | `verification/table-fields.md` |
-| `ZBUG_USER_PROJEC` | Created | 10 fields (M:N User↔Project, có ROLE) | `verification/table-fields.md` |
-| `ZBUG_HISTORY` | Unchanged | 10 fields (Change log) | `verification/table-fields.md` |
+| `ZBUG_TRACKER` | Updated (+13 fields) | 29 fields total | `database/table-fields.md` |
+| `ZBUG_USERS` | Updated (+4 fields) | 12 fields total | `database/table-fields.md` |
+| `ZBUG_PROJECT` | Created | 16 fields | `database/table-fields.md` |
+| `ZBUG_USER_PROJEC` | Created | 10 fields (M:N User↔Project, có ROLE) | `database/table-fields.md` |
+| `ZBUG_HISTORY` | Unchanged | 10 fields (Change log) | `database/table-fields.md` |
 | `ZBUG_EVIDENCE` | v4.0 | 11 fields (binary file storage) | `database/zbug-evidence.md` |
 
 ### Critical Type Mappings (from SE11 verification):

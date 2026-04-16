@@ -707,7 +707,7 @@ ENDMODULE.
 ### 4.6 Project Management (Screens 0400/0500)
 
 > **Note:** Project management was added in Phase 3 (Module Pool Integration).
-> Xem chi tiết implementation trong `guides/phase-c-module-pool.md` (Bước C6-C7).
+> Xem chi tiết implementation trong `docs/phases/phase-c-module-pool.md` (Bước C6-C7).
 
 - **Screen 0400:** Project List (ALV Grid) — CRUD, Excel Upload/Download, role-based filter
 - **Screen 0500:** Project Detail (Form + Table Control user-project)

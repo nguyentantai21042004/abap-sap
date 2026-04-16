@@ -710,7 +710,7 @@ PROCESS AFTER INPUT.
 
 # PHẦN 9: GUI Status Reference
 
-Screen 0300 dùng **STATUS_0300**. Xem `guides/deploy/final-steps.md` để tạo.
+Screen 0300 dùng **STATUS_0300**. Xem `deploy/final-steps.md` để tạo.
 
 ### Buttons trên STATUS_0300:
 
@@ -738,7 +738,7 @@ Screen này dùng **TITLE_BUGDETAIL** — text = `&1` (nhận "Create Bug" / "Ch
 
 # PHẦN 10: v5.0 — Status Transition Popup (Screen 0370)
 
-> Phần này mô tả **tích hợp** popup 0370 vào Screen 0300. Chi tiết Screen 0370 xem `guides/screens/screen-0370-status-transition.md`.
+> Phần này mô tả **tích hợp** popup 0370 vào Screen 0300. Chi tiết Screen 0370 xem `screens/screen-0370-status-transition.md`.
 
 ### 10.1 STATUS_CHG Handler (CODE_PAI — `user_command_0300`)
 

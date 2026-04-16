@@ -2,7 +2,7 @@
 
 > **Version:** 1.0 — 11/04/2026
 > **Mục đích:** Mô tả chi tiết tất cả requirements mà hệ thống **hiện tại thực sự đáp ứng** (dựa trên source code v4.2 đã viết), cũng như các gaps so với requirements spec ban đầu.
-> **Source of truth:** 6 CODE files trong `guides/code/` + requirements trong `docs/requirements.md`
+> **Source of truth:** 6 CODE files trong `src/` + requirements trong `docs/requirements.md`
 
 ---
 
