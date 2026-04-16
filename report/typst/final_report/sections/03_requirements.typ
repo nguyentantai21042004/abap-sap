@@ -11,6 +11,7 @@
 
 `ZBUG_WS` is a closed, internal SAP application. All actors interact via SAP GUI using a single T-code entry point. There are no external integrations at the presentation layer; email is the only outbound channel, routed through SAP's internal SCOT/SMTP infrastructure.
 
+#block(breakable: false)[
 ```
   ┌──────────────────────────────────────────────────────────┐
   │                   SAP System S40 / Client 324            │
@@ -29,6 +30,7 @@
   │                                      └────────────────┘  │
   └──────────────────────────────────────────────────────────┘
 ```
+]
 
 Actors:
 - *Manager (`DEV-089`):* Full access — create/delete projects, manage users, approve assignments, view dashboard
@@ -64,6 +66,7 @@ Actors:
 
 *Screen flow (v5.0):*
 
+#block(breakable: false)[
 ```
 ZBUG_WS → Screen 0410 (Project Search — initial screen)
   └── F8 Execute → Screen 0400 (Project List, filtered)
@@ -82,6 +85,7 @@ ZBUG_WS → Screen 0410 (Project Search — initial screen)
         ├── Create / Change / Display Project → Screen 0500
         └── Back → Screen 0410
 ```
+]
 
 *System roles and screen authorization:*
 
@@ -276,7 +280,7 @@ GUI Status `STATUS_0370`: CONFIRM, UP\_TRANS (upload evidence), CANCEL (F12).
   [BR-07], [Auto-assign selects the developer with the lowest active workload (bugs in statuses 2, 3, 4, 6) AND workload < 5; if none found → STATUS = 'W' (Waiting)],
   [BR-08], [Setting project status to "Done (3)" is blocked if any bug in the project has STATUS not in {V, 7, R}],
   [BR-09], [Evidence files: format must be `.xlsx`; max size 10 MB; upload after STATUS = 'V' (Resolved) is blocked],
-  [BR-10], [Manager follows the same transition matrix as other roles (no bypass); see `docs/status-lifecycle.md`],
+  [BR-10], [Manager follows the same transition matrix as other roles (no bypass); all transitions must comply with the v5.0 Status Lifecycle Specification],
 )
 
 === 5.2 Common Requirements

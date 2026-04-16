@@ -26,11 +26,11 @@ All deliverables below pertain to version v5.0 of the SAP Bug Tracking Managemen
   [11], [DB Table `ZBUG_HISTORY`], [Change log --- 10 fields; records all status transitions and field updates with `OLD_STATUS`, `NEW_STATUS`, `ACTION` (ST/CR/UP), `REASON` (STRING), and timestamps], [v5.0],
   [12], [DB Table `ZBUG_EVIDENCE`], [Binary file storage --- 11 fields; `CONTENT` as RAWSTRING; `MIME_TYPE` (CHAR 100), `FILE_SIZE` (INT4), `FILE_NAME` (CHAR 255)], [v5.0],
   [13], [Screen Guides (8 screens)], [SE51 layout guides under `screens/` directory for screens 0200, 0210, 0220, 0300 (+ 6 subscreens 0310--0360), 0370, 0400, 0410, 0500 --- field lists, Custom Control names, flow logic], [v5.0],
-  [14], [QC Test Plan], [`tests/qc-test-plan.md` --- 20 suites, ~210 test cases; `tests/uat-happy-case.md` --- 64 UAT happy cases across 14 categories (A--N)], [v5.0],
+  [14], [QC Test Plan + UAT Script], [QC Test Plan: 20 suites (TC-01 to TC-20), approximately 210 individual test cases covering all screens, transitions, edge cases, and RBAC. UAT Happy Case Script: 64 cases across 14 workflow categories (A--N) for Manager, Developer, and Tester roles], [v5.0],
   [15], [Final Report Document], [This document (FPT Capstone Final Report) --- covers Introduction, Project Management, Requirements, Design, Testing, and Release sections], [v5.0],
   [16], [SMW0 Templates (3 files)], [`ZBT_TMPL_01` → `Bug_report.xlsx` (Tester bug report); `ZBT_TMPL_02` → `fix_report.xlsx` (Developer fix evidence); `ZBT_TMPL_03` → `confirm_report.xlsx` (Final Tester sign-off)], [v5.0],
   [17], [Test Data Report], [`Z_BUG_POPULATE_TESTDATA` --- SE38 executable report creating 20 mock Developers + 10 mock Testers across FI/MM/SD/ABAP modules with project assignments for auto-assign algorithm testing], [v5.0],
-  [18], [Status Migration Script], [SQL migration: old `STATUS = '6'` (Resolved in v4.x) → `STATUS = 'V'` (Resolved in v5.0); ABAP `UPDATE zbug_tracker` + `COMMIT WORK`; documented in `docs/phase-f-v5-enhancement.md` Phase F1.3], [v5.0],
+  [18], [Status Migration Script], [One-time ABAP migration: updates all records with `STATUS = '6'` (Resolved in v4.x) to `STATUS = 'V'` (Resolved in v5.0) via `UPDATE zbug_tracker SET status = 'V' WHERE status = '6' AND is_del <> 'X'` followed by `COMMIT WORK`], [v5.0],
 )
 
 == 2. Installation Guides
@@ -75,18 +75,18 @@ The following steps deploy `Z_BUG_WORKSPACE_MP` v5.0 into the SAP system. Execut
 *Step F13 --- Copy v5.0 ABAP Code into SAP:*
 
 + Open transaction *SE80* or *SE38*.
-+ For each of the 6 includes, open the include program, paste the corresponding content from the repository `src/` directory, then check (Ctrl+F2) and activate (Ctrl+F3):
++ For each of the 6 includes listed below, open the include program in SE38, paste the v5.0 source code, then check (Ctrl+F2) and activate (Ctrl+F3):
 
 #table(
   columns: (1fr, 1fr),
   align: (left, left),
-  [*Repository File*], [*SAP Include Program*],
-  [`src/CODE_TOP.md`], [`Z_BUG_WS_TOP`],
-  [`src/CODE_F00.md`], [`Z_BUG_WS_F00`],
-  [`src/CODE_PBO.md`], [`Z_BUG_WS_PBO`],
-  [`src/CODE_PAI.md`], [`Z_BUG_WS_PAI`],
-  [`src/CODE_F01.md`], [`Z_BUG_WS_F01`],
-  [`src/CODE_F02.md`], [`Z_BUG_WS_F02`],
+  [*SAP Include Program*], [*Content Summary*],
+  [`Z_BUG_WS_TOP`], [Global declarations, types, constants, ALV objects],
+  [`Z_BUG_WS_F00`], [ALV field catalog, `LCL_EVENT_HANDLER` class],
+  [`Z_BUG_WS_PBO`], [Process Before Output modules (all 9 screens)],
+  [`Z_BUG_WS_PAI`], [Process After Input modules, all fcode handlers],
+  [`Z_BUG_WS_F01`], [Business logic FORMs: save, status change, auto-assign, email],
+  [`Z_BUG_WS_F02`], [Helper FORMs: F4, long text API, popup, template download],
 )
 
 + After all 6 includes are copied, open the main program `Z_BUG_WORKSPACE_MP` in SE80 and perform a mass activation (select all objects → Activate). Resolve any syntax errors before proceeding.
@@ -99,7 +99,7 @@ The following steps deploy `Z_BUG_WORKSPACE_MP` v5.0 into the SAP system. Execut
 
 *Step F15 --- Create `ZBUG_EVIDENCE` Table (if not already present):*
 
-+ Open transaction *SE11*. Create database table `ZBUG_EVIDENCE` with 11 fields as specified in `database/zbug-evidence.md`. Key fields: `CLIENT` (MANDT), `EVD_ID` (CHAR 10). The `CONTENT` field must use type `RAWSTRING` (binary blob). Activate the table and generate the Table Maintenance Generator if needed.
++ Open transaction *SE11*. Create database table `ZBUG_EVIDENCE` with 11 fields as listed below. Key fields: `CLIENT` (MANDT, CLNT 3, Key), `EVD_ID` (CHAR 10, Key). The `CONTENT` field must use type `RAWSTRING` (binary blob). Additional fields: `BUG_ID` (CHAR 10), `FILE_NAME` (CHAR 255), `MIME_TYPE` (CHAR 100), `FILE_SIZE` (INT4), `ERNAM` (CHAR 12), `ERDAT` (DATS 8), `ERZET` (TIMS 6), `EVD_TYPE` (CHAR 1 --- R=Report, F=Fix, V=Verify). Activate the table and generate the Table Maintenance Generator if needed.
 
 *Step F16 --- Run Status Migration Script:*
 
@@ -150,6 +150,7 @@ The SAP Bug Tracking Management System (`ZBUG_WS`) is a centralized defect track
 
 *10-State Bug Lifecycle (v5.0):*
 
+#block(breakable: false)[
 ```
   New (1) --[auto-assign Dev]--> Assigned (2) --> In Progress (3) --> Fixed (5)
      |                                |                  |               |
@@ -160,6 +161,7 @@ The SAP Bug Tracking Management System (`ZBUG_WS`) is a centralized defect track
                                                         Resolved (V)  In Progress (3)
                                                          [terminal]   [test failed]
 ```
+]
 
 Note: `Closed (7)` is a legacy terminal state retained for backward compatibility.
 

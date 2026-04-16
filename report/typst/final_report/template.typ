@@ -70,6 +70,7 @@
   )
 
   show table.cell.where(y: 0): set text(weight: "bold")
+  show table.cell: set par(justify: false)
 
   // ── Figure caption ───────────────────────────────────────
   set figure(gap: 0.8em)

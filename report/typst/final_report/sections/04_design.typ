@@ -11,6 +11,7 @@
 
 `ZBUG_WS` uses a three-tier architecture running entirely within SAP:
 
+#block(breakable: false)[
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                        │
@@ -42,6 +43,7 @@
 │  SMW0 Templates: ZBT_TMPL_01/02/03                          │
 └─────────────────────────────────────────────────────────────┘
 ```
+]
 
 The Module Pool calls Function Modules for all business logic — no ABAP logic is coded directly in PBO/PAI modules beyond screen navigation and FM calls.
 
@@ -49,6 +51,7 @@ The Module Pool calls Function Modules for all business logic — no ABAP logic 
 
 All objects belong to the SAP development package `ZBUGTRACK`:
 
+#block(breakable: false)[
 ```
 Package: ZBUGTRACK
 │
@@ -84,6 +87,7 @@ Package: ZBUGTRACK
 ├── Message Class: ZBUG_MSG
 └── SMW0 Objects:  ZBT_TMPL_01, ZBT_TMPL_02, ZBT_TMPL_03
 ```
+]
 
 == 2. Database Design
 
@@ -222,7 +226,7 @@ The status change flow enforces the role-based transition matrix via Screen 0370
 + PBO of 0370 loads current bug info and determines which fields to enable/lock based on current STATUS
 + User selects new status, fills required fields, and clicks "Confirm"
 + PAI of 0370 calls `Z_BUG_CHECK_PERMISSION` (action = 'UPDATE\_STATUS')
-+ Validates transition per matrix in `docs/status-lifecycle.md`
++ Validates transition per the v5.0 role-based transition matrix
 + If STATUS → '5' (Fixed): verifies evidence exists in `ZBUG_EVIDENCE` (COUNT > 0)
 + If STATUS → 'V' or 'R': verifies TRANS\_NOTE is non-empty
 + Calls `Z_BUG_UPDATE_STATUS` → updates `ZBUG_TRACKER`, calls `Z_BUG_LOG_HISTORY` (action = 'ST')

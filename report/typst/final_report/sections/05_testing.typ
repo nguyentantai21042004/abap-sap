@@ -68,7 +68,7 @@ Testing is conducted at four levels:
   [*No.*], [*Type*], [*Objective*], [*Technique*], [*Completion Criteria*],
   [1], [Functional Testing], [Verify each screen, button, and business rule behaves per the requirements specification], [Black-box: provide input, verify expected output; switch between 3 role accounts to test RBAC], [All test cases across 20 TC suites pass with no critical (blocking) failures],
   [2], [Regression Testing], [Confirm that v4.x bug fixes and v5.0 enhancements do not reintroduce previously resolved defects], [Re-execute TC-19 (19 cases: 8 v4.x bugs + 11 v5.0 UAT bugs) after deployment], [All 19 regression cases pass; no prior defect reappears in the v5.0 build],
-  [3], [Acceptance Testing (UAT)], [Validate that the deployed system meets business workflow requirements from an end-user perspective], [Happy-case walkthrough by all 3 roles following the `uat-happy-case.md` script (64 cases across 14 categories)], [All 64 UAT cases pass; no critical blockers remain; all 3 role members sign off],
+  [3], [Acceptance Testing (UAT)], [Validate that the deployed system meets business workflow requirements from an end-user perspective], [Happy-case walkthrough by all 3 roles following the UAT happy-case script (64 cases across 14 categories)], [All 64 UAT cases pass; no critical blockers remain; all 3 role members sign off],
 )
 
 === 2.2 Test Levels
@@ -79,7 +79,7 @@ Testing is conducted at four levels:
   [*No.*], [*Level*], [*Description*], [*Test Types Applied*],
   [1], [Unit], [Individual FORM routines tested in isolation --- `auto_assign_developer`, `validate_status_transition`, `calculate_dashboard`, `f4_trans_status`; DB read/write operations verified via SE16N], [Functional],
   [2], [Integration], [Screen navigation flows verified end-to-end; Custom Control lifecycle (create/free); ALV refresh after data changes; DB consistency after status transitions], [Functional, Regression],
-  [3], [System], [Full end-to-end scenarios under all 3 roles on SAP S40/324; 20-suite QC test plan (`qc-test-plan.md`) executed systematically by QC lead], [Functional, Regression],
+  [3], [System], [Full end-to-end scenarios under all 3 roles on SAP S40/324; 20-suite QC Test Plan executed systematically by QC lead], [Functional, Regression],
   [4], [Acceptance], [Business-facing happy-case scenarios: project lifecycle (Manager), bug reporting (Tester), bug resolution (Developer), status transitions across the full 10-state lifecycle], [Acceptance (UAT)],
 )
 
@@ -135,7 +135,7 @@ Testing is conducted at four levels:
   align: (center, left, center, center, left),
   [*No.*], [*Milestone*], [*Start Date*], [*End Date*], [*Deliverable*],
   [1], [Test Environment Setup], [01/04/2026], [11/04/2026], [`ZBUG_USERS` role assignments verified; test accounts confirmed; SE16N screenshots captured],
-  [2], [UAT Round 1 (v4.2 build)], [11/04/2026], [13/04/2026], [64 UAT happy cases executed; 11 defects identified and documented in `docs/v5-bug-analysis.md`],
+  [2], [UAT Round 1 (v4.2 build)], [11/04/2026], [13/04/2026], [64 UAT happy cases executed; 11 defects identified and documented in the v5.0 Defect Analysis document],
   [3], [v5.0 Bug Analysis & Design], [13/04/2026], [14/04/2026], [Root-cause analysis and fix proposals for all 11 UAT defects; Phase F v5.0 architecture finalized],
   [4], [v5.0 Code Development (F10)], [14/04/2026], [16/04/2026], [All 6 ABAP includes (`Z_BUG_WS_TOP` through `Z_BUG_WS_F02`) updated to v5.0; verified complete on 16/04/2026],
   [5], [v5.0 Deployment to SAP (F11--F17)], [Post 16/04/2026], [TBD], [4 new screens (SE51), 4 GUI Statuses + 4 Title Bars (SE41), SE93 initial screen update, `ZBUG_EVIDENCE` table, migration script, SMW0 templates],
@@ -145,7 +145,7 @@ Testing is conducted at four levels:
 
 == 4. Test Cases
 
-Test cases are organized into 20 suites (TC-01 to TC-20), totaling approximately 210 individual cases. Full test case details are documented in `tests/qc-test-plan.md`. UAT happy cases (64 cases across 14 categories, A--N) are documented in `tests/uat-happy-case.md`.
+Test cases are organized into 20 suites (TC-01 to TC-20), totaling approximately 210 individual cases. Detailed test case steps and expected results are maintained in the QC Test Plan document. UAT happy cases (64 cases across 14 workflow categories, A--N) are documented in the UAT Happy Case Script.
 
 *Test Suite Summary:*
 
@@ -180,7 +180,7 @@ Test cases are organized into 20 suites (TC-01 to TC-20), totaling approximately
 
 === 5.1 UAT Round 1 --- Phase E Results (11--13 April 2026)
 
-UAT Round 1 was conducted in Phase E on the v4.2 deployed build (SAP System S40, Client 324). All three project members participated as their designated roles, following the UAT happy-case script in `tests/uat-happy-case.md` (64 cases across 14 categories).
+UAT Round 1 was conducted in Phase E on the v4.2 deployed build (SAP System S40, Client 324). All three project members participated as their designated roles, following the UAT happy-case script (64 cases across 14 categories).
 
 *Summary:*
 
