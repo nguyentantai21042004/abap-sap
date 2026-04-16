@@ -14,7 +14,7 @@ The testing scope covers the SAP Bug Tracking Management System (`ZBUG_WS` v5.0)
 *In-scope features:*
 
 #table(
-  columns: (0.5cm, 3.5cm, 1fr),
+  columns: (auto, 3.5cm, 1fr),
   align: (center, left, left),
   [*No.*], [*Feature Area*], [*Description*],
   [1], [Navigation Flow], [All screen-to-screen transitions across the 9-screen application (0410 -- 0400 -- 0200 -- 0300 -- 0370)],
@@ -63,7 +63,7 @@ Testing is conducted at four levels:
 === 2.1 Testing Types
 
 #table(
-  columns: (0.5cm, 3cm, 1fr, 2.5cm, 2.5cm),
+  columns: (auto, 3cm, 1fr, 2.5cm, 2.5cm),
   align: (center, left, left, left, left),
   [*No.*], [*Type*], [*Objective*], [*Technique*], [*Completion Criteria*],
   [1], [Functional Testing], [Verify each screen, button, and business rule behaves per the requirements specification], [Black-box: provide input, verify expected output; switch between 3 role accounts to test RBAC], [All test cases across 20 TC suites pass with no critical (blocking) failures],
@@ -74,7 +74,7 @@ Testing is conducted at four levels:
 === 2.2 Test Levels
 
 #table(
-  columns: (0.5cm, 2.5cm, 1fr, 3cm),
+  columns: (auto, 2.5cm, 1fr, 3cm),
   align: (center, left, left, left),
   [*No.*], [*Level*], [*Description*], [*Test Types Applied*],
   [1], [Unit], [Individual FORM routines tested in isolation --- `auto_assign_developer`, `validate_status_transition`, `calculate_dashboard`, `f4_trans_status`; DB read/write operations verified via SE16N], [Functional],
@@ -86,7 +86,7 @@ Testing is conducted at four levels:
 === 2.3 Supporting Tools
 
 #table(
-  columns: (0.5cm, 3.5cm, 1fr),
+  columns: (auto, 3.5cm, 1fr),
   align: (center, left, left),
   [*No.*], [*Tool*], [*Purpose*],
   [1], [SAP SE38 / SE80], [ABAP code editing, syntax check, and activation of all 6 program includes],
@@ -104,7 +104,7 @@ Testing is conducted at four levels:
 === 3.1 Human Resources
 
 #table(
-  columns: (0.5cm, 2cm, 2.5cm, 1fr),
+  columns: (auto, 2cm, 2.5cm, 1fr),
   align: (center, left, left, left),
   [*No.*], [*Account*], [*Role*], [*Testing Responsibilities*],
   [1], [`DEV-118`], [QC Lead / Tester], [Primary test executor for all 20 TC suites; reports defects with screenshots; validates v5.0 behavior as Tester role (bug creation, evidence upload, Final Testing transition)],
@@ -115,7 +115,7 @@ Testing is conducted at four levels:
 === 3.2 Test Environment
 
 #table(
-  columns: (0.5cm, 3cm, 1fr, 2.5cm),
+  columns: (auto, 3cm, 1fr, 2.5cm),
   align: (center, left, left, center),
   [*No.*], [*Component*], [*Details*], [*Status*],
   [1], [SAP System], [S40 --- dedicated internal development and test system], [Ready],
@@ -131,7 +131,7 @@ Testing is conducted at four levels:
 === 3.3 Test Milestones
 
 #table(
-  columns: (0.5cm, 3.5cm, 2cm, 2cm, 1fr),
+  columns: (auto, 3.5cm, 2cm, 2cm, 1fr),
   align: (center, left, center, center, left),
   [*No.*], [*Milestone*], [*Start Date*], [*End Date*], [*Deliverable*],
   [1], [Test Environment Setup], [01/04/2026], [11/04/2026], [`ZBUG_USERS` role assignments verified; test accounts confirmed; SE16N screenshots captured],
@@ -150,7 +150,7 @@ Test cases are organized into 20 suites (TC-01 to TC-20), totaling approximately
 *Test Suite Summary:*
 
 #table(
-  columns: (0.5cm, 1.5cm, 3.5cm, 1fr, 1.5cm),
+  columns: (auto, 2cm, 3.5cm, 1fr, 1.5cm),
   align: (center, center, left, left, center),
   [*No.*], [*TC ID*], [*Suite Name*], [*Coverage*], [*Cases*],
   [1], [TC-01], [Navigation Flow], [All screen transitions: 0410→0400→0200→0300→0370; Back/Exit/Cancel from every screen], [20],
@@ -194,7 +194,7 @@ UAT Round 1 was conducted in Phase E on the v4.2 deployed build (SAP System S40,
 *Defects Found in UAT Round 1:*
 
 #table(
-  columns: (0.7cm, 1.2cm, 1fr, 2.5cm),
+  columns: (auto, auto, 1fr, 2.5cm),
   align: (center, center, left, center),
   [*No.*], [*Bug ID*], [*Defect Description*], [*Severity*],
   [1], [UAT-01], [Tab switch between Description/Dev Note/Tester Note tabs triggers `CALL_FUNCTION_CONFLICT_TYPE` short dump (Custom Control not freed before re-creation)], [Critical],

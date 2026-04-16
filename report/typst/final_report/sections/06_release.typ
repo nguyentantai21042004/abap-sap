@@ -10,7 +10,7 @@
 All deliverables below pertain to version v5.0 of the SAP Bug Tracking Management System (`ZBUG_WS`), implemented as Module Pool program `Z_BUG_WORKSPACE_MP` in SAP package `ZBUGTRACK`.
 
 #table(
-  columns: (0.6cm, 3.5cm, 1fr, 1.5cm),
+  columns: (auto, 3.5cm, 1fr, 1.5cm),
   align: (center, left, left, center),
   [*No.*], [*Deliverable Item*], [*Description*], [*Version*],
   [1], [ABAP Include `Z_BUG_WS_TOP`], [Global declarations, types, constants for the 10-state lifecycle (`gc_st_new` through `gc_st_resolved`), all ALV/GUI container objects, dashboard metric variables, Screen 0370/0410/0210/0220 field variables], [v5.0],
@@ -38,7 +38,7 @@ All deliverables below pertain to version v5.0 of the SAP Bug Tracking Managemen
 === 2.1 System Requirements
 
 #table(
-  columns: (0.5cm, 3cm, 1fr, 2.5cm),
+  columns: (auto, 3cm, 1fr, 2.5cm),
   align: (center, left, left, center),
   [*No.*], [*Component*], [*Requirement*], [*Version / Value*],
   [1], [SAP System], [SAP ERP with full ABAP Workbench (SE11, SE38/SE80, SE51, SE41, SE93, SE37, SM30 available)], [S40],

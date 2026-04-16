@@ -144,7 +144,7 @@ The initial screen presented when the user runs T-code `ZBUG_WS`. Filters the pr
 *UI Requirements:*
 
 #table(
-  columns: (0.5cm, 3cm, 1fr, 1.5cm),
+  columns: (auto, 3cm, 1fr, 1.5cm),
   align: (center, left, left, center),
   [*No.*], [*Field*], [*Description*], [*Required*],
   [1], [`S_PRJ_ID` (Project ID)],         [Select-options: filter by project ID, F4 from `ZBUG_PROJECT`], [No],
@@ -189,7 +189,7 @@ Modal dialog popup triggered by "Change Status" button on Screen 0300.
 *Input fields (enabled/locked per current status):*
 
 #table(
-  columns: (2.5cm, 1.5cm, 1.5cm, 2cm, 1.5cm, 1.5cm),
+  columns: (2.5cm, 2cm, 2cm, 3.5cm, 2.5cm, 1.5cm),
   align: (left, center, center, center, center, center),
   [*Current Status*], [*NEW\_STATUS*], [*DEV\_ID*], [*FINAL\_TESTER\_ID*], [*TRANS\_NOTE*], [*Upload*],
   [1 — New],            [2, W],    [Open (→2)],   [Locked],         [Locked],         [Locked],
@@ -214,7 +214,7 @@ GUI Status `STATUS_0370`: CONFIRM, UP\_TRANS (upload evidence), CANCEL (F12).
 === 4.2 Quality Attributes
 
 #table(
-  columns: (0.5cm, 2cm, 1fr, 1.5cm),
+  columns: (auto, 2cm, 1fr, 1.5cm),
   align: (center, left, left, center),
   [*No.*], [*Attribute*], [*Requirement*], [*Priority*],
   [1], [Performance],   [ALV screens load ≤ 3 seconds on S40 with ≤ 1000 bug records], [High],

@@ -1,11 +1,11 @@
 // ============================================================
-// main.typ — Entry point
+// blueprint.typ — Entry point
 // Business Blueprint
 // Mirrors: Blueprint_Template.docx
 //
 // Usage:
-//   typst compile main.typ
-//   typst watch main.typ       (live preview)
+//   typst compile blueprint.typ
+//   typst watch blueprint.typ      (live preview)
 // ============================================================
 
 #import "template.typ": blueprint, placeholder, hline

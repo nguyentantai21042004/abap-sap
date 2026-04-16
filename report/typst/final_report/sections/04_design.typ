@@ -28,7 +28,7 @@ Entity Relationship: `ZBUG_TRACKER` (1:N to `ZBUG_HISTORY`, 1:N to `ZBUG_EVIDENC
 === Table: ZBUG\_TRACKER — 29 fields
 
 #table(
-  columns: (0.5cm, 3cm, 1.5cm, 1.5cm, 1fr),
+  columns: (auto, 3cm, 1.5cm, 1.5cm, 1fr),
   align: (center, left, center, center, left),
   [*\#*], [*Field*], [*Type*], [*Length*], [*Description*],
   [1],  [`MANDT`],            [CLNT], [3],  [Client (Key)],
@@ -65,7 +65,7 @@ Entity Relationship: `ZBUG_TRACKER` (1:N to `ZBUG_HISTORY`, 1:N to `ZBUG_EVIDENC
 === Table: ZBUG\_USERS — 12 fields
 
 #table(
-  columns: (0.5cm, 3cm, 1.5cm, 1.5cm, 1fr),
+  columns: (auto, 3cm, 1.5cm, 1.5cm, 1fr),
   align: (center, left, center, center, left),
   [*\#*], [*Field*], [*Type*], [*Length*], [*Description*],
   [1], [`MANDT`],             [CLNT], [3],  [Client (Key)],
@@ -85,7 +85,7 @@ Entity Relationship: `ZBUG_TRACKER` (1:N to `ZBUG_HISTORY`, 1:N to `ZBUG_EVIDENC
 === Table: ZBUG\_PROJECT — 16 fields
 
 #table(
-  columns: (0.5cm, 3cm, 1.5cm, 1.5cm, 1fr),
+  columns: (auto, 3cm, 1.5cm, 1.5cm, 1fr),
   align: (center, left, center, center, left),
   [*\#*], [*Field*], [*Type*], [*Length*], [*Description*],
   [1], [`MANDT`],           [CLNT], [3],   [Client (Key)],
@@ -115,7 +115,7 @@ Note: table name is `ZBUG_USER_PROJEC` (truncated at 18 characters — no final 
 === Table: ZBUG\_HISTORY — 10 fields
 
 #table(
-  columns: (0.5cm, 3cm, 1.5cm, 1.5cm, 1fr),
+  columns: (auto, 3cm, 1.5cm, 1.5cm, 1fr),
   align: (center, left, center, center, left),
   [*\#*], [*Field*], [*Type*], [*Length*], [*Description*],
   [1], [`MANDT`],        [CLNT], [3],  [Client (Key)],

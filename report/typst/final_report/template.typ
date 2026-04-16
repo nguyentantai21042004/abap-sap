@@ -23,7 +23,7 @@
 
   // ── Base text ────────────────────────────────────────────
   set text(
-    font: ("Times New Roman", "Georgia", "Linux Libertine"),
+    font: ("Times New Roman", "Georgia"),
     size: 12pt,
     lang: "en",
   )

@@ -12,7 +12,7 @@
 The following table categorizes each major software function by complexity and estimates the development effort in man-days.
 
 #table(
-  columns: (0.5cm, 3.5cm, 1fr, 1.5cm, 1.5cm, 1.5cm, 2cm),
+  columns: (auto, 3cm, 1fr, 2cm, 2cm, 2cm, 2.5cm),
   align: (center, left, left, center, center, center, center),
   [*No.*], [*Feature*], [*Description*], [*Simple*], [*Medium*], [*Complex*], [*Total (MD)*],
   [1],  [DB Hardening],           [Domains, data elements, tables (5 tables, 77 fields), number ranges],  [],   [],   [1], [3],
@@ -47,7 +47,7 @@ The following table categorizes each major software function by complexity and e
 === 1.3 Project Risks
 
 #table(
-  columns: (0.5cm, 2.5cm, 1fr, 1.5cm, 1.5cm, 2cm),
+  columns: (auto, 2.5cm, 1fr, 2cm, 2cm, 3cm),
   align: (center, left, left, center, center, left),
   [*No.*], [*Risk*], [*Description*], [*Prob.*], [*Impact*], [*Mitigation*],
   [1], [SAP system downtime],        [S40 system unavailable during dev/test windows],                         [Low],    [High],   [Schedule critical work in off-peak hours; use SE38 offline editing],
@@ -89,13 +89,16 @@ The project followed an *incremental waterfall* model divided into six phases, e
 No formal training was required — all team members had prior SAP ABAP exposure. Specific knowledge gaps were addressed as follows:
 
 #table(
-  columns: (3cm, 1fr, 2cm),
+  columns: (3.5cm, 1fr, 2cm),
   align: (left, left, center),
   [*Topic*], [*Resource*], [*Member*],
-  [ALV Grid / Custom Container],    [SAP Help + reference program `ZPG_BUGTRACKING_MAIN`], [`DEV-061`],
-  [SmartForms / CL\_BCS],           [SAP Help + SCOT configuration guide],                  [`DEV-061`],
-  [Module Pool / Screen Painter],   [SE51 built-in help + project screen guides in `screens/`], [All],
-  [10-state lifecycle (v5.0)],      [Status Lifecycle Specification --- v5.0 state machine, transition matrix, auto-assign rules; reviewed before coding Phase F],  [All],
+  [ALV Grid / Custom Container],    [SAP Help + reference program `ZPG_BUGTRACKING_MAIN`],              [`DEV-061`],
+  [SmartForms / CL\_BCS],           [SAP Help + SCOT configuration guide],                              [`DEV-118`],
+  [Module Pool / Screen Painter],   [SE51 built-in help + project screen layout guides],                [All],
+  [10-state lifecycle (v5.0)],      [Status Lifecycle Specification --- v5.0 state machine, transition matrix, auto-assign rules], [All],
+  [Auto-assign algorithm design],   [Status Lifecycle Specification --- Section 2.5 (auto-assign Phase A + B logic)],             [`DEV-237`],
+  [Evidence upload (RAWSTRING)],    [SAP Help for `CL_GUI_FRONTEND_SERVICES` + `ZBUG_EVIDENCE` table guide], [`DEV-118`],
+  [Long Text API (READ\_TEXT / SAVE\_TEXT)], [SAP Help + ZBUG\_NOTE text object setup guide],           [`DEV-242`],
 )
 
 == 3. Project Deliverables
@@ -103,7 +106,7 @@ No formal training was required — all team members had prior SAP ABAP exposure
 *Internal deliverables (development artifacts):*
 
 #table(
-  columns: (0.5cm, 3cm, 1fr),
+  columns: (auto, 3cm, 1fr),
   align: (center, left, left),
   [*No.*], [*Deliverable*], [*Description*],
   [1], [Source Code (6 includes)],         [ABAP includes `Z_BUG_WS_TOP`, `_F00`, `_PBO`, `_PAI`, `_F01`, `_F02` — v5.0 complete],
@@ -118,7 +121,7 @@ No formal training was required — all team members had prior SAP ABAP exposure
 *External deliverables (submitted to FPT University):*
 
 #table(
-  columns: (0.5cm, 3cm, 1fr),
+  columns: (auto, 3cm, 1fr),
   align: (center, left, left),
   [*No.*], [*Deliverable*], [*Description*],
   [1], [Business Blueprint],     [SAP Business Blueprint document --- compiled Typst PDF],
@@ -130,19 +133,59 @@ No formal training was required — all team members had prior SAP ABAP exposure
 == 4. Responsibility Assignments
 
 #table(
-  columns: (0.5cm, 3cm, 1fr, 2.5cm),
+  columns: (auto, 3.5cm, 1fr, 2.5cm),
   align: (center, left, left, center),
   [*No.*], [*Activity*], [*Description*], [*Responsible*],
-  [1],  [Database design],         [Table schemas, domains, data elements, number range],              [`DEV-089`],
-  [2],  [Function Module design],  [FM interfaces, permission matrix, auto-assign algorithm],          [`DEV-089`],
-  [3],  [ABAP coding — core],      [Includes TOP, F01, F02 (business logic + helpers)],                [`DEV-089`],
-  [4],  [ABAP coding — UI],        [Includes PBO, PAI, F00 (screens, ALV, event handler)],             [`DEV-061`],
-  [5],  [SmartForms / Email],      [SmartForm `ZBUG_FORM`, `ZBUG_EMAIL_FORM`, CL\_BCS integration],    [`DEV-061`],
-  [6],  [Testing — QC Plan],       [Write and execute 140 QC test cases],                              [`DEV-118`],
-  [7],  [UAT execution],           [Execute 43 UAT happy-case scenarios, report defects],              [`DEV-118`],
-  [8],  [v5.0 Enhancement design], [10-state lifecycle, Screen 0370/0410/0210/0220 design],            [`DEV-089`],
-  [9],  [Documentation],           [Blueprint, Final Report, screen layout guides, test plans],              [`DEV-089`],
-  [10], [Deploy to SAP],           [SE51 new screens, SE41 GUI statuses, SE93 T-code update],         [All],
+
+  [1],  [Database design],
+        [Table schemas for all 6 custom tables (77+ fields); domains and data elements (`ZDE_*`); number range `ZNRO_BUG`; deployment via SE11],
+        [`DEV-089`],
+  [2],  [ABAP core logic (Z\_BUG\_WS\_F01)],
+        [Business logic FORMs: `save_bug_detail`, `save_project_detail`, `change_bug_status`, `calculate_dashboard`; long text API wrappers],
+        [`DEV-089`],
+  [3],  [Documentation],
+        [Business Blueprint, Final Report, Status Lifecycle Specification, Phase F Enhancement Guide (deploy steps F11--F17)],
+        [`DEV-089`],
+
+  [4],  [Bug Detail (Screen 0300)],
+        [6-tab strip (Bug Info, Description, Dev Note, Tester Note, Evidence, History); Create / Change / Display modes; long text editors; History ALV],
+        [`DEV-242`],
+  [5],  [FMs: creation & logging],
+        [`Z_BUG_CREATE` FM (number range, auto-fill, BUG\_TYPE branch); `Z_BUG_LOG_HISTORY` FM; `ZBUG_HISTORY` table; `ZBUG_NOTE` long text object (Z001/Z002/Z003)],
+        [`DEV-242`],
+  [6],  [Helper routines (Z\_BUG\_WS\_F02)],
+        [10 F4 search-help routines; `load_long_text` / `save_long_text` API; popup management; `download_smw0_template` wrapper; `upload_excel_projects` parser],
+        [`DEV-242`],
+
+  [7],  [Bug List + Dashboard (Screen 0200)],
+        [ALV grid with role-based filter; real-time Dashboard Header (totals by status / priority / module); `LCL_EVENT_HANDLER` class; ALV field catalog (`Z_BUG_WS_F00`)],
+        [`DEV-061`],
+  [8],  [Bug Search Engine (Screens 0210/0220)],
+        [Cross-field search popup (Screen 0210) + full-screen results ALV (Screen 0220) --- v5.0 new; `Z_BUG_GET_STATISTICS` FM],
+        [`DEV-061`],
+  [9],  [ABAP include PAI (Z\_BUG\_WS\_PAI)],
+        [All fcode handlers across 9 screens; status popup call (`CALL SCREEN 0370`); bug search trigger (`CALL SCREEN 0210`); confirmation dialogs],
+        [`DEV-061`],
+
+  [10], [Email notifications (Feature 2)],
+        [`Z_BUG_SEND_EMAIL` FM using `CL_BCS` API; `ZBUG_EMAIL_FORM` SmartForm (HTML email body); SCOT / SMTP integration; all notification event types (CREATE, ASSIGN, STATUS\_CHANGE, REJECT)],
+        [`DEV-118`],
+  [11], [Evidence & forms (Feature 5)],
+        [`Z_BUG_UPLOAD_ATTACHMENT` FM; `ZBUG_EVIDENCE` table (RAWSTRING content); `ZBUG_FORM` SmartForm (bug detail PDF); SMW0 templates `ZBT_TMPL_01/02/03`; message class `ZBUG_MSG`],
+        [`DEV-118`],
+  [12], [Testing & quality assurance],
+        [QC Test Plan (140 cases, 20 suites); UAT Happy Case Script (43 cases, 14 categories); test data population (`Z_BUG_POPULATE_TESTDATA`); 11 UAT bug fix verification],
+        [`DEV-118`],
+
+  [13], [Status lifecycle + popup (v5.0)],
+        [10-state lifecycle design; Screen 0370 (Status Transition Popup --- Modal Dialog); `Z_BUG_UPDATE_STATUS` FM; role-based transition matrix; `Z_BUG_WS_TOP` include (constants `gc_st_*`)],
+        [`DEV-237`],
+  [14], [Auto-assign engine (v5.0)],
+        [`Z_BUG_AUTO_ASSIGN` FM (Phase A: New→Assigned; Phase B: Fixed→FinalTesting); `Z_BUG_REASSIGN` FM; workload calculation (COUNT bugs in active statuses); Waiting fallback],
+        [`DEV-237`],
+  [15], [Project management module],
+        [Screens 0400 (Project List ALV), 0410 (Project Search --- v5.0 initial screen), 0500 (Project Detail + user assignment TC); `Z_BUG_CHECK_PERMISSION` FM; `Z_BUG_WS_PBO` include (all PBO modules + `LOOP AT SCREEN` role control)],
+        [`DEV-237`],
 )
 
 == 5. Project Communications
@@ -187,7 +230,7 @@ ABAP source code for the Module Pool `Z_BUG_WORKSPACE_MP` is organized into 6 in
 === 6.3 Tools & Infrastructures
 
 #table(
-  columns: (0.5cm, 3cm, 1.5cm, 1fr),
+  columns: (auto, 3cm, 1.5cm, 1fr),
   align: (center, left, center, left),
   [*No.*], [*Tool*], [*Version*], [*Purpose*],
   [1],  [SAP GUI],              [7.70+],      [Primary SAP front-end for development and testing],

@@ -26,12 +26,14 @@
 === 1.2 Project Team
 
 #table(
-  columns: (2.5cm, 1.5cm, 1fr, 1fr),
-  align: (center, center, left, left),
-  [*Account*], [*Role*], [*System Expertise*], [*Responsibilities*],
-  [`DEV-089`], [Manager (M)],   [SE11, SE38, SE80, SE93], [Database hardening, project management, full system access, reporting],
-  [`DEV-061`], [Developer (D)], [ALV Grid, SmartForms],   [Bug fix implementation, code development, evidence upload (fix\_report)],
-  [`DEV-118`], [Tester (T)],    [Bug Management, QA],     [Bug reporting, UAT execution, fix verification, evidence upload (confirm\_report)],
+  columns: (2.5cm, 3cm, 2cm, 1fr),
+  align: (center, left, center, left),
+  [*Account*], [*Name*], [*SAP Role*], [*Project Responsibilities*],
+  [`DEV-089`], [Hoàng Anh], [Manager],   [Database design, core ABAP logic (Z\_BUG\_WS\_F01), documentation and deployment],
+  [`DEV-242`], [Linh],      [Developer], [Bug Detail screen (0300), Z\_BUG\_CREATE / Z\_BUG\_LOG\_HISTORY FMs, helper routines (Z\_BUG\_WS\_F02)],
+  [`DEV-061`], [Hiếu],      [Developer], [Bug List + Dashboard (Screen 0200), Bug Search (0210/0220), ALV infrastructure, include PAI],
+  [`DEV-118`], [Ka],        [Tester],    [Email (Z\_BUG\_SEND\_EMAIL), Evidence upload, SmartForms, QC Test Plan, UAT execution],
+  [`DEV-237`], [Đức],       [Developer], [Status Lifecycle + Popup (0370), Auto-Assign engine, Project Management screens (0400/0410/0500)],
 )
 
 == 2. Product Background
@@ -52,7 +54,7 @@ The v5.0 enhancement (Phase F) introduced the following major improvements over 
 The reference system `ZPG_BUGTRACKING_MAIN` / `ZPG_BUGTRACKING_DETAIL` provides a basic bug list and detail screen using an executable ABAP program. While it demonstrates the core concept, it has significant gaps compared to `ZBUG_WS`:
 
 #table(
-  columns: (1fr, 1.5cm, 1.5cm),
+  columns: (1fr, 2.5cm, 2cm),
   align: (left, center, center),
   [*Feature*], [*ZPG Reference*], [*ZBUG\_WS*],
   [Module Pool (Type M) architecture], [No],  [Yes],
@@ -115,8 +117,8 @@ Key outcomes delivered:
 
 === Constraints & Limitations
 
-- Development and testing confined to SAP system S40, Client 324
-- ABAP 7.70 syntax required (inline declarations, `SWITCH` expression, string templates, `@` host variables)
-- Three fixed demo accounts: `DEV-089` (Manager), `DEV-061` (Developer), `DEV-118` (Tester)
-- Evidence files must be `.xlsx` format, maximum 10 MB per file
-- Screen 0100 is deprecated (v5.0); entry point is Screen 0410 (Project Search)
+  - Development and testing confined to SAP system S40, Client 324
+  - ABAP 7.70 syntax required (inline declarations, `SWITCH` expression, string templates, `@` host variables)
+  - Three SAP demo accounts used for system testing: `DEV-089` (Manager role), `DEV-061` (Developer role), `DEV-118` (Tester role)
+  - Evidence files must be `.xlsx` format, maximum 10 MB per file
+  - Screen 0100 is deprecated (v5.0); entry point is Screen 0410 (Project Search)

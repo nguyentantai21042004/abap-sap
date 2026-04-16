@@ -1,11 +1,11 @@
 // ============================================================
-// main.typ — Entry point
+// final_report.typ — Entry point
 // FPT University Capstone Project — Final Report
 // Mirrors: Final Project Report_FHU.docx
 //
 // Usage:
-//   typst compile main.typ
-//   typst watch main.typ       (live preview)
+//   typst compile final_report.typ
+//   typst watch final_report.typ   (live preview)
 // ============================================================
 
 #import "template.typ": report, placeholder, hline, field
@@ -16,8 +16,10 @@
 #let group-name     = "Group ZBUG"
 #let members        = (
   "DEV-089 — Manager | SE11, SE38, SE80, SE93",
+  "DEV-242 — Developer | SE38, SE51, SE80",
   "DEV-061 — Developer | ALV Grid & SmartForms",
   "DEV-118 — Tester | Bug Management, Testing",
+  "DEV-237 — Developer | SE38, SE51, SE80, SE41",
 )
 #let supervisor     = ""
 #let ext-supervisor = ""
