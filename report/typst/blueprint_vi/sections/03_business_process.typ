@@ -199,18 +199,3 @@ Dự án chuyển sang STATUS = 4 (Cancelled) — Manager
   [6], [Đóng Dự án], [Manager đặt STATUS → `3` (Done). Hệ thống kiểm tra: tất cả lỗi phải ở Resolved (V). Nếu có lỗi chưa đóng → thông báo lỗi, chuyển đổi bị chặn.], [Manager],
 )
 
-// ─────────────────────────────────────────────────────────
-== BP-BUG-03: Tìm kiếm Lỗi
-
-=== Mô tả Quy trình
-
-#table(
-  columns: (1.5cm, 3cm, 1fr, 3cm),
-  align: (center, left, left, left),
-  [*Bước \#*], [*Tên Bước*], [*Mô tả Chi tiết*], [*Vai trò*],
-  [1], [Mở Popup Tìm kiếm], [Từ Màn hình 0200 (Danh sách Lỗi), người dùng nhấp nút SEARCH. Màn hình 0210 mở dưới dạng Modal Dialog popup.], [Tất cả Vai trò],
-  [2], [Nhập Tiêu chí Tìm kiếm], [Người dùng điền các trường tìm kiếm trên Màn hình 0210: BUG_ID (phạm vi), TITLE (ký tự đại diện), STATUS (dropdown), PRIORITY, SAP_MODULE, TESTER_ID, DEV_ID.], [Tất cả Vai trò],
-  [3], [Thực hiện Tìm kiếm], [Người dùng nhấp EXECUTE (F8). Hệ thống chạy SELECT trên ZBUG_TRACKER với mệnh đề WHERE được xây dựng từ các phạm vi đầu vào. Áp dụng bộ lọc theo vai trò (Tester: lỗi của mình; Dev: lỗi được phân công; Manager: tất cả).], [Hệ thống],
-  [4], [Xem Kết quả], [Màn hình 0220 (Kết quả Tìm kiếm) mở dưới dạng màn hình đầy đủ. Hiển thị ALV Grid (CC_SEARCH_RESULTS) với lỗi phù hợp. Không có tiêu đề Dashboard trên màn hình này. Người dùng có thể double-click vào dòng để mở Chi tiết Lỗi (Màn hình 0300).], [Tất cả Vai trò],
-  [5], [Quay lại], [Người dùng nhấp BACK → quay lại Màn hình 0200 (Danh sách Lỗi).], [Tất cả Vai trò],
-)

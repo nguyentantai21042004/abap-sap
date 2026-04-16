@@ -199,18 +199,3 @@ Project transitions to STATUS = 4 (Cancelled) — Manager
   [6], [Close Project], [Manager sets STATUS → `3` (Done). System checks: all bugs must be Resolved (V). If any open bug exists → error message, transition blocked.], [Manager],
 )
 
-// ─────────────────────────────────────────────────────────
-== BP-BUG-03: Bug Search
-
-=== Process Description
-
-#table(
-  columns: (1.5cm, 3cm, 1fr, 3cm),
-  align: (center, left, left, left),
-  [*Step \#*], [*Step Name*], [*Detailed Description*], [*Role*],
-  [1], [Open Search Popup], [From Screen 0200 (Bug List), user clicks SEARCH button. Screen 0210 opens as Modal Dialog popup.], [All Roles],
-  [2], [Enter Search Criteria], [User fills search fields on Screen 0210: BUG_ID (range), TITLE (wildcard), STATUS (dropdown), PRIORITY, SAP_MODULE, TESTER_ID, DEV_ID.], [All Roles],
-  [3], [Execute Search], [User clicks EXECUTE (F8). System runs SELECT on ZBUG_TRACKER with WHERE clause built from input ranges. Applies role-based filter (Tester: own bugs; Dev: assigned bugs; Manager: all).], [System],
-  [4], [View Results], [Screen 0220 (Search Results) opens as full screen. Displays ALV Grid (CC_SEARCH_RESULTS) with matching bugs. No Dashboard Header on this screen. User can double-click a row to open Bug Detail (Screen 0300).], [All Roles],
-  [5], [Return], [User clicks BACK → returns to Screen 0200 (Bug List).], [All Roles],
-)
