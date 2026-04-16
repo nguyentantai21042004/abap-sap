@@ -1,7 +1,7 @@
 // ============================================================
 // 03_requirements.typ — III. Software Requirement Specification
 // ============================================================
-#import "../template.typ": placeholder, hline, field
+#import "../template.typ": placeholder, hline, field, diagram-placeholder
 
 = III. Software Requirement Specification
 
@@ -11,26 +11,7 @@
 
 `ZBUG_WS` is a closed, internal SAP application. All actors interact via SAP GUI using a single T-code entry point. There are no external integrations at the presentation layer; email is the only outbound channel, routed through SAP's internal SCOT/SMTP infrastructure.
 
-#block(breakable: false)[
-```
-  ┌──────────────────────────────────────────────────────────┐
-  │                   SAP System S40 / Client 324            │
-  │                                                          │
-  │  ┌─────────┐                         ┌────────────────┐  │
-  │  │ Manager │───────┐         ┌───────│  ZBUG_TRACKER  │  │
-  │  └─────────┘       │         │       │  ZBUG_PROJECT  │  │
-  │  ┌─────────┐       ▼         ▼       │  ZBUG_USERS    │  │
-  │  │Developer│───▶ ZBUG_WS ◀──────────│  ZBUG_HISTORY  │  │
-  │  └─────────┘  (Z_BUG_WS_MP) │       │  ZBUG_EVIDENCE │  │
-  │  ┌─────────┐       │         │       └────────────────┘  │
-  │  │ Tester  │───────┘         │                           │
-  │  └─────────┘                 │       ┌────────────────┐  │
-  │                              └──────▶│ SCOT (Email)   │  │
-  │                                      │ CL_BCS / SMTP  │  │
-  │                                      └────────────────┘  │
-  └──────────────────────────────────────────────────────────┘
-```
-]
+#diagram-placeholder("System Context Diagram", "docs/diagrams/context-diagram.mmd")
 
 Actors:
 - *Manager (`DEV-089`):* Full access — create/delete projects, manage users, approve assignments, view dashboard
@@ -66,26 +47,7 @@ Actors:
 
 *Screen flow (v5.0):*
 
-#block(breakable: false)[
-```
-ZBUG_WS → Screen 0410 (Project Search — initial screen)
-  └── F8 Execute → Screen 0400 (Project List, filtered)
-        ├── Click Project → Screen 0200 (Bug List + Dashboard Header)
-        │     ├── Create / Change / Display → Screen 0300 (Bug Detail, Tab Strip)
-        │     │     ├── Tab 0310: Bug Info + mini description editor
-        │     │     ├── Tab 0320: Full Description (Long Text Z001)
-        │     │     ├── Tab 0330: Dev Note (Long Text Z002)
-        │     │     ├── Tab 0340: Tester Note (Long Text Z003)
-        │     │     ├── Tab 0350: Evidence ALV (upload / download)
-        │     │     ├── Tab 0360: History Log (ALV readonly)
-        │     │     └── Change Status → Screen 0370 (Status Transition Popup)
-        │     ├── Search → Screen 0210 (Bug Search popup)
-        │     │     └── Execute → Screen 0220 (Search Results)
-        │     └── Back → Screen 0400
-        ├── Create / Change / Display Project → Screen 0500
-        └── Back → Screen 0410
-```
-]
+#diagram-placeholder("Screen Navigation Flow (v5.0)", "docs/diagrams/screen-flow.mmd")
 
 *System roles and screen authorization:*
 

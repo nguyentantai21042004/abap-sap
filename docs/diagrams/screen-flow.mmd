@@ -1,0 +1,30 @@
+%% Screen Navigation Flow — ZBUG_WS v5.0
+%% Entry point: T-code ZBUG_WS → Screen 0410
+
+flowchart TD
+    TCODE(["T-code: ZBUG_WS"])
+    S0410["Screen 0410\nProject Search\n(Initial Screen — v5.0 NEW)"]
+    S0400["Screen 0400\nProject List (ALV)"]
+    S0200["Screen 0200\nBug List + Dashboard Header"]
+    S0300["Screen 0300\nBug Detail\n(6-Tab Strip)"]
+    S0370["Screen 0370\nStatus Transition Popup\n(v5.0 NEW)"]
+    S0210["Screen 0210\nBug Search Input\n(Modal Dialog — v5.0 NEW)"]
+    S0220["Screen 0220\nBug Search Results\n(v5.0 NEW)"]
+    S0500["Screen 0500\nProject Detail\n(Manager only)"]
+
+    TCODE --> S0410
+    S0410 -->|"F8 Execute"| S0400
+    S0400 -->|"Click project row"| S0200
+    S0400 -->|"Create / Change / Display Project"| S0500
+    S0400 -->|"My Bugs button"| S0200
+    S0200 -->|"Create / Change / Display bug"| S0300
+    S0200 -->|"Search button"| S0210
+    S0210 -->|"Execute (F8)"| S0220
+    S0220 -->|"Back"| S0200
+    S0300 -->|"Change Status button"| S0370
+    S0370 -->|"Confirm / Cancel"| S0300
+    S0300 -->|"Back"| S0200
+    S0200 -->|"Back"| S0400
+    S0500 -->|"Back"| S0400
+    S0400 -->|"Back"| S0410
+    S0410 -->|"Back / Exit"| EXIT(["Leave Program"])

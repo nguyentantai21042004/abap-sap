@@ -1,0 +1,41 @@
+%% System Architecture — 3-Tier (ZBUG_WS v5.0)
+%% All layers run within SAP ERP
+
+flowchart TB
+    subgraph PRES["Presentation Layer — Module Pool Z_BUG_WORKSPACE_MP (Type M)"]
+        direction LR
+        S1["0410 Project Search"]
+        S2["0400 Project List"]
+        S3["0200 Bug List + Dashboard"]
+        S4["0300 Bug Detail (Tab Strip)"]
+        S5["0370 Status Popup"]
+        S6["0500 Project Detail"]
+        S7["0210 / 0220 Bug Search"]
+    end
+
+    subgraph APP["Application Layer — Function Group ZBUG_FG"]
+        direction LR
+        FM1["Z_BUG_CREATE"]
+        FM2["Z_BUG_AUTO_ASSIGN"]
+        FM3["Z_BUG_UPDATE_STATUS"]
+        FM4["Z_BUG_CHECK_PERMISSION"]
+        FM5["Z_BUG_LOG_HISTORY"]
+        FM6["Z_BUG_SEND_EMAIL"]
+        FM7["Z_BUG_UPLOAD_ATTACHMENT"]
+        FM8["Z_BUG_REASSIGN"]
+        FM9["Z_BUG_GET_STATISTICS"]
+    end
+
+    subgraph DATA["Data Layer — Package ZBUGTRACK"]
+        direction LR
+        T1["ZBUG_TRACKER\n(29 fields)"]
+        T2["ZBUG_PROJECT\n(16 fields)"]
+        T3["ZBUG_USERS\n(12 fields)"]
+        T4["ZBUG_USER_PROJEC\n(10 fields)"]
+        T5["ZBUG_HISTORY\n(10 fields)"]
+        T6["ZBUG_EVIDENCE\n(11 fields)"]
+        AUX["ZNRO_BUG · ZBUG_NOTE\nZBUG_MSG · ZBUG_FORM\nSMW0: ZBT_TMPL_01/02/03"]
+    end
+
+    PRES -->|"CALL FUNCTION"| APP
+    APP -->|"OPEN SQL"| DATA

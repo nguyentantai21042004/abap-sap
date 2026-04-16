@@ -1,0 +1,40 @@
+%% 10-State Bug Lifecycle — ZBUG_WS v5.0
+%% Source of truth: docs/status-lifecycle.md
+
+stateDiagram-v2
+    state "New (1)" as New
+    state "Waiting (W)" as Waiting
+    state "Assigned (2)" as Assigned
+    state "In Progress (3)" as InProgress
+    state "Pending (4)" as Pending
+    state "Fixed (5)" as Fixed
+    state "Final Testing (6)" as FinalTesting
+    state "Resolved (V) ✓" as Resolved
+    state "Rejected (R) ✗" as Rejected
+    state "Closed (7) — legacy" as Closed
+
+    [*] --> New : Tester / Manager creates bug
+    New --> Assigned : Auto-assign Phase A (Dev found)
+    New --> Waiting : Auto-assign Phase A (no Dev)
+
+    Waiting --> Assigned : Manager assigns Dev manually
+    Waiting --> FinalTesting : Manager assigns Tester (skip to Final Testing)
+
+    Assigned --> InProgress : Dev accepts bug
+    Assigned --> Rejected : Dev rejects (TRANS_NOTE required)
+
+    InProgress --> Fixed : Dev fixes (evidence upload required)
+    InProgress --> Pending : Dev pauses / blocks
+    InProgress --> Rejected : Dev rejects (TRANS_NOTE required)
+
+    Pending --> Assigned : Manager reassigns Dev
+
+    Fixed --> FinalTesting : Auto-assign Phase B (Tester found)
+    Fixed --> Waiting : Auto-assign Phase B (no Tester)
+
+    FinalTesting --> Resolved : Test passes (TRANS_NOTE required)
+    FinalTesting --> InProgress : Test fails (TRANS_NOTE required)
+
+    Resolved --> [*]
+    Rejected --> [*]
+    Closed --> [*]

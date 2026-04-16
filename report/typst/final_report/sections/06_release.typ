@@ -1,7 +1,7 @@
 // ============================================================
 // 06_release.typ — VI. Release Package & User Guides
 // ============================================================
-#import "../template.typ": placeholder, hline, field
+#import "../template.typ": placeholder, hline, field, diagram-placeholder
 
 = VI. Release Package & User Guides
 
@@ -150,18 +150,7 @@ The SAP Bug Tracking Management System (`ZBUG_WS`) is a centralized defect track
 
 *10-State Bug Lifecycle (v5.0):*
 
-#block(breakable: false)[
-```
-  New (1) --[auto-assign Dev]--> Assigned (2) --> In Progress (3) --> Fixed (5)
-     |                                |                  |               |
-  Waiting (W)                   Rejected (R)       Pending (4)   [auto-assign Tester]
-  [no Dev found]               [terminal]         --> Assigned (2)       |
-                                                               Final Testing (6)
-                                                               /         \
-                                                        Resolved (V)  In Progress (3)
-                                                         [terminal]   [test failed]
-```
-]
+#diagram-placeholder("10-State Bug Lifecycle (v5.0)", "docs/diagrams/bug-lifecycle.mmd")
 
 Note: `Closed (7)` is a legacy terminal state retained for backward compatibility.
 

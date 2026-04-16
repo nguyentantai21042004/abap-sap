@@ -1,7 +1,7 @@
 // ============================================================
 // 04_design.typ — IV. Software Design Description
 // ============================================================
-#import "../template.typ": placeholder, hline, field
+#import "../template.typ": placeholder, hline, field, diagram-placeholder
 
 = IV. Software Design Description
 
@@ -11,39 +11,7 @@
 
 `ZBUG_WS` uses a three-tier architecture running entirely within SAP:
 
-#block(breakable: false)[
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    PRESENTATION LAYER                        │
-│  Module Pool: Z_BUG_WORKSPACE_MP (Type M)                   │
-│                                                             │
-│  Screen 0410  Screen 0400  Screen 0200  Screen 0300         │
-│  (Prj Search) (Prj List)   (Bug List)  (Bug Detail)         │
-│  Screen 0210  Screen 0220  Screen 0370  Screen 0500         │
-│  (Bug Search) (Search Res) (Status Pop) (Prj Detail)        │
-│                                                             │
-│  + GUI Statuses (SE41) + Long Text Editors (cl_gui_textedit)│
-│  + ALV Grids (cl_gui_alv_grid)                              │
-├─────────────────────────────────────────────────────────────┤
-│                    APPLICATION LAYER                         │
-│  Function Group: ZBUG_FG                                    │
-│                                                             │
-│  Z_BUG_CREATE          Z_BUG_AUTO_ASSIGN                    │
-│  Z_BUG_UPDATE_STATUS   Z_BUG_REASSIGN                       │
-│  Z_BUG_CHECK_PERMISSION Z_BUG_LOG_HISTORY                   │
-│  Z_BUG_SEND_EMAIL      Z_BUG_UPLOAD_ATTACHMENT              │
-│  Z_BUG_GET_STATISTICS                                       │
-├─────────────────────────────────────────────────────────────┤
-│                      DATA LAYER                              │
-│  ZBUG_TRACKER (29 fields)  ZBUG_USERS (12 fields)           │
-│  ZBUG_PROJECT (16 fields)  ZBUG_USER_PROJEC (10 fields)     │
-│  ZBUG_HISTORY (10 fields)  ZBUG_EVIDENCE (11 fields)        │
-│  Number Range: ZNRO_BUG    Text Object: ZBUG_NOTE           │
-│  Message Class: ZBUG_MSG   SmartForms: ZBUG_FORM / EMAIL    │
-│  SMW0 Templates: ZBT_TMPL_01/02/03                          │
-└─────────────────────────────────────────────────────────────┘
-```
-]
+#diagram-placeholder("System Architecture (3-Tier)", "docs/diagrams/system-architecture.mmd")
 
 The Module Pool calls Function Modules for all business logic — no ABAP logic is coded directly in PBO/PAI modules beyond screen navigation and FM calls.
 
@@ -51,43 +19,7 @@ The Module Pool calls Function Modules for all business logic — no ABAP logic 
 
 All objects belong to the SAP development package `ZBUGTRACK`:
 
-#block(breakable: false)[
-```
-Package: ZBUGTRACK
-│
-├── Program:       Z_BUG_WORKSPACE_MP  (Module Pool, Type M)
-│     ├── Include: Z_BUG_WS_TOP   ← Global declarations, types, constants, ALV objects
-│     ├── Include: Z_BUG_WS_F00   ← ALV field catalog, LCL_EVENT_HANDLER class
-│     ├── Include: Z_BUG_WS_PBO   ← Process Before Output modules (all screens)
-│     ├── Include: Z_BUG_WS_PAI   ← Process After Input modules (user commands)
-│     ├── Include: Z_BUG_WS_F01   ← Business logic FORMs (load/save/validate)
-│     └── Include: Z_BUG_WS_F02   ← Helpers: F4, long text, popup, template download
-│
-├── Function Group: ZBUG_FG
-│     ├── Z_BUG_CREATE
-│     ├── Z_BUG_AUTO_ASSIGN
-│     ├── Z_BUG_UPDATE_STATUS
-│     ├── Z_BUG_CHECK_PERMISSION
-│     ├── Z_BUG_LOG_HISTORY
-│     ├── Z_BUG_SEND_EMAIL
-│     ├── Z_BUG_UPLOAD_ATTACHMENT
-│     ├── Z_BUG_REASSIGN
-│     └── Z_BUG_GET_STATISTICS
-│
-├── Tables:        ZBUG_TRACKER, ZBUG_USERS, ZBUG_PROJECT,
-│                  ZBUG_USER_PROJEC, ZBUG_HISTORY, ZBUG_EVIDENCE
-│
-├── Domains/DEs:   ZDE_BUG_STATUS (CHAR 20), ZDE_PRIORITY (CHAR 1),
-│                  ZDE_BUG_TYPE (CHAR 1), ZDE_SEVERITY (CHAR 1),
-│                  ZDE_USERNAME (CHAR 12), ZDE_PROJECT_ID (CHAR 20), ...
-│
-├── SmartForms:    ZBUG_FORM, ZBUG_EMAIL_FORM
-├── Number Range:  ZNRO_BUG
-├── Text Object:   ZBUG_NOTE (Text IDs: Z001, Z002, Z003)
-├── Message Class: ZBUG_MSG
-└── SMW0 Objects:  ZBT_TMPL_01, ZBT_TMPL_02, ZBT_TMPL_03
-```
-]
+#diagram-placeholder("Package Diagram: ZBUGTRACK", "docs/diagrams/package-diagram.mmd")
 
 == 2. Database Design
 

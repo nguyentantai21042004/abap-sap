@@ -1,0 +1,28 @@
+%% System Context Diagram — ZBUG_WS (Z_BUG_WORKSPACE_MP)
+%% SAP System S40 / Client 324
+
+flowchart TD
+    Manager["Manager\n(DEV-089)"]
+    Developer["Developer\n(DEV-061)"]
+    Tester["Tester\n(DEV-118)"]
+
+    subgraph SAP["SAP System S40 — Client 324"]
+        ZBUG_WS["ZBUG_WS\nZ_BUG_WORKSPACE_MP\n(Module Pool, Type M)"]
+
+        subgraph DB["Database Tables (Package: ZBUGTRACK)"]
+            T1["ZBUG_TRACKER (29 fields)"]
+            T2["ZBUG_PROJECT (16 fields)"]
+            T3["ZBUG_USERS (12 fields)"]
+            T4["ZBUG_USER_PROJEC (10 fields)"]
+            T5["ZBUG_HISTORY (10 fields)"]
+            T6["ZBUG_EVIDENCE (11 fields)"]
+        end
+
+        SCOT["SCOT / SMTP\nCL_BCS Email API"]
+    end
+
+    Manager -->|SAP GUI| ZBUG_WS
+    Developer -->|SAP GUI| ZBUG_WS
+    Tester -->|SAP GUI| ZBUG_WS
+    ZBUG_WS <-->|OPEN SQL| DB
+    ZBUG_WS -->|Outbound email| SCOT
