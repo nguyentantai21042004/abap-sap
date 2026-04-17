@@ -522,6 +522,8 @@ ENDFORM.
 *&=== LONG TEXT: SAVE (Text Object ZBUG) ===*
 *& pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
 *& Editor is resolved internally. Caller must set gv_current_bug_id before calling.
+*& For Z002/Z003: falls back to gv_buf_devnote/gv_buf_tstnote when editor is on
+*& an inactive subscreen (SAP GUI for Java — get_text_as_r3table fails there).
 *&
 *& Explicit lv_tdname TYPE tdobname cast for SAVE_TEXT (same reason as load_long_text).
 FORM save_long_text USING pv_text_id TYPE thead-tdid.
@@ -541,22 +543,47 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
     WHEN 'Z002'. lr_editor = go_edit_dev_note.
     WHEN 'Z003'. lr_editor = go_edit_tstr_note.
   ENDCASE.
-  CHECK lr_editor IS NOT INITIAL.
 
   DATA: lt_text  TYPE TABLE OF char255,
         lt_lines TYPE TABLE OF tline,
         ls_line  TYPE tline.
 
-  " Flush GUI before reading text to prevent POTENTIAL_DATA_LOSS
-  cl_gui_cfw=>flush( ).
+  " Try to read text from editor (may fail on SAP GUI for Java if subscreen inactive)
+  IF lr_editor IS NOT INITIAL.
+    cl_gui_cfw=>flush( ).
+    lr_editor->get_text_as_r3table(
+      IMPORTING table = lt_text
+      EXCEPTIONS error_dp        = 1
+                 error_dp_create = 2
+                 OTHERS          = 3 ).
+  ENDIF.
 
-  lr_editor->get_text_as_r3table(
-    IMPORTING table = lt_text
-    EXCEPTIONS error_dp        = 1
-               error_dp_create = 2
-               OTHERS          = 3 ).
-  IF sy-subrc <> 0.
-    RETURN.  " Cannot read text — skip save for this text ID
+  " Fallback for Dev/Tester Note: use captured buffer when editor is unavailable
+  " or get_text_as_r3table failed (inactive subscreen on SAP GUI for Java).
+  IF lr_editor IS INITIAL OR sy-subrc <> 0.
+    CASE pv_text_id.
+      WHEN 'Z002'.
+        IF gv_buf_devnote_set = abap_true.
+          CLEAR lt_text.
+          IF gv_buf_devnote IS NOT INITIAL.
+            SPLIT gv_buf_devnote AT cl_abap_char_utilities=>cr_lf INTO TABLE lt_text.
+          ENDIF.
+          " lt_text empty → SAVE_TEXT clears DB text (correct when user cleared note)
+        ELSE.
+          RETURN.  " User never visited Dev Note tab — preserve existing DB text
+        ENDIF.
+      WHEN 'Z003'.
+        IF gv_buf_tstnote_set = abap_true.
+          CLEAR lt_text.
+          IF gv_buf_tstnote IS NOT INITIAL.
+            SPLIT gv_buf_tstnote AT cl_abap_char_utilities=>cr_lf INTO TABLE lt_text.
+          ENDIF.
+        ELSE.
+          RETURN.  " User never visited Tester Note tab — preserve existing DB text
+        ENDIF.
+      WHEN OTHERS.
+        RETURN.  " Z001 with no editor — skip
+    ENDCASE.
   ENDIF.
 
   LOOP AT lt_text INTO DATA(lv_line).

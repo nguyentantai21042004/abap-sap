@@ -26,6 +26,7 @@ Chuyển sang tab **Flow Logic**. Xóa code mặc định, paste:
 
 ```abap
 PROCESS BEFORE OUTPUT.
+  MODULE init_user_role.
   MODULE status_0410.
 
 PROCESS AFTER INPUT.
@@ -41,13 +42,14 @@ PROCESS ON VALUE-REQUEST.
 
 | Module | Include | Chức năng |
 |--------|---------|-----------|
+| `init_user_role` | PBO | Load role từ ZBUG_USERS 1 lần (CHECK gv_role IS INITIAL). **PHẢI đứng đầu PBO** |
 | `status_0410` | PBO | SET PF-STATUS 'STATUS_0410', SET TITLEBAR 'T_0410' |
 | `user_command_0410` | PAI | Handle: EXECUTE (search + CALL SCREEN 0400), BACK/EXIT/CANCEL (LEAVE PROGRAM) |
 | `f4_project_id` | PAI (POV) | F4 help cho Project ID — list từ ZBUG_PROJECT |
 | `f4_manager` | PAI (POV) | F4 help cho Manager — list từ ZBUG_USERS WHERE ROLE='M' |
 | `f4_project_status` | PAI (POV) | F4 help cho Project Status — list: 1=Opening, 2=In Process, 3=Done, 4=Cancelled |
 
-> **QUAN TRỌNG:** Screen 0410 thay thế Screen 0400 làm initial screen. Module `init_user_role` sẽ được gọi khi user nhấn EXECUTE và CALL SCREEN 0400 (trong PBO của 0400). Nếu muốn check role sớm hơn, có thể thêm `MODULE init_user_role.` vào PBO của 0410.
+> **QUAN TRỌNG (BUG FIX):** `init_user_role` PHẢI nằm trong PBO của Screen 0410 vì đây là initial screen. Nếu thiếu, `gv_role` = INITIAL khi user nhấn Execute → `search_projects` chạy với role sai (non-Manager path) → sau đó Screen 0400 PBO set đúng role → lần BACK từ 0200 `search_projects` chạy lại với role đúng → user thấy thêm project không mong đợi (Bug #1).
 
 ---
 

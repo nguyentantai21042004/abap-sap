@@ -98,11 +98,6 @@ DATA: go_desc_mini_cont TYPE REF TO cl_gui_custom_container,
 DATA: go_cont_trans_note TYPE REF TO cl_gui_custom_container,
       go_edit_trans_note TYPE REF TO cl_gui_textedit.
 
-" === PROJECT DETAIL EDITORS (Screen 0500 — Description + Note) ===
-DATA: go_cont_prj_desc TYPE REF TO cl_gui_custom_container,
-      go_edit_prj_desc TYPE REF TO cl_gui_textedit,
-      go_cont_prj_note TYPE REF TO cl_gui_custom_container,
-      go_edit_prj_note TYPE REF TO cl_gui_textedit.
 
 " === FIELD CATALOGS ===
 DATA: gt_fcat_bug      TYPE lvc_t_fcat,
@@ -260,3 +255,12 @@ DATA: gm_excl     TYPE TABLE OF sy-ucomm,  " Reused by all status_XXXX modules
       gm_layo_bug TYPE lvc_s_layo,
       gm_layo_prj TYPE lvc_s_layo,
       gm_title    TYPE string.
+
+" === NOTE EDITOR BUFFERS (Screen 0300 subscreens 0330/0340) ===
+" Captures editor text on each tab switch so save_long_text can use it as
+" fallback on SAP GUI for Java where get_text_as_r3table may fail on inactive subscreens.
+" gv_buf_*_set = abap_true means the buffer was explicitly captured (even if empty).
+DATA: gv_buf_devnote     TYPE string,
+      gv_buf_devnote_set TYPE abap_bool,
+      gv_buf_tstnote     TYPE string,
+      gv_buf_tstnote_set TYPE abap_bool.
