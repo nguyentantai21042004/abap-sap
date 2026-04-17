@@ -1,3 +1,4 @@
 .vscode/
 problems/test2/.venv_xlsx/
 final-report
+node_modules/

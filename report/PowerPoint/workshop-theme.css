@@ -1,0 +1,308 @@
+/* @theme workshop */
+
+@import 'default';
+
+:root {
+  --color-bg: #002060;
+  --color-bg-alt: #001040;
+  --color-accent-cyan: #00C7FF;
+  --color-accent-pink: #DE73C9;
+  --color-text: #FFFFFF;
+  --color-text-muted: #a0b4cc;
+  --color-card-bg: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(0, 199, 255, 0.3);
+  --font-main: 'Segoe UI', Arial, sans-serif;
+}
+
+/* ─── Base slide ─────────────────────────────────────────── */
+section {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  font-size: 24px;
+  padding: 48px 60px 48px 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left accent bar */
+section::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--color-accent-cyan) 0%, var(--color-accent-pink) 100%);
+}
+
+/* Bottom accent line */
+section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent-cyan) 0%, var(--color-accent-pink) 50%, transparent 100%);
+}
+
+/* ─── Typography ─────────────────────────────────────────── */
+h1 {
+  color: var(--color-accent-cyan);
+  font-size: 1.9em;
+  font-weight: 700;
+  margin-bottom: 0.4em;
+  letter-spacing: -0.01em;
+  border-bottom: 2px solid var(--color-accent-cyan);
+  padding-bottom: 0.2em;
+}
+
+h2 {
+  color: var(--color-accent-pink);
+  font-size: 1.45em;
+  font-weight: 700;
+  margin-bottom: 0.35em;
+  margin-top: 0.5em;
+}
+
+h3 {
+  color: var(--color-accent-cyan);
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 0.25em;
+  opacity: 0.9;
+}
+
+p {
+  line-height: 1.65;
+  color: #e0eaf4;
+}
+
+strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+em {
+  color: var(--color-accent-cyan);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ─── Lists ──────────────────────────────────────────────── */
+ul, ol {
+  padding-left: 1.4em;
+  color: #d0dce8;
+}
+
+li {
+  margin-bottom: 0.35em;
+  line-height: 1.55;
+}
+
+li::marker {
+  color: var(--color-accent-cyan);
+}
+
+/* ─── Blockquote ─────────────────────────────────────────── */
+blockquote {
+  background: rgba(0, 199, 255, 0.08);
+  border-left: 4px solid var(--color-accent-cyan);
+  padding: 0.6em 1.1em;
+  border-radius: 0 6px 6px 0;
+  margin: 0.8em 0;
+  color: #c5d8ea;
+}
+
+blockquote p {
+  margin: 0;
+  color: #c5d8ea;
+}
+
+/* ─── Code ───────────────────────────────────────────────── */
+code {
+  background: rgba(0, 199, 255, 0.12);
+  color: var(--color-accent-cyan);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.88em;
+}
+
+pre {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+  overflow: auto;
+}
+
+pre code {
+  background: none;
+  color: #a8d8f0;
+  padding: 0;
+}
+
+/* ─── Tables ─────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83em;
+  margin: 0.5em 0;
+}
+
+thead tr {
+  background: linear-gradient(90deg, var(--color-accent-cyan) 0%, #0088bb 100%);
+}
+
+thead th {
+  color: #002060;
+  font-weight: 700;
+  padding: 0.55em 0.9em;
+  text-align: left;
+}
+
+tbody tr {
+  background: var(--color-card-bg);
+  border-bottom: 1px solid rgba(0, 199, 255, 0.12);
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+tbody td {
+  padding: 0.5em 0.9em;
+  color: #d8e8f4;
+}
+
+/* ─── Images ─────────────────────────────────────────────── */
+img {
+  display: block;
+  margin: 0 auto;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* ─── Paginate ───────────────────────────────────────────── */
+section::after {
+  content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
+  position: absolute;
+  bottom: 14px;
+  right: 24px;
+  font-size: 0.65em;
+  color: var(--color-text-muted);
+  background: none;
+  width: auto;
+  height: auto;
+}
+
+/* ─── Title slide (first) ────────────────────────────────── */
+section.title {
+  background: linear-gradient(135deg, #001040 0%, #002060 40%, #003080 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 64px 72px;
+}
+
+section.title::before {
+  width: 8px;
+  background: linear-gradient(180deg, var(--color-accent-cyan) 0%, var(--color-accent-pink) 60%, transparent 100%);
+}
+
+section.title h1 {
+  font-size: 2.4em;
+  border-bottom: 3px solid var(--color-accent-cyan);
+  padding-bottom: 0.3em;
+  margin-bottom: 0.5em;
+  max-width: 80%;
+}
+
+section.title p {
+  font-size: 1.05em;
+  color: #a0c4e0;
+  margin: 0.15em 0;
+}
+
+section.title strong {
+  color: var(--color-accent-cyan);
+}
+
+/* ─── Section divider slide ──────────────────────────────── */
+section.section {
+  background: linear-gradient(135deg, #001848 0%, #002878 60%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+section.section h2 {
+  font-size: 2em;
+  color: var(--color-accent-cyan);
+  margin-bottom: 0.3em;
+}
+
+section.section p {
+  color: #a0c4e0;
+  font-size: 1em;
+}
+
+/* ─── Invert slide (white on dark) ──────────────────────── */
+section.invert {
+  background: #001234;
+}
+
+/* ─── Layout helpers ─────────────────────────────────────── */
+.cols-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2em;
+  align-items: start;
+}
+
+.cols-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5em;
+  align-items: start;
+}
+
+.highlight {
+  background: rgba(0, 199, 255, 0.1);
+  border-left: 4px solid var(--color-accent-cyan);
+  padding: 0.5em 1em;
+  border-radius: 0 6px 6px 0;
+  margin: 0.5em 0;
+}
+
+.highlight-pink {
+  background: rgba(222, 115, 201, 0.1);
+  border-left: 4px solid var(--color-accent-pink);
+  padding: 0.5em 1em;
+  border-radius: 0 6px 6px 0;
+  margin: 0.5em 0;
+}
+
+.card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+}
+
+.tag {
+  display: inline-block;
+  background: rgba(0, 199, 255, 0.15);
+  color: var(--color-accent-cyan);
+  border: 1px solid rgba(0, 199, 255, 0.4);
+  border-radius: 20px;
+  padding: 0.15em 0.7em;
+  font-size: 0.78em;
+  font-weight: 600;
+  margin: 0.1em;
+}
