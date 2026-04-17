@@ -1,7 +1,7 @@
 // ============================================================
 // 03_business_process.typ — BUSINESS PROCESS
 // ============================================================
-#import "../template.typ": placeholder, hline
+#import "../template.typ": placeholder, hline, diagram-placeholder
 
 = BUSINESS PROCESS
 
@@ -10,58 +10,7 @@
 
 === Process Flow
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Tester creates Bug on Screen 0300 (from Project context)            │
-│  STATUS = 1 (New)  │  BUG_TYPE = Code (C) or Config (F)             │
-└────────────────────────────────────────────────────────┬─────────────┘
-                                                         │
-                           ┌─────────────────────────────▼──────────────────────────────┐
-                           │                  BUG_TYPE = Code (C)?                      │
-                           └──────────────────────┬─────────────────────┬───────────────┘
-                                                  │ Yes                 │ No (Config F)
-                                                  │                     │
-                     ┌────────────────────────────▼──┐    ┌─────────────▼─────────────────┐
-                     │  Auto-Assign (Phase A)        │    │  Tester self-fixes Config bug │
-                     │  Find Dev: same module,       │    │  DEV_ID = SY-UNAME            │
-                     │  workload < 5, Available      │    │  STATUS: 1→2→3→5→6→V          │
-                     └──┬────────────────┬───────────┘    └───────────────────────────────┘
-                        │ Dev found      │ No Dev
-                        │               │
-                ┌───────▼──────┐  ┌─────▼──────┐
-                │ STATUS = 2   │  │ STATUS = W │
-                │ (Assigned)   │  │ (Waiting)  │◄── Manager assigns manually
-                └───────┬──────┘  └────────────┘
-                        │
-                Developer starts: STATUS = 3 (In Progress)
-                        │
-             ┌──────────┴───────────────────┐
-             │ Dev may Pending (4) or        │
-             │ Reject (R) with note          │
-             └──────────┬───────────────────┘
-                        │ Dev uploads fix evidence
-                        │ STATUS = 5 (Fixed)
-                        │
-                ┌───────▼───────────────────────────────────────────────┐
-                │  Auto-Assign (Phase B)                                │
-                │  Find Tester: same module, workload < 5               │
-                └──────┬───────────────────────┬────────────────────────┘
-                       │ Tester found          │ No Tester
-                       │                       │
-               ┌───────▼──────┐         ┌──────▼──────┐
-               │ STATUS = 6   │         │ STATUS = W  │◄── Manager assigns Final Tester
-               │(Final Testing│         │  (Waiting)  │
-               └───────┬──────┘         └─────────────┘
-                       │
-           ┌───────────┴──────────┐
-           │ Test PASS             │ Test FAIL
-           │                      │
-     ┌─────▼────────┐      STATUS = 3 (back to Dev)
-     │ STATUS = V   │      TRANS_NOTE mandatory
-     │  (Resolved)  │
-     │  TERMINAL    │
-     └──────────────┘
-```
+#diagram-placeholder("BP-BUG-01: Bug Lifecycle Management", "docs/diagrams/bp-bug-01-lifecycle.mmd")
 
 === Process Description
 
@@ -103,44 +52,7 @@
 
 === Process Flow
 
-```
-User clicks "Change Status" button on Screen 0300 (Bug Detail)
-  │
-  ▼
-Screen 0370 opens as Modal Dialog
-  │
-  ├── Read-only fields shown:
-  │     BUG_ID, TITLE, REPORTER (TESTER_ID), CURRENT_STATUS
-  │
-  ├── Input fields enabled based on CURRENT_STATUS:
-  │
-  │   STATUS = 1 (New):
-  │     NEW_STATUS dropdown: [2-Assigned, W-Waiting]
-  │     DEVELOPER_ID: OPEN (mandatory if → 2)
-  │
-  │   STATUS = 2 (Assigned):
-  │     NEW_STATUS dropdown: [3-InProgress, R-Rejected]
-  │     TRANS_NOTE: mandatory if → R
-  │
-  │   STATUS = 3 (In Progress):
-  │     NEW_STATUS dropdown: [5-Fixed, 4-Pending, R-Rejected]
-  │     TRANS_NOTE: open (mandatory if → R)
-  │     BTN_UPLOAD: open (mandatory if → 5, evidence required)
-  │
-  │   STATUS = 4 (Pending):
-  │     NEW_STATUS dropdown: [2-Assigned]
-  │     DEVELOPER_ID: open (can change Dev)
-  │
-  │   STATUS = 6 (Final Testing):
-  │     NEW_STATUS dropdown: [V-Resolved, 3-InProgress]
-  │     TRANS_NOTE: mandatory (test result note)
-  │
-  ▼
-User clicks CONFIRM → System validates → Updates ZBUG_TRACKER
-  → Logs ZBUG_HISTORY (Action: ST)
-  → Auto-Assign triggered if applicable
-  → Email notification sent
-```
+#diagram-placeholder("BP-BUG-02: Status Transition Popup (Screen 0370)", "docs/diagrams/bp-bug-02-status-popup.mmd")
 
 === Process Description
 
@@ -160,30 +72,7 @@ User clicks CONFIRM → System validates → Updates ZBUG_TRACKER
 
 === Process Flow
 
-```
-Manager creates Project on Screen 0500
-  │  Fills: PROJECT_ID, PROJECT_NAME, DESCRIPTION, START_DATE, END_DATE
-  │  STATUS = 1 (Opening)
-  │
-  ▼
-Manager adds Users to Project
-  │  Screen 0500, Table Control TC_USERS
-  │  Each user assigned Role: M/D/T in ZBUG_USER_PROJEC
-  │
-  ▼
-Project transitions to STATUS = 2 (In Process) — Manager
-  │
-  │  [Bugs are created, tracked, fixed, resolved within the project]
-  │
-  ▼
-Project transitions to STATUS = 3 (Done) — Manager
-  │  CONDITION: All bugs in project must be Resolved (V) or Closed (7)
-  │  System validates: COUNT open bugs = 0
-  │
-  OR
-  ▼
-Project transitions to STATUS = 4 (Cancelled) — Manager
-```
+#diagram-placeholder("BP-PRJ-01: Project Management Lifecycle", "docs/diagrams/bp-prj-01-project.mmd")
 
 === Process Description
 

@@ -1,0 +1,22 @@
+%% BP-PRJ-01: Project Management Lifecycle — ZBUG_WS v5.0
+%% Blueprint Process Flow | Source: docs/diagrams/bp-prj-01-project.mmd
+
+flowchart TD
+    Start(["Manager opens Screen 0500\nfrom Project List 0400"])
+    Create["Create Project\nFill: PROJECT_ID, PROJECT_NAME\nDESCRIPTION, START_DATE, END_DATE\nSTATUS = 1 (Opening)"]
+    Assign["Add Users to Project\nScreen 0500 → TC_USERS\nAssign Role: M / D / T\nstored in ZBUG_USER_PROJEC"]
+    Activate["Manager activates project\nSTATUS = 2 (In Process)\nBugs can now be created"]
+    Work["Bugs created, tracked,\nfixed and resolved\nwithin the project lifecycle"]
+    Decision{Manager\ndecision}
+    Done(["STATUS = 3 (Done) ✓\nValidation: all bugs\nResolved (V) or Closed (7)"])
+    Cancelled(["STATUS = 4 (Cancelled) ✗"])
+    Reopen["STATUS = 2 (In Process)\nProject reopened"]
+
+    Start --> Create --> Assign --> Activate --> Work --> Decision
+    Decision -->|"All bugs Resolved / Closed"| Done
+    Decision -->|"Project cancelled"| Cancelled
+    Done -->|"New bug found — Manager reopens"| Reopen --> Work
+
+    style Start     fill:#D0E8FF,stroke:#336699
+    style Done      fill:#90EE90,stroke:#2d862d
+    style Cancelled fill:#FFB6B6,stroke:#cc0000

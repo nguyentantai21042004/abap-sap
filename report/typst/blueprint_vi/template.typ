@@ -89,3 +89,21 @@
 #let placeholder(msg) = text(style: "italic", fill: gray, [\[#msg\]])
 
 #let hline() = line(length: 100%, stroke: 0.5pt)
+
+/// Diagram placeholder — renders a dashed box with caption and Mermaid source file path.
+/// Replace with an actual imported image once the .mmd is rendered to PNG/SVG.
+#let diagram-placeholder(caption, mmd-file) = block(
+  width: 100%,
+  inset: (x: 16pt, y: 20pt),
+  stroke: (paint: luma(170), thickness: 0.5pt, dash: "dashed"),
+  fill: luma(252),
+  radius: 3pt,
+)[
+  #align(center)[
+    #text(size: 11pt, weight: "bold")[#caption]
+    #v(0.4em)
+    #text(size: 9pt, style: "italic", fill: luma(130))[
+      (Diagram source: #raw(mmd-file))
+    ]
+  ]
+]
