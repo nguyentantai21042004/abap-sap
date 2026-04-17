@@ -1,7 +1,7 @@
 // ============================================================
 // 03_business_process.typ — QUY TRÌNH NGHIỆP VỤ
 // ============================================================
-#import "../template.typ": placeholder, hline
+#import "../template.typ": placeholder, hline, diagram-placeholder
 
 = QUY TRÌNH NGHIỆP VỤ
 
@@ -10,58 +10,7 @@
 
 === Luồng Quy trình
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Tester tạo Lỗi trên Màn hình 0300 (từ ngữ cảnh Dự án)              │
-│  STATUS = 1 (New)  │  BUG_TYPE = Code (C) hoặc Config (F)           │
-└────────────────────────────────────────────────────────┬─────────────┘
-                                                         │
-                           ┌─────────────────────────────▼──────────────────────────────┐
-                           │                  BUG_TYPE = Code (C)?                      │
-                           └──────────────────────┬─────────────────────┬───────────────┘
-                                                  │ Có                  │ Không (Config F)
-                                                  │                     │
-                     ┌────────────────────────────▼──┐    ┌─────────────▼─────────────────┐
-                     │  Tự động Phân công (Giai đoạn A)│   │  Tester tự sửa lỗi Config   │
-                     │  Tìm Dev: cùng module,        │    │  DEV_ID = SY-UNAME            │
-                     │  tải công việc < 5, Khả dụng  │    │  STATUS: 1→2→3→5→6→V          │
-                     └──┬────────────────┬───────────┘    └───────────────────────────────┘
-                        │ Tìm thấy Dev   │ Không có Dev
-                        │               │
-                ┌───────▼──────┐  ┌─────▼──────┐
-                │ STATUS = 2   │  │ STATUS = W │
-                │ (Assigned)   │  │ (Waiting)  │◄── Manager phân công thủ công
-                └───────┬──────┘  └────────────┘
-                        │
-                Developer bắt đầu: STATUS = 3 (In Progress)
-                        │
-             ┌──────────┴───────────────────┐
-             │ Dev có thể Pending (4) hoặc   │
-             │ Reject (R) với ghi chú        │
-             └──────────┬───────────────────┘
-                        │ Dev tải lên bằng chứng sửa lỗi
-                        │ STATUS = 5 (Fixed)
-                        │
-                ┌───────▼───────────────────────────────────────────────┐
-                │  Tự động Phân công (Giai đoạn B)                      │
-                │  Tìm Tester: cùng module, tải công việc < 5           │
-                └──────┬───────────────────────┬────────────────────────┘
-                       │ Tìm thấy Tester       │ Không có Tester
-                       │                       │
-               ┌───────▼──────┐         ┌──────▼──────┐
-               │ STATUS = 6   │         │ STATUS = W  │◄── Manager phân công Final Tester
-               │(Final Testing│         │  (Waiting)  │
-               └───────┬──────┘         └─────────────┘
-                       │
-           ┌───────────┴──────────┐
-           │ Kiểm thử ĐẠT         │ Kiểm thử KHÔNG ĐẠT
-           │                      │
-     ┌─────▼────────┐      STATUS = 3 (trả về Dev)
-     │ STATUS = V   │      TRANS_NOTE bắt buộc
-     │  (Resolved)  │
-     │  KẾT THÚC    │
-     └──────────────┘
-```
+#diagram-placeholder("BP-BUG-01: Quản lý Vòng đời Lỗi", "docs/diagrams/bp-bug-01-lifecycle.mmd")
 
 === Mô tả Quy trình
 
@@ -103,44 +52,7 @@
 
 === Luồng Quy trình
 
-```
-Người dùng nhấp nút "Change Status" trên Màn hình 0300 (Chi tiết Lỗi)
-  │
-  ▼
-Màn hình 0370 mở dưới dạng Modal Dialog
-  │
-  ├── Hiển thị trường chỉ đọc:
-  │     BUG_ID, TITLE, REPORTER (TESTER_ID), CURRENT_STATUS
-  │
-  ├── Bật trường nhập dựa trên CURRENT_STATUS:
-  │
-  │   STATUS = 1 (New):
-  │     Dropdown NEW_STATUS: [2-Assigned, W-Waiting]
-  │     DEVELOPER_ID: MỞ (bắt buộc nếu → 2)
-  │
-  │   STATUS = 2 (Assigned):
-  │     Dropdown NEW_STATUS: [3-InProgress, R-Rejected]
-  │     TRANS_NOTE: bắt buộc nếu → R
-  │
-  │   STATUS = 3 (In Progress):
-  │     Dropdown NEW_STATUS: [5-Fixed, 4-Pending, R-Rejected]
-  │     TRANS_NOTE: mở (bắt buộc nếu → R)
-  │     BTN_UPLOAD: mở (bắt buộc nếu → 5, cần bằng chứng)
-  │
-  │   STATUS = 4 (Pending):
-  │     Dropdown NEW_STATUS: [2-Assigned]
-  │     DEVELOPER_ID: mở (có thể thay đổi Dev)
-  │
-  │   STATUS = 6 (Final Testing):
-  │     Dropdown NEW_STATUS: [V-Resolved, 3-InProgress]
-  │     TRANS_NOTE: bắt buộc (ghi chú kết quả kiểm thử)
-  │
-  ▼
-Người dùng nhấp CONFIRM → Hệ thống kiểm tra → Cập nhật ZBUG_TRACKER
-  → Ghi nhật ký ZBUG_HISTORY (Action: ST)
-  → Kích hoạt Tự động Phân công nếu áp dụng
-  → Gửi thông báo Email
-```
+#diagram-placeholder("BP-BUG-02: Popup Chuyển Trạng thái (Màn hình 0370)", "docs/diagrams/bp-bug-02-status-popup.mmd")
 
 === Mô tả Quy trình
 
@@ -160,30 +72,7 @@ Người dùng nhấp CONFIRM → Hệ thống kiểm tra → Cập nhật ZBUG_
 
 === Luồng Quy trình
 
-```
-Manager tạo Dự án trên Màn hình 0500
-  │  Điền: PROJECT_ID, PROJECT_NAME, DESCRIPTION, START_DATE, END_DATE
-  │  STATUS = 1 (Opening)
-  │
-  ▼
-Manager thêm Người dùng vào Dự án
-  │  Màn hình 0500, Table Control TC_USERS
-  │  Mỗi người dùng được gán Vai trò: M/D/T trong ZBUG_USER_PROJEC
-  │
-  ▼
-Dự án chuyển sang STATUS = 2 (In Process) — Manager
-  │
-  │  [Lỗi được tạo, theo dõi, sửa, giải quyết trong dự án]
-  │
-  ▼
-Dự án chuyển sang STATUS = 3 (Done) — Manager
-  │  ĐIỀU KIỆN: Tất cả lỗi trong dự án phải ở Resolved (V) hoặc Closed (7)
-  │  Hệ thống kiểm tra: ĐẾM lỗi chưa đóng = 0
-  │
-  HOẶC
-  ▼
-Dự án chuyển sang STATUS = 4 (Cancelled) — Manager
-```
+#diagram-placeholder("BP-PRJ-01: Vòng đời Quản lý Dự án", "docs/diagrams/bp-prj-01-project.mmd")
 
 === Mô tả Quy trình
 

@@ -1,0 +1,41 @@
+%% BP-BUG-02: Status Transition Popup — Screen 0370 — ZBUG_WS v5.0
+%% Blueprint Process Flow | Source: docs/diagrams/bp-bug-02-status-popup.mmd
+
+flowchart TD
+    Start(["User clicks 'Change Status'\non Screen 0300 Bug Detail"])
+    OpenPopup["Screen 0370 opens as Modal Dialog\nRead-only: BUG_ID, TITLE,\nREPORTER, CURRENT_STATUS"]
+    CheckStatus{CURRENT_STATUS?}
+
+    S1["NEW_STATUS: 2-Assigned or W-Waiting\nDEVELOPER_ID: open\n(mandatory if → 2)"]
+    S2["NEW_STATUS: 3-InProgress or R-Rejected\nTRANS_NOTE: mandatory if → R"]
+    S3["NEW_STATUS: 5-Fixed / 4-Pending / R-Rejected\nTRANS_NOTE: open (mandatory if → R)\nBTN_UPLOAD: open (mandatory if → 5)"]
+    S4["NEW_STATUS: 2-Assigned\nDEVELOPER_ID: open\n(can change Developer)"]
+    S6["NEW_STATUS: V-Resolved or 3-InProgress\nTRANS_NOTE: mandatory\n(test result note)"]
+
+    Confirm["User clicks CONFIRM\nSystem validates:\npermission / mandatory fields /\nevidence check / TRANS_NOTE check"]
+    Valid{Valid?}
+    Error(["Show error message\nUser corrects input"])
+    UpdateDB["Update ZBUG_TRACKER\nLog ZBUG_HISTORY (Action: ST)"]
+    AutoTrigger{Auto-Assign\ntriggered?}
+    AutoRun["Auto-Assign Engine\nPhase A or Phase B"]
+    SendEmail["Email notification sent"]
+    End(["Return to Screen 0300"])
+
+    Start --> OpenPopup --> CheckStatus
+
+    CheckStatus -->|"1 = New"| S1
+    CheckStatus -->|"2 = Assigned"| S2
+    CheckStatus -->|"3 = In Progress"| S3
+    CheckStatus -->|"4 = Pending"| S4
+    CheckStatus -->|"6 = Final Testing"| S6
+
+    S1 & S2 & S3 & S4 & S6 --> Confirm
+    Confirm --> Valid
+    Valid -->|"No"| Error --> Confirm
+    Valid -->|"Yes"| UpdateDB --> SendEmail --> AutoTrigger
+    AutoTrigger -->|"Yes (→ Fixed or → Assigned)"| AutoRun --> End
+    AutoTrigger -->|"No"| End
+
+    style Start fill:#D0E8FF,stroke:#336699
+    style End   fill:#D0E8FF,stroke:#336699
+    style Error fill:#FFB6B6,stroke:#cc0000
