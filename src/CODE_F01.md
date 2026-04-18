@@ -171,10 +171,8 @@ FORM save_bug_detail.
     COMMIT WORK.
     " Set current bug id BEFORE saving long texts
     gv_current_bug_id = gs_bug_detail-bug_id.
-    " Save long text tabs (SAVE_TEXT buffers changes — needs explicit COMMIT)
+    " Save Description long text (SAVE_TEXT buffers changes — needs explicit COMMIT)
     PERFORM save_long_text USING 'Z001'.  " Description
-    PERFORM save_long_text USING 'Z002'.  " Dev Note
-    PERFORM save_long_text USING 'Z003'.  " Tester Note
     COMMIT WORK.                          " Flush SAVE_TEXT buffer to DB
 
     " Sync desc_text from editor after save_long_text
@@ -248,62 +246,6 @@ FORM save_desc_mini_to_workarea.
     ENDIF.
   ENDLOOP.
   gs_bug_detail-desc_text = lv_text.
-ENDFORM.
-
-*&=====================================================================*
-*& CAPTURE NOTE EDITORS TO BUFFERS
-*& Called: (a) on each tab switch (while source tab is still active),
-*&         (b) before SAVE (in case user presses SAVE while on note tab).
-*& Ensures save_long_text can use buffer as fallback on SAP GUI for Java
-*& where get_text_as_r3table may fail on inactive subscreens (Bug A fix).
-*&=====================================================================*
-FORM capture_note_editors.
-  DATA: lt_lines TYPE TABLE OF char255,
-        lv_text  TYPE string.
-
-  " --- Capture Dev Note editor (Subscreen 0330) ---
-  IF go_edit_dev_note IS NOT INITIAL.
-    CLEAR: lt_lines, lv_text.
-    cl_gui_cfw=>flush( ).
-    go_edit_dev_note->get_text_as_r3table(
-      IMPORTING table = lt_lines
-      EXCEPTIONS error_dp        = 1
-                 error_dp_create = 2
-                 OTHERS          = 3 ).
-    IF sy-subrc = 0.
-      LOOP AT lt_lines INTO DATA(lv_dl).
-        IF sy-tabix = 1.
-          lv_text = lv_dl.
-        ELSE.
-          lv_text = lv_text && cl_abap_char_utilities=>cr_lf && lv_dl.
-        ENDIF.
-      ENDLOOP.
-      gv_buf_devnote     = lv_text.
-      gv_buf_devnote_set = abap_true.
-    ENDIF.
-  ENDIF.
-
-  " --- Capture Tester Note editor (Subscreen 0340) ---
-  IF go_edit_tstr_note IS NOT INITIAL.
-    CLEAR: lt_lines, lv_text.
-    cl_gui_cfw=>flush( ).
-    go_edit_tstr_note->get_text_as_r3table(
-      IMPORTING table = lt_lines
-      EXCEPTIONS error_dp        = 1
-                 error_dp_create = 2
-                 OTHERS          = 3 ).
-    IF sy-subrc = 0.
-      LOOP AT lt_lines INTO DATA(lv_tl).
-        IF sy-tabix = 1.
-          lv_text = lv_tl.
-        ELSE.
-          lv_text = lv_text && cl_abap_char_utilities=>cr_lf && lv_tl.
-        ENDIF.
-      ENDLOOP.
-      gv_buf_tstnote     = lv_text.
-      gv_buf_tstnote_set = abap_true.
-    ENDIF.
-  ENDIF.
 ENDFORM.
 
 *&=== SAVE PROJECT DETAIL ===*
@@ -768,30 +710,6 @@ FORM cleanup_detail_editors.
     CLEAR go_cont_desc.
   ENDIF.
 
-  " --- Long Text: Dev Note (Subscreen 0330) ---
-  IF go_edit_dev_note IS NOT INITIAL.
-    go_edit_dev_note->free( ).
-    FREE go_edit_dev_note.
-    CLEAR go_edit_dev_note.
-  ENDIF.
-  IF go_cont_dev_note IS NOT INITIAL.
-    go_cont_dev_note->free( ).
-    FREE go_cont_dev_note.
-    CLEAR go_cont_dev_note.
-  ENDIF.
-
-  " --- Long Text: Tester Note (Subscreen 0340) ---
-  IF go_edit_tstr_note IS NOT INITIAL.
-    go_edit_tstr_note->free( ).
-    FREE go_edit_tstr_note.
-    CLEAR go_edit_tstr_note.
-  ENDIF.
-  IF go_cont_tstr_note IS NOT INITIAL.
-    go_cont_tstr_note->free( ).
-    FREE go_cont_tstr_note.
-    CLEAR go_cont_tstr_note.
-  ENDIF.
-
   " --- Evidence ALV (Subscreen 0350) ---
   IF go_alv_evidence IS NOT INITIAL.
     go_alv_evidence->free( ).
@@ -841,8 +759,6 @@ FORM cleanup_detail_editors.
   ENDIF.
 
   " --- Clear data-loaded flag so next bug triggers fresh DB load ---
-  " --- Clear note editor buffers (reset for next bug) ---
-  CLEAR: gv_buf_devnote, gv_buf_devnote_set, gv_buf_tstnote, gv_buf_tstnote_set.
   CLEAR gv_detail_loaded.
 ENDFORM.
 
@@ -1858,14 +1774,30 @@ FORM apply_status_transition.
       EXCEPTIONS OTHERS = 3 ).
   ENDIF.
 
-  " Save TRANS_NOTE → Dev Note (Z002) if → Rejected
+  " Copy TRANS_NOTE → Dev Note (DB field) if → Rejected
   IF gv_trans_new_status = gc_st_rejected AND lt_trans_note IS NOT INITIAL.
-    PERFORM save_long_text_direct USING 'Z002' lt_trans_note.
+    DATA: lv_dn_text TYPE string.
+    LOOP AT lt_trans_note INTO DATA(lv_dn_line).
+      IF lv_dn_text IS INITIAL.
+        lv_dn_text = lv_dn_line.
+      ELSE.
+        lv_dn_text = lv_dn_text && cl_abap_char_utilities=>cr_lf && lv_dn_line.
+      ENDIF.
+    ENDLOOP.
+    gs_bug_detail-dev_note = lv_dn_text.
   ENDIF.
 
-  " Save TRANS_NOTE → Tester Note (Z003) if FinalTesting → Resolved or → InProgress
+  " Copy TRANS_NOTE → Tester Note (DB field) if FinalTesting → Resolved or → InProgress
   IF gv_trans_cur_status = gc_st_finaltesting AND lt_trans_note IS NOT INITIAL.
-    PERFORM save_long_text_direct USING 'Z003' lt_trans_note.
+    DATA: lv_tn_text TYPE string.
+    LOOP AT lt_trans_note INTO DATA(lv_tn_line).
+      IF lv_tn_text IS INITIAL.
+        lv_tn_text = lv_tn_line.
+      ELSE.
+        lv_tn_text = lv_tn_text && cl_abap_char_utilities=>cr_lf && lv_tn_line.
+      ENDIF.
+    ENDLOOP.
+    gs_bug_detail-tester_note = lv_tn_text.
   ENDIF.
 
   " Update timestamps

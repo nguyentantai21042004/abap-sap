@@ -376,68 +376,6 @@ MODULE init_long_text_desc OUTPUT.
 ENDMODULE.
 
 *&=====================================================================*
-*& SUBSCREEN 0330: Dev Note Long Text (Text ID Z002)
-*& TRY-CATCH for container creation (prevents dump if CC missing)
-*&=====================================================================*
-MODULE init_long_text_devnote OUTPUT.
-  IF go_cont_dev_note IS INITIAL.
-    TRY.
-        CREATE OBJECT go_cont_dev_note EXPORTING container_name = 'CC_DEVNOTE'.
-        CREATE OBJECT go_edit_dev_note EXPORTING parent = go_cont_dev_note.
-        go_edit_dev_note->set_toolbar_mode( cl_gui_textedit=>false ).
-        go_edit_dev_note->set_statusbar_mode( cl_gui_textedit=>false ).
-      CATCH cx_root.
-        MESSAGE 'Cannot create Dev Note editor. Check Custom Control CC_DEVNOTE on screen 0330.'
-          TYPE 'S' DISPLAY LIKE 'W'.
-        RETURN.
-    ENDTRY.
-    " Load text from DB on first creation only
-    PERFORM load_long_text USING 'Z002'.
-  ENDIF.
-  " Readonly: Testers cannot edit Dev Notes; also readonly in display/closed/resolved
-  IF go_edit_dev_note IS NOT INITIAL.
-    IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
-       OR gs_bug_detail-status = gc_st_resolved
-       OR gv_role = 'T'.
-      go_edit_dev_note->set_readonly_mode( cl_gui_textedit=>true ).
-    ELSE.
-      go_edit_dev_note->set_readonly_mode( cl_gui_textedit=>false ).
-    ENDIF.
-  ENDIF.
-ENDMODULE.
-
-*&=====================================================================*
-*& SUBSCREEN 0340: Tester Note Long Text (Text ID Z003)
-*& TRY-CATCH for container creation (prevents dump if CC missing)
-*&=====================================================================*
-MODULE init_long_text_tstrnote OUTPUT.
-  IF go_cont_tstr_note IS INITIAL.
-    TRY.
-        CREATE OBJECT go_cont_tstr_note EXPORTING container_name = 'CC_TSTRNOTE'.
-        CREATE OBJECT go_edit_tstr_note EXPORTING parent = go_cont_tstr_note.
-        go_edit_tstr_note->set_toolbar_mode( cl_gui_textedit=>false ).
-        go_edit_tstr_note->set_statusbar_mode( cl_gui_textedit=>false ).
-      CATCH cx_root.
-        MESSAGE 'Cannot create Tester Note editor. Check Custom Control CC_TSTRNOTE on screen 0340.'
-          TYPE 'S' DISPLAY LIKE 'W'.
-        RETURN.
-    ENDTRY.
-    " Load text from DB on first creation only
-    PERFORM load_long_text USING 'Z003'.
-  ENDIF.
-  " Readonly: Devs cannot edit Tester Notes; also readonly in display/closed/resolved
-  IF go_edit_tstr_note IS NOT INITIAL.
-    IF gv_mode = gc_mode_display OR gs_bug_detail-status = gc_st_closed
-       OR gs_bug_detail-status = gc_st_resolved
-       OR gv_role = 'D'.
-      go_edit_tstr_note->set_readonly_mode( cl_gui_textedit=>true ).
-    ELSE.
-      go_edit_tstr_note->set_readonly_mode( cl_gui_textedit=>false ).
-    ENDIF.
-  ENDIF.
-ENDMODULE.
-
-*&=====================================================================*
 *& SUBSCREEN 0350: Evidence ALV (attachment list)
 *&=====================================================================*
 MODULE init_evidence_alv OUTPUT.

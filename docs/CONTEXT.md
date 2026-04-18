@@ -1,6 +1,6 @@
 # CONTEXT & STATUS — Z_BUG_WORKSPACE_MP
 
-> **Cập nhật lần cuối:** 16/04/2026 (F10 CODE v5.0 COMPLETE — verified by agent)
+> **Cập nhật lần cuối:** 18/04/2026 (Bug #1 + #2 fixes applied to code files — pending SAP deployment)
 > **Mục đích:** File này dùng để handoff giữa các agent/session. Đọc file này trước khi làm bất cứ thứ gì với dự án.
 
 ---
@@ -362,12 +362,22 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 | 2 | CODE_F02 f4_date references gs_prj_detail instead of gs_project | Fix variable name |
 | 3-13 | 11 UAT bugs | Analyzed in `docs/v5-bug-analysis.md`, fixes in Phase F |
 
+### UAT Bug Fixes Applied to Code (post-deployment):
+
+| # | Bug | Root Cause | Fix Applied | SAP Deploy Status |
+|---|-----|-----------|-------------|-------------------|
+| B1 | Screen 0410 PBO missing `init_user_role` → Manager sees extra projects after BACK | `gv_role = ''` on BACK from 0400 | `screens/screen-0410-project-search.md` updated (SE51 Screen 0410 PBO: add `MODULE init_user_role.`) | ⏳ User must apply in SE51 |
+| B2a | Dev Note / Tester Note not saving — `SAVE_TEXT` never called on SAP GUI for Java | `get_text_as_r3table()` fails in host screen PAI on SAP GUI Java | `CODE_PAI.md`: Added `MODULE capture_devnote_content` + `capture_tstnote_content` (PAI of subscreens 0330/0340). `screen-0300-bug-detail.md` sections 4.2 + 5.2 updated | ⏳ User must: (1) paste Z_BUG_WS_PAI, (2) add modules to SE51 screens 0330/0340 PAI |
+| B2b | `desc_text` (description) not persisted to DB after save | `UPDATE zbug_tracker` missing — field only updated in memory | `CODE_F01.md` lines 197-199: `UPDATE zbug_tracker SET desc_text = ...` added in `save_bug_detail` | ⏳ User must paste Z_BUG_WS_F01 |
+
 ### Open Issues:
 
 | # | Issue | Severity | Notes |
 |---|-------|----------|-------|
 | 1 | ZBUG_EVIDENCE table chưa tạo trong SAP | HIGH | Guide ready: `database/zbug-evidence.md` |
 | 2 | Status migration `6` → `V` chưa chạy | HIGH | Script in Phase F1.3 |
+| 3 | SE75 Text IDs Z001/Z002/Z003: Text Format must be BLANK | HIGH | Must be blank — NOT `*`. Verify before testing note saves |
+| 4 | Manager authorization: Can Manager A edit/delete Manager B's project? | LOW | Design decision not yet made — `delete_project` + `save_project_detail` do not check ownership |
 
 ---
 
@@ -385,9 +395,83 @@ All 6 CODE files v4.2 COMPLETE + all UI guides UPDATED. Deployed to SAP.
 
 ## 10. NEXT STEPS
 
-> **F10 CODE v5.0 ĐÃ HOÀN THÀNH.** Tất cả 6 file trong `src/` đã là v5.0. Bước tiếp theo là deploy lên SAP.
+> **STATUS (18/04/2026):** All 6 code files in `src/` are v5.0 + bug fixes. Ready to deploy.
+> **User needs to complete SAP-side actions below before testing.**
+
+### ⚠️ IMMEDIATE: Apply Bug Fixes in SAP (User Action Required)
+
+These must be done FIRST (before continuing with F11):
+
+#### 1. SE75 — Verify Text IDs Z001/Z002/Z003
+
+| Action | Detail |
+|--------|--------|
+| SE75 → Text Object `ZBUG` → Text ID Z001/Z002/Z003 | **Text Format field MUST be BLANK** (not `*`) |
+| If wrong → change to blank → Save → Activate | `*` is an ABAP paragraph format code, not a valid Text Format value |
+
+#### 2. SE51 Screen 0310 — Bug Info (verify only)
+
+| Action | Detail |
+|--------|--------|
+| Layout: verify `CC_DESC_MINI` custom control exists | Name must be exactly `CC_DESC_MINI` |
+| Layout: verify `GS_BUG_DETAIL-DESC_TEXT` is NOT on layout | STRING type cannot be on screen (causes short dump) |
+
+#### 3. SE51 Screen 0330 — Dev Note (add PAI module)
+
+Open SE51 → Screen 0330 → **Flow Logic** → change PAI to:
+
+```abap
+PROCESS AFTER INPUT.
+  MODULE capture_devnote_content.
+```
+
+Save + Activate.
+
+#### 4. SE51 Screen 0340 — Tester Note (add PAI module)
+
+Open SE51 → Screen 0340 → **Flow Logic** → change PAI to:
+
+```abap
+PROCESS AFTER INPUT.
+  MODULE capture_tstnote_content.
+```
+
+Save + Activate.
+
+#### 5. SE51 Screen 0410 — Project Search (add PBO module)
+
+Open SE51 → Screen 0410 → **Flow Logic** → verify PBO starts with:
+
+```abap
+PROCESS BEFORE OUTPUT.
+  MODULE init_user_role.
+  MODULE status_0410.
+  ...
+```
+
+If `MODULE init_user_role.` is missing → add it as **first line** of PBO. Save + Activate.
+
+#### 6. Copy Updated Code Includes into SAP
+
+| File | SAP Include | Changes |
+|------|------------|---------|
+| `src/CODE_PAI.md` | `Z_BUG_WS_PAI` | + `capture_devnote_content` module (lines 240-263) + `capture_tstnote_content` module (lines 269-292) |
+| `src/CODE_F01.md` | `Z_BUG_WS_F01` | + `UPDATE zbug_tracker SET desc_text` in `save_bug_detail` (lines 197-199) |
+
+Paste each include → Activate.
+
+#### 7. Test Note Saving
+
+1. Log in as DEV-061 (Developer role)
+2. Open any bug → Change mode → Dev Note tab → type some text → Save
+3. BACK → open same bug again → Dev Note tab → verify text is present
+4. Check `SE16N → STXH` table: should have a record with `TDID = 'Z002'`
+
+---
 
 ### Step F11 — Tạo 4 Screens mới trong SE51 (USER THỰC HIỆN)
+
+> ⚠️ Do AFTER applying bug fixes above (Steps 1-7). Screen 0410 already exists — only 0370, 0210, 0220 are new.
 
 Thứ tự khuyến nghị:
 
@@ -466,4 +550,4 @@ Dùng `tests/qc-test-plan.md` (~140 cases) + `tests/uat-happy-case.md` (43 cases
 
 ---
 
-*File này được tạo và cập nhật bởi OpenCode agent. Cập nhật lần cuối: 16/04/2026 (F10 COMPLETE — F11 là bước tiếp theo).*
+*File này được tạo và cập nhật bởi OpenCode agent. Cập nhật lần cuối: 18/04/2026 (Bug #1 + #2 fixes in code files — pending user SAP actions: Steps 1-7 above before continuing F11).*

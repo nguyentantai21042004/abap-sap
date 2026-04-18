@@ -159,10 +159,6 @@ MODULE user_command_0300 INPUT.
         MESSAGE 'Switch to Change mode before saving.' TYPE 'W'.
         RETURN.
       ENDIF.
-      " Capture note editors to buffers before save
-      " (fallback for SAP GUI for Java where inactive subscreen editors may fail)
-      PERFORM capture_note_editors.
-      " Save description mini editor content to gs_bug_detail-desc_text
       PERFORM save_desc_mini_to_workarea.
       PERFORM save_bug_detail.
 
@@ -203,29 +199,22 @@ MODULE user_command_0300 INPUT.
     WHEN 'SENDMAIL'.
       PERFORM send_mail_notification.
     " ---- Tab switching ----
-    " Capture note editors before each switch (source tab still active in PAI)
     WHEN 'TAB_INFO'.
-      PERFORM capture_note_editors.
       gv_active_subscreen = '0310'.
       gv_active_tab       = 'TAB_INFO'.
     WHEN 'TAB_DESC'.
-      PERFORM capture_note_editors.
       gv_active_subscreen = '0320'.
       gv_active_tab       = 'TAB_DESC'.
     WHEN 'TAB_DEVNOTE'.
-      PERFORM capture_note_editors.
       gv_active_subscreen = '0330'.
       gv_active_tab       = 'TAB_DEVNOTE'.
     WHEN 'TAB_TSTR_NOTE'.
-      PERFORM capture_note_editors.
       gv_active_subscreen = '0340'.
       gv_active_tab       = 'TAB_TSTR_NOTE'.
     WHEN 'TAB_EVIDENCE'.
-      PERFORM capture_note_editors.
       gv_active_subscreen = '0350'.
       gv_active_tab       = 'TAB_EVIDENCE'.
     WHEN 'TAB_HISTORY'.
-      PERFORM capture_note_editors.
       gv_active_subscreen = '0360'.
       gv_active_tab       = 'TAB_HISTORY'.
   ENDCASE.

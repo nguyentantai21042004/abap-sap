@@ -82,13 +82,9 @@ DATA: go_cont_evidence TYPE REF TO cl_gui_custom_container,
 DATA: go_cont_search TYPE REF TO cl_gui_custom_container,
       go_search_alv  TYPE REF TO cl_gui_alv_grid.
 
-" === TEXT EDIT OBJECTS (subscreens 0320/0330/0340) ===
-DATA: go_cont_desc      TYPE REF TO cl_gui_custom_container,
-      go_edit_desc      TYPE REF TO cl_gui_textedit,
-      go_cont_dev_note  TYPE REF TO cl_gui_custom_container,
-      go_edit_dev_note  TYPE REF TO cl_gui_textedit,
-      go_cont_tstr_note TYPE REF TO cl_gui_custom_container,
-      go_edit_tstr_note TYPE REF TO cl_gui_textedit.
+" === TEXT EDIT OBJECTS (subscreen 0320 only — Dev/Tester Note use DB CHAR fields) ===
+DATA: go_cont_desc TYPE REF TO cl_gui_custom_container,
+      go_edit_desc TYPE REF TO cl_gui_textedit.
 
 " === DESCRIPTION MINI EDITOR (on Subscreen 0310 — Bug Info tab) ===
 DATA: go_desc_mini_cont TYPE REF TO cl_gui_custom_container,
@@ -256,11 +252,3 @@ DATA: gm_excl     TYPE TABLE OF sy-ucomm,  " Reused by all status_XXXX modules
       gm_layo_prj TYPE lvc_s_layo,
       gm_title    TYPE string.
 
-" === NOTE EDITOR BUFFERS (Screen 0300 subscreens 0330/0340) ===
-" Captures editor text on each tab switch so save_long_text can use it as
-" fallback on SAP GUI for Java where get_text_as_r3table may fail on inactive subscreens.
-" gv_buf_*_set = abap_true means the buffer was explicitly captured (even if empty).
-DATA: gv_buf_devnote     TYPE string,
-      gv_buf_devnote_set TYPE abap_bool,
-      gv_buf_tstnote     TYPE string,
-      gv_buf_tstnote_set TYPE abap_bool.

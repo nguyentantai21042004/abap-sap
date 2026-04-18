@@ -471,8 +471,9 @@ ENDFORM.
 *&=====================================================================*
 
 *&=== LONG TEXT: LOAD (Text Object ZBUG) ===*
-*& pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
-*& Editor is resolved internally from global objects (go_edit_desc/dev_note/tstr_note)
+*& pv_text_id: 'Z001' = Description (only)
+*& Dev Note and Tester Note are now CHAR fields on ZBUG_TRACKER — no textedit needed.
+*& Editor is resolved internally from global object go_edit_desc.
 *&
 *& Explicit lv_tdname TYPE tdobname cast to prevent CALL_FUNCTION_CONFLICT_TYPE:
 *& gv_current_bug_id is CHAR 10, but READ_TEXT NAME expects TDOBNAME = CHAR 70.
@@ -483,8 +484,6 @@ FORM load_long_text USING pv_text_id TYPE thead-tdid.
   DATA: lr_editor TYPE REF TO cl_gui_textedit.
   CASE pv_text_id.
     WHEN 'Z001'. lr_editor = go_edit_desc.
-    WHEN 'Z002'. lr_editor = go_edit_dev_note.
-    WHEN 'Z003'. lr_editor = go_edit_tstr_note.
   ENDCASE.
   CHECK lr_editor IS NOT INITIAL.
 
@@ -520,10 +519,9 @@ FORM load_long_text USING pv_text_id TYPE thead-tdid.
 ENDFORM.
 
 *&=== LONG TEXT: SAVE (Text Object ZBUG) ===*
-*& pv_text_id: 'Z001' = Description, 'Z002' = Dev Note, 'Z003' = Tester Note
-*& Editor is resolved internally. Caller must set gv_current_bug_id before calling.
-*& For Z002/Z003: falls back to gv_buf_devnote/gv_buf_tstnote when editor is on
-*& an inactive subscreen (SAP GUI for Java — get_text_as_r3table fails there).
+*& pv_text_id: 'Z001' = Description (only)
+*& Dev Note and Tester Note are now CHAR fields on ZBUG_TRACKER — saved via UPDATE.
+*& Caller must set gv_current_bug_id before calling.
 *&
 *& Explicit lv_tdname TYPE tdobname cast for SAVE_TEXT (same reason as load_long_text).
 FORM save_long_text USING pv_text_id TYPE thead-tdid.
@@ -540,15 +538,13 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
       ELSE.
         lr_editor = go_desc_mini_edit.
       ENDIF.
-    WHEN 'Z002'. lr_editor = go_edit_dev_note.
-    WHEN 'Z003'. lr_editor = go_edit_tstr_note.
   ENDCASE.
 
   DATA: lt_text  TYPE TABLE OF char255,
         lt_lines TYPE TABLE OF tline,
         ls_line  TYPE tline.
 
-  " Try to read text from editor (may fail on SAP GUI for Java if subscreen inactive)
+  " Try to read text from editor
   IF lr_editor IS NOT INITIAL.
     cl_gui_cfw=>flush( ).
     lr_editor->get_text_as_r3table(
@@ -558,32 +554,8 @@ FORM save_long_text USING pv_text_id TYPE thead-tdid.
                  OTHERS          = 3 ).
   ENDIF.
 
-  " Fallback for Dev/Tester Note: use captured buffer when editor is unavailable
-  " or get_text_as_r3table failed (inactive subscreen on SAP GUI for Java).
   IF lr_editor IS INITIAL OR sy-subrc <> 0.
-    CASE pv_text_id.
-      WHEN 'Z002'.
-        IF gv_buf_devnote_set = abap_true.
-          CLEAR lt_text.
-          IF gv_buf_devnote IS NOT INITIAL.
-            SPLIT gv_buf_devnote AT cl_abap_char_utilities=>cr_lf INTO TABLE lt_text.
-          ENDIF.
-          " lt_text empty → SAVE_TEXT clears DB text (correct when user cleared note)
-        ELSE.
-          RETURN.  " User never visited Dev Note tab — preserve existing DB text
-        ENDIF.
-      WHEN 'Z003'.
-        IF gv_buf_tstnote_set = abap_true.
-          CLEAR lt_text.
-          IF gv_buf_tstnote IS NOT INITIAL.
-            SPLIT gv_buf_tstnote AT cl_abap_char_utilities=>cr_lf INTO TABLE lt_text.
-          ENDIF.
-        ELSE.
-          RETURN.  " User never visited Tester Note tab — preserve existing DB text
-        ENDIF.
-      WHEN OTHERS.
-        RETURN.  " Z001 with no editor — skip
-    ENDCASE.
+    RETURN.
   ENDIF.
 
   LOOP AT lt_text INTO DATA(lv_line).
