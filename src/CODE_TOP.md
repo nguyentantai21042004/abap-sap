@@ -82,13 +82,7 @@ DATA: go_cont_evidence TYPE REF TO cl_gui_custom_container,
 DATA: go_cont_search TYPE REF TO cl_gui_custom_container,
       go_search_alv  TYPE REF TO cl_gui_alv_grid.
 
-" === TEXT EDIT OBJECTS (subscreen 0320 only — Dev/Tester Note use DB CHAR fields) ===
-DATA: go_cont_desc TYPE REF TO cl_gui_custom_container,
-      go_edit_desc TYPE REF TO cl_gui_textedit.
-
-" === DESCRIPTION MINI EDITOR (on Subscreen 0310 — Bug Info tab) ===
-DATA: go_desc_mini_cont TYPE REF TO cl_gui_custom_container,
-      go_desc_mini_edit TYPE REF TO cl_gui_textedit.
+" === TEXT EDIT OBJECTS (Screen 0370 trans_note only — Description/Dev/Tester Note use DB CHAR fields) ===
 
 " === TRANSITION NOTE EDITOR (Screen 0370 popup) ===
 DATA: go_cont_trans_note TYPE REF TO cl_gui_custom_container,

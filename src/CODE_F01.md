@@ -169,35 +169,7 @@ FORM save_bug_detail.
 
   IF sy-subrc = 0.
     COMMIT WORK.
-    " Set current bug id BEFORE saving long texts
     gv_current_bug_id = gs_bug_detail-bug_id.
-    " Save Description long text (SAVE_TEXT buffers changes — needs explicit COMMIT)
-    PERFORM save_long_text USING 'Z001'.  " Description
-    COMMIT WORK.                          " Flush SAVE_TEXT buffer to DB
-
-    " Sync desc_text from editor after save_long_text
-    IF go_edit_desc IS NOT INITIAL.
-      DATA: lt_desc_sync TYPE TABLE OF char255.
-      cl_gui_cfw=>flush( ).
-      go_edit_desc->get_text_as_r3table(
-        IMPORTING table = lt_desc_sync
-        EXCEPTIONS OTHERS = 3 ).
-      IF sy-subrc = 0.
-        CLEAR gs_bug_detail-desc_text.
-        LOOP AT lt_desc_sync INTO DATA(lv_sync_line).
-          IF gs_bug_detail-desc_text IS NOT INITIAL.
-            gs_bug_detail-desc_text = gs_bug_detail-desc_text
-              && cl_abap_char_utilities=>cr_lf && lv_sync_line.
-          ELSE.
-            gs_bug_detail-desc_text = lv_sync_line.
-          ENDIF.
-        ENDLOOP.
-        " Persist synced desc_text to DB (Bug #2 fix — desc_text was only updated in memory)
-        UPDATE zbug_tracker SET desc_text = @gs_bug_detail-desc_text
-          WHERE bug_id = @gs_bug_detail-bug_id.
-      ENDIF.
-    ENDIF.
-
     MESSAGE |Bug { gs_bug_detail-bug_id } saved successfully.| TYPE 'S'.
 
     " Trigger auto-assign developer after creating new bug
@@ -212,40 +184,6 @@ FORM save_bug_detail.
     ROLLBACK WORK.
     MESSAGE 'Save failed. Please check required fields.' TYPE 'S' DISPLAY LIKE 'E'.
   ENDIF.
-ENDFORM.
-
-*&=== SAVE DESCRIPTION MINI EDITOR → WORK AREA ===*
-" Called before save_bug_detail — reads mini editor text into gs_bug_detail-desc_text
-FORM save_desc_mini_to_workarea.
-  CHECK go_desc_mini_edit IS NOT INITIAL.
-  DATA: lt_mini TYPE TABLE OF char255,
-        lv_text TYPE string.
-
-  " Flush GUI control data before reading
-  " Without flush, CL_GUI_TEXTEDIT raises POTENTIAL_DATA_LOSS
-  cl_gui_cfw=>flush( ).
-
-  go_desc_mini_edit->get_text_as_r3table(
-    IMPORTING table = lt_mini
-    EXCEPTIONS error_dp        = 1
-               error_dp_create = 2
-               OTHERS          = 3 ).
-  IF sy-subrc <> 0.
-    " Silently return — control may not be ready yet (no user-facing warning)
-    RETURN.
-  ENDIF.
-
-  " Concatenate lines without inserting extra line breaks
-  " get_text_as_r3table splits at 255 chars — join with space to preserve long text
-  CLEAR lv_text.
-  LOOP AT lt_mini INTO DATA(lv_line).
-    IF sy-tabix = 1.
-      lv_text = lv_line.
-    ELSE.
-      lv_text = lv_text && lv_line.
-    ENDIF.
-  ENDLOOP.
-  gs_bug_detail-desc_text = lv_text.
 ENDFORM.
 
 *&=== SAVE PROJECT DETAIL ===*
@@ -686,30 +624,6 @@ ENDFORM.
 *& Also cleans up Screen 0370 (trans_note) + Screen 0220 (search ALV)
 *&=====================================================================*
 FORM cleanup_detail_editors.
-  " --- Mini description editor (Subscreen 0310) ---
-  IF go_desc_mini_edit IS NOT INITIAL.
-    go_desc_mini_edit->free( ).
-    FREE go_desc_mini_edit.
-    CLEAR go_desc_mini_edit.
-  ENDIF.
-  IF go_desc_mini_cont IS NOT INITIAL.
-    go_desc_mini_cont->free( ).
-    FREE go_desc_mini_cont.
-    CLEAR go_desc_mini_cont.
-  ENDIF.
-
-  " --- Long Text: Description (Subscreen 0320) ---
-  IF go_edit_desc IS NOT INITIAL.
-    go_edit_desc->free( ).
-    FREE go_edit_desc.
-    CLEAR go_edit_desc.
-  ENDIF.
-  IF go_cont_desc IS NOT INITIAL.
-    go_cont_desc->free( ).
-    FREE go_cont_desc.
-    CLEAR go_cont_desc.
-  ENDIF.
-
   " --- Evidence ALV (Subscreen 0350) ---
   IF go_alv_evidence IS NOT INITIAL.
     go_alv_evidence->free( ).
@@ -800,7 +714,6 @@ FORM upload_evidence USING pv_att_field TYPE char3.
   IF gv_current_bug_id IS INITIAL.
     IF gv_mode = gc_mode_create.
       " Auto-validate and save the bug (generates bug_id, switches to Change mode)
-      PERFORM save_desc_mini_to_workarea.
       PERFORM save_bug_detail.
       IF gv_current_bug_id IS INITIAL.
         " Save failed — validation errors already shown via TYPE 'S' DISPLAY LIKE 'E'
@@ -1147,9 +1060,6 @@ ENDFORM.
 *&=====================================================================*
 FORM check_unsaved_bug CHANGING pv_continue TYPE abap_bool.
   pv_continue = abap_true.
-
-  " Sync mini editor text to work area for accurate comparison
-  PERFORM save_desc_mini_to_workarea.
 
   " Compare current state with snapshot
   IF gs_bug_detail = gs_bug_snapshot.

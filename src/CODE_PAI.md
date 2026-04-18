@@ -159,7 +159,6 @@ MODULE user_command_0300 INPUT.
         MESSAGE 'Switch to Change mode before saving.' TYPE 'W'.
         RETURN.
       ENDIF.
-      PERFORM save_desc_mini_to_workarea.
       PERFORM save_bug_detail.
 
     " STATUS_CHG opens popup Screen 0370 (replaces old change_bug_status)

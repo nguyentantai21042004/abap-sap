@@ -311,14 +311,7 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 | `Assignment` | TESTER_ID, DEV_ID, VERIFY_TESTER_ID, CREATED_AT |
 | `Description` | CC_DESC_MINI (custom control) |
 
-### Bước 5: Thêm Description Mini Editor (Custom Control)
-
-1. Menu → Edit → Create Element → **Custom Control**
-2. Vẽ hình chữ nhật ở **phần dưới** screen (~60 chars wide x **8-10 lines high** — Bug 2 fix)
-3. Name: **`CC_DESC_MINI`**
-   - ⚠️ Khớp code: `container_name = 'CC_DESC_MINI'` (CODE_PBO.md line 267)
-
-### Bước 6: Đổi Label Text (optional — cho đẹp)
+### Bước 5: Đổi Label Text (optional — cho đẹp)
 
 Double-click label → sửa text:
 - BUG_ID → `Bug ID`
@@ -484,43 +477,46 @@ Double-click label → sửa text:
 
 ---
 
-# PHẦN 3: SUBSCREEN 0320 — Description (Long Text Z001)
+# PHẦN 3: SUBSCREEN 0320 — Description (DB CHAR field — v5.2)
+
+> **v5.2 REDESIGN:** Bỏ hoàn toàn `cl_gui_textedit` + STXH cho Description.
+> Description giờ là field `DESC_NOTE CHAR 255` trên bảng `ZBUG_TRACKER`.
+> SAP screen transport tự đọc/ghi — không cần editor, không cần PBO/PAI modules.
 
 ## 3.1 Tạo Screen
 
 1. SE80 → Create Screen → **`0320`**
-2. Short Description: `Description Long Text`
+2. Short Description: `Description`
 3. Screen Type: **Subscreen**
 
 ## 3.2 Flow Logic
 
-> ⚠️ **v3.0 CHANGE:** Không còn empty — có PBO module!
-
 ```abap
 PROCESS BEFORE OUTPUT.
-  MODULE init_long_text_desc.
 
 PROCESS AFTER INPUT.
 ```
 
-> Module `init_long_text_desc` (CODE_PBO.md line 293) tạo editor lazily + load text từ DB lần đầu.
+> Empty flow logic — không có `MODULE init_long_text_desc.`
 
 ## 3.3 Layout
 
-1. Vẽ **Custom Control** chiếm **toàn bộ** subscreen area
-2. Name: **`CC_DESC`**
-   - ⚠️ Khớp code: `container_name = 'CC_DESC'` (CODE_PBO.md line 295)
+1. Vẽ **Input/Output field** cho `GS_BUG_DETAIL-DESC_NOTE`:
+   - **Field Name:** `GS_BUG_DETAIL-DESC_NOTE`
+   - **Vis. Length:** `120`
+   - **Scroll Lines:** `15` (multi-line text field)
+   - **Group1:** `EDT`
+2. Thêm label `Description:` phía trên field
 
 ### Layout Preview:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ┌─── CC_DESC ──────────────────────────────────────────────┐ │
+│ Description:                                                 │
+│ ┌──────────────────────────────────────────────────────────┐ │
 │ │                                                          │ │
-│ │  (cl_gui_textedit — full description editor)             │ │
-│ │  Text ID Z001 — Object ZBUG                              │ │
-│ │                                                          │ │
-│ │                                                          │ │
+│ │  GS_BUG_DETAIL-DESC_NOTE                                 │ │
+│ │  (CHAR 255, multi-line, Group1=EDT)                      │ │
 │ │                                                          │ │
 │ └──────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
@@ -533,7 +529,7 @@ PROCESS AFTER INPUT.
 # PHẦN 4: SUBSCREEN 0330 — Dev Note (DB CHAR field — v5.2)
 
 > **v5.2 REDESIGN:** Bỏ hoàn toàn `cl_gui_textedit` + STXH cho Dev Note.
-> Dev Note giờ là field `DEV_NOTE CHAR 2000` trên bảng `ZBUG_TRACKER`.
+> Dev Note giờ là field `DEV_NOTE CHAR 255` trên bảng `ZBUG_TRACKER`.
 > SAP screen transport tự đọc/ghi — không cần editor, không cần PBO/PAI modules.
 
 ## 4.1 Tạo Screen
@@ -570,7 +566,7 @@ PROCESS AFTER INPUT.
 │ ┌──────────────────────────────────────────────────────────┐ │
 │ │                                                          │ │
 │ │  GS_BUG_DETAIL-DEV_NOTE                                  │ │
-│ │  (CHAR 2000, multi-line, Group1=DEV)                     │ │
+│ │  (CHAR 255, multi-line, Group1=DEV)                      │ │
 │ │  Readonly for Testers                                    │ │
 │ │                                                          │ │
 │ └──────────────────────────────────────────────────────────┘ │
@@ -587,7 +583,7 @@ PROCESS AFTER INPUT.
 # PHẦN 5: SUBSCREEN 0340 — Tester Note (DB CHAR field — v5.2)
 
 > **v5.2 REDESIGN:** Bỏ hoàn toàn `cl_gui_textedit` + STXH cho Tester Note.
-> Tester Note giờ là field `TESTER_NOTE CHAR 2000` trên bảng `ZBUG_TRACKER`.
+> Tester Note giờ là field `TESTER_NOTE CHAR 255` trên bảng `ZBUG_TRACKER`.
 > SAP screen transport tự đọc/ghi — không cần editor, không cần PBO/PAI modules.
 
 ## 5.1 Tạo Screen
@@ -624,7 +620,7 @@ PROCESS AFTER INPUT.
 │ ┌──────────────────────────────────────────────────────────┐ │
 │ │                                                          │ │
 │ │  GS_BUG_DETAIL-TESTER_NOTE                               │ │
-│ │  (CHAR 2000, multi-line, Group1=TST)                     │ │
+│ │  (CHAR 255, multi-line, Group1=TST)                      │ │
 │ │  Readonly for Developers                                 │ │
 │ │                                                          │ │
 │ └──────────────────────────────────────────────────────────┘ │
