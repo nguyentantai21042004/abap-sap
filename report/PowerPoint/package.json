@@ -1,0 +1,15 @@
+{
+  "name": "workshop-slides",
+  "version": "1.0.0",
+  "description": "Marp slides with Workshop Template theme",
+  "scripts": {
+    "dev": "marp presentation.md --watch --theme-set workshop-theme.css",
+    "build:html": "marp presentation.md --html --theme-set workshop-theme.css -o output/presentation.html",
+    "build:pdf": "marp presentation.md --pdf --theme-set workshop-theme.css -o output/presentation.pdf",
+    "build:pptx": "marp presentation.md --pptx --theme-set workshop-theme.css -o output/presentation.pptx",
+    "build": "npm run build:html && npm run build:pptx"
+  },
+  "devDependencies": {
+    "@marp-team/marp-cli": "^3.4.0"
+  }
+}

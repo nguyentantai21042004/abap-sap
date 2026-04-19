@@ -1,0 +1,62 @@
+%% Package Diagram — ZBUGTRACK (SAP Development Package)
+
+flowchart TD
+    PKG(["Package: ZBUGTRACK"])
+
+    PKG --> MP
+    PKG --> FG
+    PKG --> TABLES
+    PKG --> DOM
+    PKG --> SF
+    PKG --> SUPP
+
+    subgraph MP["Program: Z_BUG_WORKSPACE_MP (Module Pool, Type M)"]
+        TOP["Z_BUG_WS_TOP\nGlobal declarations, constants, ALV objects"]
+        F00["Z_BUG_WS_F00\nALV field catalog + LCL_EVENT_HANDLER class"]
+        PBO["Z_BUG_WS_PBO\nProcess Before Output — all 9 screens"]
+        PAI["Z_BUG_WS_PAI\nProcess After Input — all fcode handlers"]
+        F01["Z_BUG_WS_F01\nBusiness logic FORMs"]
+        F02["Z_BUG_WS_F02\nHelper FORMs: F4, long text, popup, templates"]
+    end
+
+    subgraph FG["Function Group: ZBUG_FG"]
+        FM1["Z_BUG_CREATE"]
+        FM2["Z_BUG_AUTO_ASSIGN"]
+        FM3["Z_BUG_UPDATE_STATUS"]
+        FM4["Z_BUG_CHECK_PERMISSION"]
+        FM5["Z_BUG_LOG_HISTORY"]
+        FM6["Z_BUG_SEND_EMAIL"]
+        FM7["Z_BUG_UPLOAD_ATTACHMENT"]
+        FM8["Z_BUG_REASSIGN"]
+        FM9["Z_BUG_GET_STATISTICS"]
+    end
+
+    subgraph TABLES["Database Tables"]
+        T1["ZBUG_TRACKER (29 fields)"]
+        T2["ZBUG_PROJECT (16 fields)"]
+        T3["ZBUG_USERS (12 fields)"]
+        T4["ZBUG_USER_PROJEC (10 fields)"]
+        T5["ZBUG_HISTORY (10 fields)"]
+        T6["ZBUG_EVIDENCE (11 fields)"]
+    end
+
+    subgraph DOM["Domains / Data Elements"]
+        D1["ZDE_BUG_STATUS (CHAR 20)"]
+        D2["ZDE_PRIORITY (CHAR 1)"]
+        D3["ZDE_BUG_TYPE (CHAR 1)"]
+        D4["ZDE_SEVERITY (CHAR 1)"]
+        D5["ZDE_USERNAME (CHAR 12)"]
+        D6["ZDE_PROJECT_ID (CHAR 20)"]
+    end
+
+    subgraph SF["SmartForms + Message Class"]
+        SF1["ZBUG_FORM (Bug Detail PDF)"]
+        SF2["ZBUG_EMAIL_FORM (Email HTML)"]
+        MSG["ZBUG_MSG (Message Class)"]
+    end
+
+    subgraph SUPP["Supporting Objects"]
+        NR["ZNRO_BUG (Number Range)"]
+        TX["ZBUG_NOTE (Text Object: Z001/Z002/Z003)"]
+        SMW["SMW0: ZBT_TMPL_01 / ZBT_TMPL_02 / ZBT_TMPL_03"]
+    end

@@ -1,6 +1,6 @@
 # UI Guide: Screen 0500 — Project Detail + Table Control
 
-> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v4.0 → v4.1 BUGFIX
+> **Program:** `Z_BUG_WORKSPACE_MP` | **Version:** v5.0 (Bug C Fix)
 > **Screen quản lý Project — có Table Control TC_USERS cho user assignment**
 >
 > v4.0 changes: +POV modules for F4 Calendar popup on START_DATE, END_DATE
@@ -9,6 +9,12 @@
 > - TC_USERS: emphasized "With Column Headers" checkbox (Bug #1/#3)
 > - Added POV for PROJECT_STATUS and PROJECT_MANAGER (Bug #1)
 > - status_0500: exclude ADD_USER/REMO_USR in Create mode (Bug #1)
+>
+> v5.0 Bug C Fix:
+> - Removed `init_prj_editors` module entirely (CL_GUI_TEXTEDIT caused blank Description/Note)
+> - Description and Note use plain I/O fields (GS_PROJECT-DESCRIPTION, GS_PROJECT-NOTE)
+> - `modify_screen_0500` no longer hides Description/Note I/O fields
+> - No Custom Controls needed on this screen for Description/Note
 
 ---
 
@@ -28,15 +34,12 @@
 
 ## 2. Flow Logic
 
-> ⚠️ **v5.0 ROUND3 CHANGE:** Thêm module `init_prj_editors` + removed `ON CHAIN-REQUEST` from tc_users_modify
-
 ```abap
 PROCESS BEFORE OUTPUT.
   MODULE status_0500.
   MODULE init_project_detail.
   MODULE compute_prj_display_texts.
   MODULE modify_screen_0500.
-  MODULE init_prj_editors.
   LOOP AT gt_user_project INTO gs_user_project WITH CONTROL tc_users.
   ENDLOOP.
 
@@ -72,11 +75,10 @@ PROCESS ON VALUE-REQUEST.
 | `status_0500` | PBO | SET PF-STATUS (exclude buttons cho non-Manager + Display), SET TITLEBAR |
 | `init_project_detail` | PBO | Load project data từ DB (1 lần — `gv_prj_detail_loaded` flag) |
 | `compute_prj_display_texts` | PBO | Map project_status code → display text |
-| `modify_screen_0500` | PBO | Enable/disable EDT fields theo mode + role. **v5.0 R3:** Also hides old Description/Note I/O fields |
-| `init_prj_editors` | PBO | **v5.0 R3 NEW** — Create CL_GUI_TEXTEDIT editors for Description (CC_PRJ_DESC) and Note (CC_PRJ_NOTE) |
+| `modify_screen_0500` | PBO | Enable/disable EDT fields theo mode + role |
 | `LOOP AT ... WITH CONTROL tc_users` | PBO | Populate Table Control từ `gt_user_project` |
-| `LOOP AT ... MODULE tc_users_modify` | PAI | **v5.0 R3 CHANGED:** Removed `ON CHAIN-REQUEST` — sync every PBO |
-| `user_command_0500` | PAI | Handle: SAVE, ADD_USER, REMO_USR, BACK/EXIT. **v5.0 R3:** BACK/EXIT calls `cleanup_prj_editors` |
+| `LOOP AT ... MODULE tc_users_modify` | PAI | Sync Table Control changes back to `gt_user_project` |
+| `user_command_0500` | PAI | Handle: SAVE, ADD_USER, REMO_USR, BACK/EXIT |
 | `f4_prj_startdate` | PAI (POV) | **v4.0** — F4 Calendar popup cho START_DATE → `PERFORM f4_date USING 'PRJ_START_DATE'` |
 | `f4_prj_enddate` | PAI (POV) | **v4.0** — F4 Calendar popup cho END_DATE → `PERFORM f4_date USING 'PRJ_END_DATE'` |
 | `f4_prj_status` | PAI (POV) | **v4.1 NEW** — F4 Dropdown cho PROJECT_STATUS → `PERFORM f4_project_status` |
@@ -86,47 +88,11 @@ PROCESS ON VALUE-REQUEST.
 
 **PBO LOOP:** SAP dùng PBO LOOP để fill Table Control rows từ internal table. `WITH CONTROL tc_users` liên kết LOOP với Table Control UI element.
 
-**PAI LOOP:** `ON CHAIN-REQUEST` nghĩa là module `tc_users_modify` chỉ chạy khi user thực sự thay đổi 1 field trong row đó (performance optimization).
+**PAI LOOP:** Module `tc_users_modify` sync changes từ Table Control UI về internal table `gt_user_project`.
 
 ---
 
-## 3. Custom Controls (v5.0 Round 3 — NEW)
-
-Description và Note fields đã được thay bằng CL_GUI_TEXTEDIT multi-line editors.
-Cần tạo 2 Custom Controls trên Screen Layout:
-
-### Bước tạo Custom Controls trong SE51:
-
-1. **SE80** → mở `Z_BUG_WORKSPACE_MP` → double-click Screen **0500** → tab **Layout**
-2. Menu → Edit → Create Element → **Custom Control** (hoặc icon Custom Control trên toolbar)
-3. Vẽ hình chữ nhật ở vị trí cũ của Description field → Name: **`CC_PRJ_DESC`**
-   - Kích thước gợi ý: rộng ~60 chars, cao ~3-4 dòng
-4. Vẽ thêm 1 Custom Control ở vị trí cũ của Note field → Name: **`CC_PRJ_NOTE`**
-   - Kích thước gợi ý: rộng ~60 chars, cao ~3-4 dòng
-5. **Hide old I/O fields**: Các I/O fields `GS_PROJECT-DESCRIPTION` và `GS_PROJECT-NOTE` vẫn giữ trên screen (code `modify_screen_0500` sẽ set `screen-active = 0` tự động) — nhưng nên di chuyển chúng ra ngoài visible area hoặc đặt chúng chồng dưới Custom Control
-6. **Save** + **Activate**
-
-> ⚠️ **CRITICAL**: Tên Custom Control phải CHÍNH XÁC là `CC_PRJ_DESC` và `CC_PRJ_NOTE` (viết hoa, khớp với code PBO `init_prj_editors`)
->
-> Nếu tên sai → `CX_ROOT` exception → warning message "Cannot create Project Description/Note editor"
-
-### Bước cho Mac (SAP GUI for Java — alphanumeric mode):
-
-Vì Screen Painter chạy alphanumeric trên Mac, **không kéo thả được**. Làm như sau:
-
-1. Mở Screen 0500 Flow Logic → Tab **Element List**
-2. Thêm 2 entries thủ công:
-
-| Type | Name | Text | Row | Col | Width | Height |
-|------|------|------|-----|-----|-------|--------|
-| Custom Control | `CC_PRJ_DESC` | Description | 6 | 20 | 60 | 4 |
-| Custom Control | `CC_PRJ_NOTE` | Note | 11 | 20 | 60 | 4 |
-
-> Row/Col tuỳ chỉnh sao cho phù hợp layout. Quan trọng là Name phải đúng.
-
----
-
-## 4. Layout
+## 3. Layout
 
 Click **Layout** → Screen Painter mở ra.
 
@@ -233,18 +199,12 @@ Double-click `TC_USERS` → check:
 │                                                                 │
 │  ┌─ Project Information ─────────────────────────────────────┐  │
 │  │ Project ID *:  [____________________]                     │  │
-│  │ Project Name *:[__________________________________________│  │
-│  │ Description:   ┌─ CC_PRJ_DESC ───────────────────────┐    │  │
-│  │                │ (CL_GUI_TEXTEDIT multi-line editor)  │    │  │
-│  │                │                                      │    │  │
-│  │                └──────────────────────────────────────┘    │  │
+│  │ Project Name *:[__________________________________________]│  │
+│  │ Description:   [__________________________________________]│  │
 │  │ Status:        [_] → [Opening     ] (display)             │  │
 │  │ Start Date:    [__________]   End Date: [__________]      │  │
 │  │ Manager:       [____________]                              │  │
-│  │ Note:          ┌─ CC_PRJ_NOTE ───────────────────────┐    │  │
-│  │                │ (CL_GUI_TEXTEDIT multi-line editor)  │    │  │
-│  │                │                                      │    │  │
-│  │                └──────────────────────────────────────┘    │  │
+│  │ Note:          [__________________________________________]│  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Team Members:                                                  │
@@ -260,16 +220,19 @@ Double-click `TC_USERS` → check:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+> **v5.0 Bug C Fix:** Description và Note là plain I/O fields (CHAR 255).
+> Không cần Custom Controls hay CL_GUI_TEXTEDIT editors cho 2 fields này.
+
 ---
 
-## 5. Save + Activate
+## 4. Save + Activate
 
 1. **Save** layout (Ctrl+S)
 2. **Activate** screen (Ctrl+F3)
 
 ---
 
-## 6. Verify
+## 5. Verify
 
 ### Element List Check:
 
@@ -286,23 +249,24 @@ SE80 → double-click Screen 0500 → tab **Element List** → phải thấy:
 | Input/Output | I/O | `GS_PROJECT-PROJECT_MANAGER` |
 | Input/Output | I/O | `GS_PROJECT-NOTE` |
 | Input/Output | I/O | `GV_PRJ_STATUS_DISP` |
-| Custom Control | CC | `CC_PRJ_DESC` |
-| Custom Control | CC | `CC_PRJ_NOTE` |
 | Table Control | TC | `TC_USERS` |
 | OK Code | OK | `GV_OK_CODE` |
 
+> ⚠️ **Bug C Fix:** `CC_PRJ_DESC` và `CC_PRJ_NOTE` Custom Controls KHÔNG được có trong Element List.
+> Nếu tồn tại → xóa đi, chúng không còn cần thiết và sẽ gây lỗi vì code không tạo editors nữa.
+
 ### Quick Test:
 1. Từ Screen 0400, chọn 1 project → click "Change" → phải mở Screen 0500
-2. Fields phải hiện data từ DB
+2. Fields phải hiện data từ DB (kể cả Description và Note)
 3. Table Control phải hiện team members
 4. Non-Manager: fields readonly + Save/Add/Remove hidden
 5. BACK → quay về Screen 0400
 
 ---
 
-## 7. GUI Status Reference
+## 6. GUI Status Reference
 
-Screen này dùng **STATUS_0500**. Xem `UI_FINAL_STEPS.md` để tạo.
+Screen này dùng **STATUS_0500**. Xem `docs/final-steps.md` để tạo.
 
 ### Buttons trên STATUS_0500:
 
@@ -321,7 +285,7 @@ Screen này dùng **TITLE_PRJDET** — text = `&1` (nhận "Create Project" / "C
 
 ---
 
-## 8. Troubleshooting
+## 7. Troubleshooting
 
 | Vấn đề | Nguyên nhân | Fix |
 |--------|-------------|-----|
@@ -331,8 +295,7 @@ Screen này dùng **TITLE_PRJDET** — text = `&1` (nhận "Create Project" / "C
 | Save không work | SAVE fcode thiếu trong STATUS_0500 | Check SE41 |
 | Add User popup không hiện | POPUP_GET_VALUES error | Check code save_project_detail |
 | BACK không quay về 0400 | OK Code thiếu | Add GV_OK_CODE to screen attributes |
-| Status display trống | Module compute_prj_display_texts missing | Verify flow logic có module này (v3.0) |
+| Status display trống | Module compute_prj_display_texts missing | Verify flow logic có module này |
 | Project data reload khi tab switch | (n/a — Screen 0500 không có tabs) | gv_prj_detail_loaded flag prevents reload |
-| Description/Note editor trống | Custom Control name sai | Check CC_PRJ_DESC / CC_PRJ_NOTE tên chính xác trong SE51 Layout |
-| "Cannot create Project Description editor" | Custom Control chưa tạo trên Screen Layout | Tạo Custom Control CC_PRJ_DESC trong SE51 → Layout |
-| Text bị cắt khi save | CHAR 255 limit từ DB | Expected — Description/Note max 255 chars. Editor chỉ cải thiện UX, không thay đổi DB limit |
+| Description/Note trống | Group1 chưa set hoặc modify_screen_0500 set input=0 | Kiểm tra Group1 = EDT; kiểm tra gv_mode và gv_role |
+| Description/Note không save | Fields không trong ABAP work area khi PAI chạy | Đảm bảo fields có trên screen và Group1 đúng |

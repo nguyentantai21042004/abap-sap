@@ -311,14 +311,7 @@ Double-click từng field → tab **Attributes** → field **Group1** → nhập
 | `Assignment` | TESTER_ID, DEV_ID, VERIFY_TESTER_ID, CREATED_AT |
 | `Description` | CC_DESC_MINI (custom control) |
 
-### Bước 5: Thêm Description Mini Editor (Custom Control)
-
-1. Menu → Edit → Create Element → **Custom Control**
-2. Vẽ hình chữ nhật ở **phần dưới** screen (~60 chars wide x **8-10 lines high** — Bug 2 fix)
-3. Name: **`CC_DESC_MINI`**
-   - ⚠️ Khớp code: `container_name = 'CC_DESC_MINI'` (CODE_PBO.md line 267)
-
-### Bước 6: Đổi Label Text (optional — cho đẹp)
+### Bước 5: Đổi Label Text (optional — cho đẹp)
 
 Double-click label → sửa text:
 - BUG_ID → `Bug ID`
@@ -484,43 +477,46 @@ Double-click label → sửa text:
 
 ---
 
-# PHẦN 3: SUBSCREEN 0320 — Description (Long Text Z001)
+# PHẦN 3: SUBSCREEN 0320 — Description (DB CHAR field — v5.2)
+
+> **v5.2 REDESIGN:** Bỏ hoàn toàn `cl_gui_textedit` + STXH cho Description.
+> Description giờ là field `DESC_NOTE CHAR 255` trên bảng `ZBUG_TRACKER`.
+> SAP screen transport tự đọc/ghi — không cần editor, không cần PBO/PAI modules.
 
 ## 3.1 Tạo Screen
 
 1. SE80 → Create Screen → **`0320`**
-2. Short Description: `Description Long Text`
+2. Short Description: `Description`
 3. Screen Type: **Subscreen**
 
 ## 3.2 Flow Logic
 
-> ⚠️ **v3.0 CHANGE:** Không còn empty — có PBO module!
-
 ```abap
 PROCESS BEFORE OUTPUT.
-  MODULE init_long_text_desc.
 
 PROCESS AFTER INPUT.
 ```
 
-> Module `init_long_text_desc` (CODE_PBO.md line 293) tạo editor lazily + load text từ DB lần đầu.
+> Empty flow logic — không có `MODULE init_long_text_desc.`
 
 ## 3.3 Layout
 
-1. Vẽ **Custom Control** chiếm **toàn bộ** subscreen area
-2. Name: **`CC_DESC`**
-   - ⚠️ Khớp code: `container_name = 'CC_DESC'` (CODE_PBO.md line 295)
+1. Vẽ **Input/Output field** cho `GS_BUG_DETAIL-DESC_NOTE`:
+   - **Field Name:** `GS_BUG_DETAIL-DESC_NOTE`
+   - **Vis. Length:** `120`
+   - **Scroll Lines:** `15` (multi-line text field)
+   - **Group1:** `EDT`
+2. Thêm label `Description:` phía trên field
 
 ### Layout Preview:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ┌─── CC_DESC ──────────────────────────────────────────────┐ │
+│ Description:                                                 │
+│ ┌──────────────────────────────────────────────────────────┐ │
 │ │                                                          │ │
-│ │  (cl_gui_textedit — full description editor)             │ │
-│ │  Text ID Z001 — Object ZBUG                              │ │
-│ │                                                          │ │
-│ │                                                          │ │
+│ │  GS_BUG_DETAIL-DESC_NOTE                                 │ │
+│ │  (CHAR 255, multi-line, Group1=EDT)                      │ │
 │ │                                                          │ │
 │ └──────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
@@ -530,67 +526,109 @@ PROCESS AFTER INPUT.
 
 ---
 
-# PHẦN 4: SUBSCREEN 0330 — Dev Note (Long Text Z002)
+# PHẦN 4: SUBSCREEN 0330 — Dev Note (DB CHAR field — v5.2)
+
+> **v5.2 REDESIGN:** Bỏ hoàn toàn `cl_gui_textedit` + STXH cho Dev Note.
+> Dev Note giờ là field `DEV_NOTE CHAR 255` trên bảng `ZBUG_TRACKER`.
+> SAP screen transport tự đọc/ghi — không cần editor, không cần PBO/PAI modules.
 
 ## 4.1 Tạo Screen
 
 1. SE80 → Create Screen → **`0330`**
-2. Short Description: `Dev Note Long Text`
+2. Short Description: `Dev Note`
 3. Screen Type: **Subscreen**
 
 ## 4.2 Flow Logic
 
-> ⚠️ **v3.0 CHANGE:** Không còn empty — có PBO module!
-
 ```abap
 PROCESS BEFORE OUTPUT.
-  MODULE init_long_text_devnote.
 
 PROCESS AFTER INPUT.
 ```
 
-> Module `init_long_text_devnote` (CODE_PBO.md line 313) tạo editor lazily. Testers get readonly.
+> Empty flow logic — SAP screen transport tự handle `GS_BUG_DETAIL-DEV_NOTE`.
+> Không có `MODULE init_long_text_devnote.` hay `MODULE capture_devnote_content.`.
 
 ## 4.3 Layout
 
-1. Vẽ **Custom Control** chiếm **toàn bộ** subscreen area
-2. Name: **`CC_DEVNOTE`**
-   - ⚠️ **CRITICAL:** Tên là `CC_DEVNOTE` (KHÔNG CÓ underscore giữa DEV và NOTE)
-   - ⚠️ Khớp code: `container_name = 'CC_DEVNOTE'` (CODE_PBO.md line 315)
-   - ❌ Old v2.0 guide nói `CC_DEV_NOTE` — **SAI**, đã sửa trong v3.0
+1. Vẽ **Input/Output field** cho `GS_BUG_DETAIL-DEV_NOTE`:
+   - **Field Name:** `GS_BUG_DETAIL-DEV_NOTE`
+   - **Vis. Length:** 120
+   - **Scroll Lines:** 15 (multi-line text field)
+   - **Group1:** `DEV` (Tester get read-only via `modify_screen_0300`)
+2. Thêm label `Dev Note:` bên cạnh/phía trên field
+
+### Layout Preview:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ Dev Note:                                                    │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │                                                          │ │
+│ │  GS_BUG_DETAIL-DEV_NOTE                                  │ │
+│ │  (CHAR 255, multi-line, Group1=DEV)                      │ │
+│ │  Readonly for Testers                                    │ │
+│ │                                                          │ │
+│ └──────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+> **Screen groups:** Field thuộc Group `DEV` → `modify_screen_0300` tự set `screen-input = 0`
+> khi `gv_role = 'T'` (Tester) hoặc khi mode = Display / status = Closed / Resolved.
 
 ## 4.4 Save + Activate
 
 ---
 
-# PHẦN 5: SUBSCREEN 0340 — Tester Note (Long Text Z003)
+# PHẦN 5: SUBSCREEN 0340 — Tester Note (DB CHAR field — v5.2)
+
+> **v5.2 REDESIGN:** Bỏ hoàn toàn `cl_gui_textedit` + STXH cho Tester Note.
+> Tester Note giờ là field `TESTER_NOTE CHAR 255` trên bảng `ZBUG_TRACKER`.
+> SAP screen transport tự đọc/ghi — không cần editor, không cần PBO/PAI modules.
 
 ## 5.1 Tạo Screen
 
 1. SE80 → Create Screen → **`0340`**
-2. Short Description: `Tester Note Long Text`
+2. Short Description: `Tester Note`
 3. Screen Type: **Subscreen**
 
 ## 5.2 Flow Logic
 
-> ⚠️ **v3.0 CHANGE:** Không còn empty — có PBO module!
-
 ```abap
 PROCESS BEFORE OUTPUT.
-  MODULE init_long_text_tstrnote.
 
 PROCESS AFTER INPUT.
 ```
 
-> Module `init_long_text_tstrnote` (CODE_PBO.md line 334) tạo editor lazily. Devs get readonly.
+> Empty flow logic — SAP screen transport tự handle `GS_BUG_DETAIL-TESTER_NOTE`.
+> Không có `MODULE init_long_text_tstrnote.` hay `MODULE capture_tstnote_content.`.
 
 ## 5.3 Layout
 
-1. Vẽ **Custom Control** chiếm **toàn bộ** subscreen area
-2. Name: **`CC_TSTRNOTE`**
-   - ⚠️ **CRITICAL:** Tên là `CC_TSTRNOTE` (KHÔNG CÓ underscore giữa TSTR và NOTE)
-   - ⚠️ Khớp code: `container_name = 'CC_TSTRNOTE'` (CODE_PBO.md line 336)
-   - ❌ Old v2.0 guide nói `CC_TSTR_NOTE` — **SAI**, đã sửa trong v3.0
+1. Vẽ **Input/Output field** cho `GS_BUG_DETAIL-TESTER_NOTE`:
+   - **Field Name:** `GS_BUG_DETAIL-TESTER_NOTE`
+   - **Vis. Length:** 120
+   - **Scroll Lines:** 15 (multi-line text field)
+   - **Group1:** `TST` (Developer get read-only via `modify_screen_0300`)
+2. Thêm label `Tester Note:` bên cạnh/phía trên field
+
+### Layout Preview:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ Tester Note:                                                 │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │                                                          │ │
+│ │  GS_BUG_DETAIL-TESTER_NOTE                               │ │
+│ │  (CHAR 255, multi-line, Group1=TST)                      │ │
+│ │  Readonly for Developers                                 │ │
+│ │                                                          │ │
+│ └──────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+> **Screen groups:** Field thuộc Group `TST` → `modify_screen_0300` tự set `screen-input = 0`
+> khi `gv_role = 'D'` (Developer) hoặc khi mode = Display / status = Closed / Resolved.
 
 ## 5.4 Save + Activate
 
@@ -694,17 +732,19 @@ PROCESS AFTER INPUT.
 
 > **Bảng tham chiếu nhanh** — sử dụng bảng này để verify sau khi tạo screens.
 
-| Screen | Type | Container Name | Code Reference | Flow Logic PBO |
-|--------|------|---------------|----------------|----------------|
+| Screen | Type | Container / Field | Code Reference | Flow Logic PBO |
+|--------|------|-------------------|----------------|----------------|
 | 0300 | Normal | *(Tab Strip + Subscreen Area)* | — | 4 modules + CALL SUBSCREEN |
-| 0310 | Subscreen | `CC_DESC_MINI` | CODE_PBO.md:267 | `MODULE init_desc_mini.` |
-| 0320 | Subscreen | `CC_DESC` | CODE_PBO.md:295 | `MODULE init_long_text_desc.` |
-| 0330 | Subscreen | **`CC_DEVNOTE`** ⚠️ | CODE_PBO.md:315 | `MODULE init_long_text_devnote.` |
-| 0340 | Subscreen | **`CC_TSTRNOTE`** ⚠️ | CODE_PBO.md:336 | `MODULE init_long_text_tstrnote.` |
-| 0350 | Subscreen | `CC_EVIDENCE` | CODE_PBO.md:389 | `MODULE init_evidence_alv.` |
-| 0360 | Subscreen | `CC_HISTORY` | CODE_F01.md:602 | `MODULE init_history_alv.` |
+| 0310 | Subscreen | `CC_DESC_MINI` (Custom Control) | CODE_PBO.md | `MODULE init_desc_mini.` |
+| 0320 | Subscreen | `CC_DESC` (Custom Control) | CODE_PBO.md | `MODULE init_long_text_desc.` |
+| 0330 | Subscreen | `GS_BUG_DETAIL-DEV_NOTE` (CHAR field, Group=DEV) | ZBUG_TRACKER | *(empty)* |
+| 0340 | Subscreen | `GS_BUG_DETAIL-TESTER_NOTE` (CHAR field, Group=TST) | ZBUG_TRACKER | *(empty)* |
+| 0350 | Subscreen | `CC_EVIDENCE` (Custom Control) | CODE_PBO.md | `MODULE init_evidence_alv.` |
+| 0360 | Subscreen | `CC_HISTORY` (Custom Control) | CODE_F01.md | `MODULE init_history_alv.` |
 
-> ⚠️ = Tên khác với v2.0 guide! Dùng tên KHÔNG CÓ underscore: `CC_DEVNOTE`, `CC_TSTRNOTE`.
+> **v5.2:** Screens 0330/0340 không còn Custom Control hay PBO/PAI modules.
+> Data load/save hoàn toàn qua `gs_bug_detail` work area (SELECT/UPDATE `zbug_tracker`).
+> Cần thêm fields `DEV_NOTE` và `TESTER_NOTE` vào bảng `ZBUG_TRACKER` trong SE11.
 
 ---
 

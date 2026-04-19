@@ -1,0 +1,52 @@
+%% BP-BUG-01: Bug Lifecycle Management — ZBUG_WS v5.0
+%% Blueprint Process Flow | Source: docs/diagrams/bp-bug-01-lifecycle.mmd
+
+flowchart TD
+    Start(["Start\nTester / Manager creates Bug\non Screen 0300"])
+    BugType{BUG_TYPE\n= Code C?}
+    SelfFix["Tester self-fixes Config bug\nDEV_ID = SY-UNAME\nSTATUS: 1 → 2 → 3 → 5 → 6 → V"]
+    AutoAssignA["Auto-Assign Phase A\nFind Dev: same module\nworkload < 5, Available"]
+    FoundDev{Dev found?}
+    Waiting["STATUS = W\nWaiting\nManager notified"]
+    Assigned["STATUS = 2\nAssigned\nDeveloper notified"]
+    InProgress["STATUS = 3\nIn Progress"]
+    Pending["STATUS = 4\nPending"]
+    Rejected(["STATUS = R\nRejected ✗\nTERMINAL"])
+    Fixed["STATUS = 5\nFixed\nEvidence uploaded"]
+    AutoAssignB["Auto-Assign Phase B\nFind Tester: same module\nworkload < 5"]
+    FoundTester{Tester found?}
+    WaitingB["STATUS = W\nWaiting\nManager notified"]
+    FinalTesting["STATUS = 6\nFinal Testing"]
+    Resolved(["STATUS = V\nResolved ✓\nTERMINAL"])
+
+    Start --> BugType
+    BugType -->|"Yes — Code C"| AutoAssignA
+    BugType -->|"No — Config F"| SelfFix
+
+    AutoAssignA --> FoundDev
+    FoundDev -->|"Dev found"| Assigned
+    FoundDev -->|"No Dev available"| Waiting
+    Waiting -->|"Manager assigns Dev manually"| Assigned
+
+    Assigned -->|"Developer accepts"| InProgress
+    Assigned -->|"Developer rejects\n(TRANS_NOTE required)"| Rejected
+
+    InProgress -->|"Dev pauses / blocked"| Pending
+    Pending -->|"Manager reassigns Dev"| Assigned
+
+    InProgress -->|"Dev rejects\n(TRANS_NOTE required)"| Rejected
+    InProgress -->|"Fix done\n(Evidence upload required)"| Fixed
+
+    Fixed --> AutoAssignB
+    AutoAssignB --> FoundTester
+    FoundTester -->|"Tester found"| FinalTesting
+    FoundTester -->|"No Tester available"| WaitingB
+    WaitingB -->|"Manager assigns Tester manually"| FinalTesting
+
+    FinalTesting -->|"Test PASS\n(TRANS_NOTE required)"| Resolved
+    FinalTesting -->|"Test FAIL\n(TRANS_NOTE required)"| InProgress
+
+    style Start    fill:#D0E8FF,stroke:#336699
+    style Resolved fill:#90EE90,stroke:#2d862d
+    style Rejected fill:#FFB6B6,stroke:#cc0000
+    style SelfFix  fill:#FFF9C4,stroke:#F9A825

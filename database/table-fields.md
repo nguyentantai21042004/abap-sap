@@ -103,7 +103,10 @@
 
 ---
 
-## ZBUG_TRACKER (tracker_1.png + tracker_2.png + tracker_3.png) — 29 fields
+## ZBUG_TRACKER (tracker_1.png + tracker_2.png + tracker_3.png) — 32 fields
+
+> **v5.2 update:** Fields 30-32 added via SE11 — all use data element `ZDE_NOTE_TEXT` (CHAR 255).
+> Replaces `cl_gui_textedit` + STXH for Description/Dev Note/Tester Note.
 
 | # | Field | Key | Data Element | Data Type | Length | Description |
 |---|-------|-----|-------------|-----------|--------|-------------|
@@ -136,6 +139,9 @@
 | 27 | AEDAT | | AEDAT | DATS | 8 | Last Changed On |
 | 28 | AEZET | | AEZET | TIMS | 6 | Time last change was made |
 | 29 | IS_DEL | | ZDE_IS_DEL | CHAR | 1 | ZDE_IS_DEL |
+| 30 | DEV_NOTE | | ZDE_NOTE_TEXT | CHAR | 255 | Developer Note (v5.2 — replaces STXH Z002) |
+| 31 | TESTER_NOTE | | ZDE_NOTE_TEXT | CHAR | 255 | Tester Note (v5.2 — replaces STXH Z003) |
+| 32 | DESC_NOTE | | ZDE_NOTE_TEXT | CHAR | 255 | Description (v5.2 — replaces STXH Z001 + CC_DESC) |
 
 **Notes:**
 
@@ -146,6 +152,7 @@
 - SEVERITY field exists (ZDE_SEVERITY CHAR 1)
 - CLOSED_AT uses data element ZDE_BUG_CL_DATE
 - APPROVED_AT uses data element ZDE_BUG_APP_DATE
+- DEV_NOTE, TESTER_NOTE, DESC_NOTE: all use data element `ZDE_NOTE_TEXT` (CHAR 255). Activate ZDE_NOTE_TEXT first, then add all 3 fields to table.
 
 ---
 
@@ -157,9 +164,9 @@
 | ZBUG_HISTORY | 10 | MANDT + LOG_ID | hisotry_table.png |
 | ZBUG_USER_PROJEC | 10 | MANDT + USER_ID + PROJECT_ID | use_projec_table.png |
 | ZBUG_PROJECT | 16 | MANDT + PROJECT_ID | project_table_1.png + project_table_2.png |
-| ZBUG_TRACKER | 29 | MANDT + BUG_ID | tracker_1.png + tracker_2.png + tracker_3.png |
+| ZBUG_TRACKER | 32 | MANDT + BUG_ID | tracker_1.png + tracker_2.png + tracker_3.png (+DESC_NOTE, DEV_NOTE, TESTER_NOTE v5.2) |
 
-**Total: 77 fields across 5 tables**
+**Total: 80 fields across 5 tables**
 
 ---
 
@@ -167,9 +174,12 @@
 
 | Finding | Impact |
 |---------|--------|
-| `ZBUG_USERS` has no `USER_NAME` field — only `USER_ID` | Fix any SQL referencing `user_name` |
+| `ZBUG_USERS` has no `USER_NAME` field — only `USER_ID` (CHAR 12) | Fix any SQL referencing `user_name` |
 | `ZBUG_TRACKER.STATUS` is CHAR **20**, not CHAR 1 | Do NOT compare with single-char values |
 | `ZBUG_TRACKER.DESC_TEXT` is STRING | Cannot use in CHAR comparisons |
 | `ZBUG_TRACKER.REASONS` is STRING | Cannot use in CHAR comparisons |
 | `ZBUG_HISTORY.REASON` is STRING | Cannot use in CHAR comparisons |
 | `ZBUG_USER_PROJEC` table name is truncated (no T at end) | Use correct table name in FROM clause |
+| `ZBUG_TRACKER.DEV_NOTE` is CHAR 255 (v5.2 new) | Must exist in SAP before deploying code — add via SE11 |
+| `ZBUG_TRACKER.TESTER_NOTE` is CHAR 255 (v5.2 new) | Must exist in SAP before deploying code — add via SE11 |
+| `ZBUG_TRACKER.DESC_NOTE` is CHAR 255 (v5.2 new) | Must exist in SAP before deploying code — add via SE11 |

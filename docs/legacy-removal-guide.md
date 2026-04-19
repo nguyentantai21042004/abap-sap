@@ -1,8 +1,10 @@
 # Legacy Artifact Removal Guide — Z_BUG_WORKSPACE_MP
 
-> **Version:** 1.0 — 11/04/2026
+> **Version:** 1.1 — 19/04/2026
 > **Mục đích:** Hướng dẫn chi tiết xoá toàn bộ legacy/unused artifacts trong SAP system sau khi chuyển sang Module Pool `Z_BUG_WORKSPACE_MP` với T-code `ZBUG_WS` (Screen 0400).
 > **Lưu ý:** Chỉ thực hiện SAU KHI QC test pass và hệ thống stable. Backup trước khi xoá.
+>
+> **v1.1 changes (19/04/2026):** Added Section 10 (SE75 Text IDs Z001/Z002/Z003 now unused — v5.2 moved all notes to DB CHAR fields). Updated Section 11 + Section 13.
 
 ---
 
@@ -10,14 +12,14 @@
 
 Các T-code cũ đã được thay thế hoàn toàn bởi `ZBUG_WS`:
 
-| T-code | Program cũ | Lý do xoá |
-|--------|-----------|-----------|
-| `ZBUG_CREATE` | `Z_BUG_CREATE_SCREEN` | Create Bug nằm trong Screen 0300 (mode X) |
-| `ZBUG_UPDATE` | `Z_BUG_UPDATE_SCREEN` | Change Bug nằm trong Screen 0300 (mode C) |
-| `ZBUG_REPORT` | `Z_BUG_REPORT_ALV` | Bug List nằm trong Screen 0200 |
-| `ZBUG_MANAGER` | `Z_BUG_MANAGER_DASHBOARD` | Dashboard bị CANCELLED (Screen 0100 deprecated) |
-| `ZBUG_PRINT` | `Z_BUG_PRINT` | Print chưa implement (SmartForm ZBUG_FORM chưa build) |
-| `ZBUG_USERS` | (unknown) | User Management nằm trong Screen 0500 (Add/Remove User) |
+| T-code         | Program cũ                | Lý do xoá                                               |
+| -------------- | ------------------------- | ------------------------------------------------------- |
+| `ZBUG_CREATE`  | `Z_BUG_CREATE_SCREEN`     | Create Bug nằm trong Screen 0300 (mode X)               |
+| `ZBUG_UPDATE`  | `Z_BUG_UPDATE_SCREEN`     | Change Bug nằm trong Screen 0300 (mode C)               |
+| `ZBUG_REPORT`  | `Z_BUG_REPORT_ALV`        | Bug List nằm trong Screen 0200                          |
+| `ZBUG_MANAGER` | `Z_BUG_MANAGER_DASHBOARD` | Dashboard bị CANCELLED (Screen 0100 deprecated)         |
+| `ZBUG_PRINT`   | `Z_BUG_PRINT`             | Print chưa implement (SmartForm ZBUG_FORM chưa build)   |
+| `ZBUG_USERS`   | (unknown)                 | User Management nằm trong Screen 0500 (Add/Remove User) |
 
 ### Cách xoá:
 
@@ -38,13 +40,13 @@ SE93 → nhập T-code → nếu thấy "does not exist" → đã xoá hoặc ch
 
 Các programs standalone cũ (nếu tồn tại) — đã thay thế bởi Module Pool:
 
-| Program | Mô tả | Thay thế bởi |
-|---------|--------|--------------|
-| `Z_BUG_CREATE_SCREEN` | Tạo bug (standalone) | Screen 0300 mode X |
-| `Z_BUG_UPDATE_SCREEN` | Sửa bug (standalone) | Screen 0300 mode C |
-| `Z_BUG_REPORT_ALV` | Bug report ALV | Screen 0200 |
-| `Z_BUG_MANAGER_DASHBOARD` | Manager dashboard | CANCELLED |
-| `Z_BUG_PRINT` | Print bug PDF | Chưa implement |
+| Program                   | Mô tả                | Thay thế bởi       |
+| ------------------------- | -------------------- | ------------------ |
+| `Z_BUG_CREATE_SCREEN`     | Tạo bug (standalone) | Screen 0300 mode X |
+| `Z_BUG_UPDATE_SCREEN`     | Sửa bug (standalone) | Screen 0300 mode C |
+| `Z_BUG_REPORT_ALV`        | Bug report ALV       | Screen 0200        |
+| `Z_BUG_MANAGER_DASHBOARD` | Manager dashboard    | CANCELLED          |
+| `Z_BUG_PRINT`             | Print bug PDF        | Chưa implement     |
 
 ### Cách xoá:
 
@@ -60,18 +62,18 @@ Các programs standalone cũ (nếu tồn tại) — đã thay thế bởi Modul
 
 Requirements spec (Section 3) định nghĩa 10 Function Modules trong Function Group `ZBUG_FG`. Tuy nhiên, **KHÔNG CÓ FM NÀO được gọi** bởi Module Pool code. Tất cả business logic đều inline trong FORM routines (`Z_BUG_WS_F01`).
 
-| FM | Mô tả | Status |
-|----|--------|--------|
-| `Z_BUG_CREATE` | Tạo bug | NOT CALLED — logic in `FORM save_bug_detail` |
-| `Z_BUG_AUTO_ASSIGN` | Auto-assign dev | NOT CALLED — chưa implement auto-assign |
-| `Z_BUG_UPDATE_STATUS` | Update status | NOT CALLED — logic in `FORM change_bug_status` |
-| `Z_BUG_CHECK_PERMISSION` | Check quyền | NOT CALLED — role check inline |
-| `Z_BUG_LOG_HISTORY` | Ghi history | NOT CALLED — logic in `FORM add_history_entry` |
-| `Z_BUG_SEND_EMAIL` | Gửi email | NOT CALLED — logic in `FORM send_mail_notification` |
-| `Z_BUG_UPLOAD_ATTACHMENT` | Upload file | NOT CALLED — logic in `FORM upload_evidence` |
-| `Z_BUG_REASSIGN` | Reassign dev | NOT CALLED — logic in `FORM change_bug_status` |
-| `Z_BUG_GET_STATISTICS` | Dashboard stats | NOT CALLED — Dashboard CANCELLED |
-| `Z_BUG_GOS_UPLOAD` / `Z_BUG_GOS_LIST` | GOS integration | NOT CALLED — Evidence tự viết (ZBUG_EVIDENCE) |
+| FM                                    | Mô tả           | Status                                              |
+| ------------------------------------- | --------------- | --------------------------------------------------- |
+| `Z_BUG_CREATE`                        | Tạo bug         | NOT CALLED — logic in `FORM save_bug_detail`        |
+| `Z_BUG_AUTO_ASSIGN`                   | Auto-assign dev | NOT CALLED — chưa implement auto-assign             |
+| `Z_BUG_UPDATE_STATUS`                 | Update status   | NOT CALLED — logic in `FORM change_bug_status`      |
+| `Z_BUG_CHECK_PERMISSION`              | Check quyền     | NOT CALLED — role check inline                      |
+| `Z_BUG_LOG_HISTORY`                   | Ghi history     | NOT CALLED — logic in `FORM add_history_entry`      |
+| `Z_BUG_SEND_EMAIL`                    | Gửi email       | NOT CALLED — logic in `FORM send_mail_notification` |
+| `Z_BUG_UPLOAD_ATTACHMENT`             | Upload file     | NOT CALLED — logic in `FORM upload_evidence`        |
+| `Z_BUG_REASSIGN`                      | Reassign dev    | NOT CALLED — logic in `FORM change_bug_status`      |
+| `Z_BUG_GET_STATISTICS`                | Dashboard stats | NOT CALLED — Dashboard CANCELLED                    |
+| `Z_BUG_GOS_UPLOAD` / `Z_BUG_GOS_LIST` | GOS integration | NOT CALLED — Evidence tự viết (ZBUG_EVIDENCE)       |
 
 ### Cách xoá:
 
@@ -89,9 +91,9 @@ Requirements spec (Section 3) định nghĩa 10 Function Modules trong Function 
 
 ## 4. UNUSED SMARTFORMS (SMARTFORMS)
 
-| SmartForm | Mô tả | Status |
-|-----------|--------|--------|
-| `ZBUG_FORM` | Print Bug Detail PDF | **CHƯA BUILD** — SmartForm program không tồn tại |
+| SmartForm         | Mô tả                    | Status                                                    |
+| ----------------- | ------------------------ | --------------------------------------------------------- |
+| `ZBUG_FORM`       | Print Bug Detail PDF     | **CHƯA BUILD** — SmartForm program không tồn tại          |
 | `ZBUG_EMAIL_FORM` | Email body template HTML | **KHÔNG CẦN** — Email dùng BCS API trực tiếp (plain text) |
 
 ### Cách kiểm tra + xoá:
@@ -106,8 +108,8 @@ Requirements spec (Section 3) định nghĩa 10 Function Modules trong Function 
 
 ## 5. UNUSED NUMBER RANGE (SNRO)
 
-| Object | Mô tả | Status |
-|--------|--------|--------|
+| Object     | Mô tả               | Status                                                      |
+| ---------- | ------------------- | ----------------------------------------------------------- |
 | `ZNRO_BUG` | Bug ID number range | **KHÔNG ĐƯỢC DÙNG** — Auto-ID dùng `SELECT MAX(bug_id) + 1` |
 
 ### Code hiện tại (CODE_F01.md line 156-165):
@@ -135,17 +137,17 @@ Screen 0100 (Hub/Router) đã **DEPRECATED** — không có navigation nào dẫ
 
 ### Dead code trong includes:
 
-| Location | Code | Purpose |
-|----------|------|---------|
-| `CODE_PBO.md` line 22-25 | `MODULE status_0100` | Set PF-STATUS, SET TITLEBAR cho Screen 0100 |
-| `CODE_PAI.md` line 16-27 | `MODULE user_command_0100` | Handle BACK/BUG_LIST/PROJ_LIST commands |
+| Location                 | Code                       | Purpose                                     |
+| ------------------------ | -------------------------- | ------------------------------------------- |
+| `CODE_PBO.md` line 22-25 | `MODULE status_0100`       | Set PF-STATUS, SET TITLEBAR cho Screen 0100 |
+| `CODE_PAI.md` line 16-27 | `MODULE user_command_0100` | Handle BACK/BUG_LIST/PROJ_LIST commands     |
 
 ### GUI Status trong SE41:
 
-| Status | Screen | Dead? |
-|--------|--------|-------|
-| `STATUS_0100` | 0100 | **YES** — không ai gọi |
-| `TITLE_MAIN` | 0100 | **YES** — không ai gọi |
+| Status        | Screen | Dead?                  |
+| ------------- | ------ | ---------------------- |
+| `STATUS_0100` | 0100   | **YES** — không ai gọi |
+| `TITLE_MAIN`  | 0100   | **YES** — không ai gọi |
 
 ### Quyết định:
 
@@ -160,10 +162,10 @@ Screen 0100 (Hub/Router) đã **DEPRECATED** — không có navigation nào dẫ
 
 ## 7. MIGRATION SCRIPTS (SE38)
 
-| Program | Mục đích | Status |
-|---------|----------|--------|
+| Program                | Mục đích                                   | Status                      |
+| ---------------------- | ------------------------------------------ | --------------------------- |
 | `Z_BUG_MIGRATE_STATUS` | Migrate status codes (1-char → multi-char) | **ĐÃ CHẠY XONG** — one-time |
-| `Z_BUG_CLEANUP_ORPHAN` | Gán orphan bugs vào project "LEGACY" | **CHƯA CHẠY** — optional |
+| `Z_BUG_CLEANUP_ORPHAN` | Gán orphan bugs vào project "LEGACY"       | **CHƯA CHẠY** — optional    |
 
 ### Cách xử lý:
 
@@ -184,11 +186,11 @@ Screen 0100 (Hub/Router) đã **DEPRECATED** — không có navigation nào dẫ
 
 Các file đã OUTDATED — có thể archive hoặc đánh dấu:
 
-| File | Lý do | Action |
-|------|-------|--------|
-| `docs/phases/phase-c-module-pool.md` | v2.0, OUTDATED — thay bằng `screens/` | Đánh dấu "OUTDATED" ở đầu file |
-| `docs/phases/phase-e-testing.md` | Partially outdated — test checklist mới ở `docs/final-steps.md` | Đánh dấu "PARTIALLY OUTDATED" |
-| `docs/phases/phase-d-advanced-features.md` | Code đã integrate vào CODE files | Đánh dấu "INTEGRATED — see src/" |
+| File                                       | Lý do                                                           | Action                           |
+| ------------------------------------------ | --------------------------------------------------------------- | -------------------------------- |
+| `docs/phases/phase-c-module-pool.md`       | v2.0, OUTDATED — thay bằng `screens/`                           | Đánh dấu "OUTDATED" ở đầu file   |
+| `docs/phases/phase-e-testing.md`           | Partially outdated — test checklist mới ở `docs/final-steps.md` | Đánh dấu "PARTIALLY OUTDATED"    |
+| `docs/phases/phase-d-advanced-features.md` | Code đã integrate vào CODE files                                | Đánh dấu "INTEGRATED — see src/" |
 
 ### Không xoá:
 
@@ -198,10 +200,10 @@ Các file documentation **KHÔNG NÊN XOÁ** — giữ cho historical reference.
 
 ## 9. SESSION ARTIFACTS
 
-| File pattern | Mô tả | Action |
-|-------------|--------|--------|
-| `ses_*.json` | OpenCode agent session files | Xoá nếu không cần (`.gitignore` đã skip) |
-| `.specstory/` | Cursor AI history | Xoá nếu không cần |
+| File pattern  | Mô tả                        | Action                                   |
+| ------------- | ---------------------------- | ---------------------------------------- |
+| `ses_*.json`  | OpenCode agent session files | Xoá nếu không cần (`.gitignore` đã skip) |
+| `.specstory/` | Cursor AI history            | Xoá nếu không cần                        |
 
 ### Cách xoá:
 
@@ -213,53 +215,100 @@ rm -rf .specstory/
 
 ---
 
-## 10. TEXT OBJECT NAME DISCREPANCY
+## 10. SE75 TEXT IDs Z001/Z002/Z003 — UNUSED (v5.2)
 
-| Source | Object Name |
-|--------|------------|
-| `requirements.md` Section 2.7 | `ZBUG_NOTE` |
-| `CONTEXT.md` Section 4 | `ZBUG` |
-| Actual code (`CODE_F02.md` line 348) | `ZBUG` |
+**Context:** In v5.0/v5.1, Description (Z001), Dev Note (Z002), and Tester Note (Z003) were stored using `SAVE_TEXT` / `READ_TEXT` (STXH). In **v5.2**, all three were migrated to DB CHAR(255) fields directly on `ZBUG_TRACKER` (`DESC_NOTE`, `DEV_NOTE`, `TESTER_NOTE`). The Text IDs are no longer referenced anywhere in the code.
+
+| Text Object | Text ID      | Old Purpose                          | v5.2 Status                                         |
+| ----------- | ------------ | ------------------------------------ | --------------------------------------------------- |
+| `ZBUG`      | `Z001`       | Bug Description                      | **UNUSED** — replaced by `ZBUG_TRACKER.DESC_NOTE`   |
+| `ZBUG`      | `Z002`       | Dev Note                             | **UNUSED** — replaced by `ZBUG_TRACKER.DEV_NOTE`    |
+| `ZBUG`      | `Z003`       | Tester Note                          | **UNUSED** — replaced by `ZBUG_TRACKER.TESTER_NOTE` |
+| `ZBUG`      | `TRANS_NOTE` | Status Transition Note (Screen 0370) | **STILL USED** — keep                               |
+
+> **Note:** Text Object `ZBUG` itself must **NOT** be deleted — it is still needed for `TRANS_NOTE` (Screen 0370).
+> Only the three Text IDs Z001/Z002/Z003 are safe to remove.
+
+### Cách xóa Text IDs (nếu muốn clean up):
+
+1. **SE75** → "Text Objects and IDs" → nhập Object `ZBUG` → Display
+2. Chọn Text ID `Z001` → Delete → Confirm
+3. Lặp lại cho `Z002` và `Z003`
+4. Save (không cần Transport Request cho SE75 Text IDs trong nhiều systems — kiểm tra policy nội bộ)
+
+### Kiểm tra trước khi xóa:
+
+```abap
+" Chạy SE16 → STXH để kiểm tra xem có dữ liệu cũ không:
+" TDOBJECT = 'ZBUG', TDID IN ('Z001','Z002','Z003')
+" Nếu có records → data cũ từ trước khi migrate sang DB CHAR fields
+" → An toàn để xóa (data đã được migrate / không cần nữa)
+```
+
+### Rủi ro:
+
+- **Không có rủi ro** về code — không có FORM nào trong CODE_F01/F02 đang gọi Z001/Z002/Z003 nữa
+- Nếu còn STXH records cho Z001/Z002/Z003 → chúng là **orphan data** (data cũ, không còn được đọc)
+- Xóa Text IDs **không ảnh hưởng** đến Text Object `ZBUG` và `TRANS_NOTE`
+
+---
+
+## 11. TEXT OBJECT NAME DISCREPANCY ~~(NOT APPLICABLE — v5.2)~~
+
+> **v5.2 Update:** Description, Dev Note, Tester Note đã chuyển sang DB CHAR fields. `SAVE_TEXT`/`READ_TEXT` với Object `ZBUG` và Text IDs Z001/Z002/Z003 **không còn được gọi nữa**. Section này chỉ giữ lại cho historical reference.
+
+| Source                                                | Object Name                      |
+| ----------------------------------------------------- | -------------------------------- |
+| `requirements.md` Section 2.7                         | `ZBUG_NOTE`                      |
+| `CONTEXT.md` Section 4                                | `ZBUG`                           |
+| Actual code (`CODE_F02.md` — `save_long_text_direct`) | `ZBUG` (chỉ dùng cho TRANS_NOTE) |
 
 ### Kết luận:
 
 - Code dùng `ZBUG` — đây là tên **thật** trong SAP system
 - `ZBUG_NOTE` trong requirements là tên dự kiến ban đầu, **CHƯA BAO GIỜ TẠO**
-- **Không cần action** — chỉ cần biết discrepancy này tồn tại
+- Text Object `ZBUG` vẫn cần cho `TRANS_NOTE` (Screen 0370) — **KHÔNG XÓA**
+- **Không cần action** — discrepancy đã được giải quyết bởi việc chuyển sang DB CHAR
 
 ---
 
-## 11. THỨ TỰ XOÁ KHUYẾN NGHỊ
+## 12. THỨ TỰ XÓA KHUYẾN NGHỊ
 
 Nếu quyết định clean up, thực hiện theo thứ tự sau:
 
-1. **Backup** — tạo Transport Request mới cho tất cả objects cần xoá
-2. **T-codes** (SE93) — xoá 6 deprecated T-codes
-3. **Programs** (SE38) — xoá 5 standalone programs (nếu tồn tại)
-4. **Function Modules** (SE37/SE80) — xoá từng FM hoặc cả function group (nếu tồn tại)
-5. **SmartForms** (SMARTFORMS) — xoá 2 SmartForms (nếu tồn tại)
-6. **Screen 0100** — optional: xoá screen + comment code + xoá GUI Status
-7. **Migration scripts** — xoá `Z_BUG_MIGRATE_STATUS` (đã chạy xong)
-8. **Number Range** — giữ nguyên (không gây hại)
-9. **Repo documentation** — đánh dấu outdated files
+1. **Backup** — tạo Transport Request mới cho tất cả objects cần xóa
+2. **T-codes** (SE93) — xóa 6 deprecated T-codes
+3. **Programs** (SE38) — xóa 5 standalone programs (nếu tồn tại)
+4. **Function Modules** (SE37/SE80) — xóa từng FM hoặc cả function group (nếu tồn tại)
+5. **SmartForms** (SMARTFORMS) — xóa 2 SmartForms (nếu tồn tại)
+6. **SE75 Text IDs** — xóa Z001, Z002, Z003 trong Text Object `ZBUG` (KHÔNG xóa TRANS_NOTE, KHÔNG xóa Text Object `ZBUG`)
+7. **Screen 0100** — optional: xóa screen + comment code + xóa GUI Status
+8. **Migration scripts** — xóa `Z_BUG_MIGRATE_STATUS` (đã chạy xong)
+9. **Number Range** — giữ nguyên (không gây hại)
+10. **Repo documentation** — đánh dấu outdated files
 
 ---
 
-## 12. OBJECTS GIỮ LẠI (KHÔNG XOÁ)
+## 13. OBJECTS GIỮ LẠI (KHÔNG XÓA)
 
-| Object | Lý do giữ |
-|--------|-----------|
-| `ZBUG_WS` (T-code) | Entry point chính |
-| `Z_BUG_WORKSPACE_MP` (Program) | Module Pool chính |
-| 6 includes (`Z_BUG_WS_TOP/F00/PBO/PAI/F01/F02`) | Source code |
-| 11 Screens (0100-0500 + subscreens) | UI |
-| 5 GUI Statuses | Toolbar/menu |
-| 6 DB Tables | Data layer |
-| Text Object `ZBUG` | Long text storage |
-| Message Class `ZBUG_MSG` | Error/info messages |
-| 4 SMW0 Templates | Excel templates |
-| `Z_BUG_CLEANUP_ORPHAN` | Chưa chạy |
+| Object                                          | Lý do giữ                                             |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| `ZBUG_WS` (T-code)                              | Entry point chính                                     |
+| `Z_BUG_WORKSPACE_MP` (Program)                  | Module Pool chính                                     |
+| 6 includes (`Z_BUG_WS_TOP/F00/PBO/PAI/F01/F02`) | Source code                                           |
+| 11 Screens (0100-0500 + subscreens)             | UI                                                    |
+| 5 GUI Statuses                                  | Toolbar/menu                                          |
+| 6 DB Tables                                     | Data layer                                            |
+| `ZBUG_TRACKER.DESC_NOTE` (CHAR 255)             | v5.2 — Bug Description storage                        |
+| `ZBUG_TRACKER.DEV_NOTE` (CHAR 255)              | v5.2 — Developer Note storage                         |
+| `ZBUG_TRACKER.TESTER_NOTE` (CHAR 255)           | v5.2 — Tester Note storage                            |
+| Data Element `ZDE_NOTE_TEXT` (CHAR 255)         | v5.2 — Shared type for 3 note fields                  |
+| Text Object `ZBUG`                              | Long text storage — dùng cho TRANS_NOTE (Screen 0370) |
+| Text ID `TRANS_NOTE` trong Object `ZBUG`        | Status Transition Note — Screen 0370                  |
+| Message Class `ZBUG_MSG`                        | Error/info messages                                   |
+| 4 SMW0 Templates                                | Excel templates                                       |
+| `Z_BUG_CLEANUP_ORPHAN`                          | Chưa chạy                                             |
 
 ---
 
-*File này được tạo bởi OpenCode agent. Cập nhật: 11/04/2026 v1.0*
+_File này được tạo bởi OpenCode agent. Cập nhật: 19/04/2026 v1.1 (Section 10 thêm mới: SE75 Text IDs Z001/Z002/Z003 unused; Section 11 updated; Section 12 added SE75 cleanup step; Section 13 added v5.2 DB fields + ZDE_NOTE_TEXT)_
